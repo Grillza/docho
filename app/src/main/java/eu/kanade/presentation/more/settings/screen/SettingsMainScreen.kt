@@ -36,6 +36,7 @@ import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.ChromeReaderMode
 import mihon.icons.materialsymbols.rounded.Code
 import mihon.icons.materialsymbols.rounded.CollectionsBookmark
+import mihon.icons.materialsymbols.rounded.Dns
 import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.Explore
 import mihon.icons.materialsymbols.rounded.Info
@@ -200,6 +201,12 @@ object SettingsMainScreen : Screen() {
             subtitleRes = MR.strings.pref_tracking_summary,
             icon = MaterialSymbols.Rounded.Sync,
             screen = SettingsTrackingScreen,
+        ),
+        Item(
+            titleRes = MR.strings.pref_category_kavita,
+            subtitleRes = MR.strings.pref_kavita_summary,
+            icon = MaterialSymbols.Rounded.Dns,
+            screen = SettingsKavitaScreen,
         ),
         Item(
             titleRes = MR.strings.browse,

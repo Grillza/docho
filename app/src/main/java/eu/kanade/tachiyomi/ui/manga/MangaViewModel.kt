@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import mihon.domain.source.interactor.UpdateMangaFromRemote
+import mihonka.kavita.KavitaSync
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
@@ -123,6 +124,7 @@ class MangaViewModel(
     private val sourceManager: SourceManager,
     private val refreshTracks: RefreshTracks,
     private val coverCache: CoverCache,
+    private val kavitaSync: KavitaSync,
 ) : ViewModel() {
 
     val state: StateFlow<MangaViewModel.State>
@@ -255,6 +257,11 @@ class MangaViewModel(
                     fetchDetails = needRefreshInfo,
                     fetchChapters = needRefreshChapter,
                 )
+            }
+
+            // A chapter fetch above already reconciled Kavita progress; otherwise pull it now.
+            if (!needRefreshChapter && kavitaSync.isEnabledFor(manga) && viewModelScope.isActive) {
+                kavitaSync.syncManga(manga)
             }
 
             // Initial loading finished

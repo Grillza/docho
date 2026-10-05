@@ -3,6 +3,8 @@ package eu.kanade.domain.chapter.interactor
 import dev.zacsweers.metro.Inject
 import eu.kanade.domain.download.interactor.DeleteDownload
 import logcat.LogPriority
+import mihonka.kavita.KavitaSource
+import mihonka.kavita.KavitaSync
 import tachiyomi.core.common.util.lang.withNonCancellableContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
@@ -18,6 +20,7 @@ class SetReadStatus(
     private val deleteDownload: DeleteDownload,
     private val mangaRepository: MangaRepository,
     private val chapterRepository: ChapterRepository,
+    private val kavitaSync: KavitaSync,
 ) {
 
     private val mapper = { chapter: Chapter, read: Boolean ->
@@ -45,6 +48,15 @@ class SetReadStatus(
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e)
             return@withNonCancellableContext Result.InternalError(e)
+        }
+
+        if (kavitaSync.isEnabled()) {
+            chaptersToUpdate
+                .groupBy { it.mangaId }
+                .forEach { (mangaId, chapters) ->
+                    val manga = mangaRepository.getMangaById(mangaId)
+                    if (manga.source == KavitaSource.ID) kavitaSync.onReadStatusChanged(manga, chapters, read)
+                }
         }
 
         if (read && downloadPreferences.removeAfterMarkedAsRead.get()) {

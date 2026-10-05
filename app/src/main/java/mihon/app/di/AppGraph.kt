@@ -45,6 +45,10 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import mihon.core.metro.IsDebugBuild
 import mihon.domain.extension.interactor.GetExtensionStoreCountAsFlow
 import mihon.domain.extension.repository.ExtensionStoreRepository
+import mihonka.kavita.KavitaApi
+import mihonka.kavita.KavitaPreferences
+import mihonka.kavita.KavitaSource
+import mihonka.kavita.KavitaSync
 import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.category.interactor.GetCategories
@@ -124,6 +128,11 @@ interface AppGraph : ViewModelGraph {
     val upsertTrack: UpsertTrack
 
     val getExtensionStoreCountAsFlow: GetExtensionStoreCountAsFlow
+
+    val kavitaPreferences: KavitaPreferences
+    val kavitaApi: KavitaApi
+    val kavitaSource: KavitaSource
+    val kavitaSync: KavitaSync
 
     @DependencyGraph.Factory
     fun interface Factory {

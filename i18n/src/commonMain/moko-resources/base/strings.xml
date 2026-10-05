@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Mihon</string>
+    <string name="app_name" translatable="false">Mihonka</string>
 
     <!-- Generic strings -->
     <string name="on">On</string>
@@ -1106,4 +1106,29 @@
     <string name="donationCampaign.paragraph3">Regardless, Mihon will continue to be maintained by me and the volunteers, and it will stay open source.</string>
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
+
+    <!-- Mihonka: Kavita -->
+    <string name="pref_category_kavita" translatable="false">Kavita</string>
+    <string name="pref_kavita_summary">Server, browsing and reading progress sync</string>
+    <string name="pref_kavita_server">Server</string>
+    <string name="pref_kavita_server_url">Server address</string>
+    <string name="pref_kavita_server_url_hint">e.g. https://kavita.example.com</string>
+    <string name="pref_kavita_api_key">API key</string>
+    <string name="pref_kavita_api_key_summary">Copy it from Kavita: your user settings, under API Key / OPDS</string>
+    <string name="pref_kavita_api_key_set">Saved (hidden)</string>
+    <string name="pref_kavita_connection">Connection</string>
+    <string name="kavita_connection_tap">Tap to check the connection</string>
+    <string name="kavita_test_running">Connecting…</string>
+    <string name="kavita_test_success">Connected to Kavita %1$s as %2$s</string>
+    <string name="kavita_test_failed">Couldn\'t connect: %1$s</string>
+    <string name="kavita_not_configured">Enter the server address and API key first</string>
+    <string name="pref_kavita_browse">Browse Kavita</string>
+    <string name="pref_kavita_browse_summary">Your Kavita series also appear under Browse → Sources. Add them to the library like any other manga.</string>
+    <string name="pref_kavita_sync">Reading progress</string>
+    <string name="pref_kavita_sync_progress">Sync reading progress</string>
+    <string name="pref_kavita_sync_progress_summary">Sends every page you read to Kavita and picks up the page reached on other devices. The side that has read further wins.</string>
+    <string name="pref_kavita_sync_now">Sync library now</string>
+    <string name="pref_kavita_sync_now_summary">Reconciles progress for every Kavita series in your library</string>
+    <string name="kavita_sync_running">Syncing with Kavita…</string>
+    <string name="kavita_sync_done">Synced %1$d Kavita series</string>
 </resources>

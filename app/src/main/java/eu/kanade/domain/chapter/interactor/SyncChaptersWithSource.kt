@@ -14,6 +14,8 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import mihonka.kavita.KavitaSource
+import mihonka.kavita.KavitaSync
 import tachiyomi.data.chapter.ChapterSanitizer
 import tachiyomi.domain.chapter.interactor.ShouldUpdateDbChapter
 import tachiyomi.domain.chapter.model.Chapter
@@ -37,6 +39,7 @@ class SyncChaptersWithSource(
     private val updateManga: UpdateManga,
     private val getExcludedScanlators: GetExcludedScanlators,
     private val libraryPreferences: LibraryPreferences,
+    private val kavitaSync: KavitaSync,
 ) {
 
     /**
@@ -53,6 +56,19 @@ class SyncChaptersWithSource(
         source: Source,
         manualFetch: Boolean = false,
         fetchWindow: Pair<Long, Long> = Pair(0, 0),
+    ): List<Chapter> {
+        val newChapters = syncChapters(rawSourceChapters, manga, source, manualFetch, fetchWindow)
+        // Kavita's chapter list carries the reading progress too, so reconcile it now.
+        kavitaSync.syncManga(manga)
+        return newChapters
+    }
+
+    private suspend fun syncChapters(
+        rawSourceChapters: List<SChapter>,
+        manga: Manga,
+        source: Source,
+        manualFetch: Boolean,
+        fetchWindow: Pair<Long, Long>,
     ): List<Chapter> {
         if (rawSourceChapters.isEmpty() && !source.isLocal()) {
             throw NoChaptersException()
@@ -96,7 +112,12 @@ class SyncChaptersWithSource(
             if (!sourceUrls.add(chapter.url)) continue
 
             // Recognize chapter number for the chapter.
-            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapterNumber)
+            // Kavita's numbers are exact, and its volumes and specials are negative on purpose.
+            val chapterNumber = if (source.id == KavitaSource.ID) {
+                chapter.chapterNumber
+            } else {
+                ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapterNumber)
+            }
             chapter = chapter.copy(chapterNumber = chapterNumber)
 
             val dbChapter = dbChaptersByUrl[chapter.url]

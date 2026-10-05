@@ -68,7 +68,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import logcat.LogPriority
+import mihonka.kavita.KavitaSync
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -121,6 +123,7 @@ class ReaderViewModel(
     private val coverCache: CoverCache,
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
+    private val kavitaSync: KavitaSync,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -330,6 +333,10 @@ class ReaderViewModel(
                 val manga = getManga.await(mangaId) ?: error("Requested manga of id $mangaId not found")
                 val source = sourceManager.getOrStub(manga.source)
                 incognitoMode = getIncognitoState.await(manga.source)
+                if (!incognitoMode && kavitaSync.isEnabledFor(manga)) {
+                    // Pick up the page reached on another device before the chapter list is read.
+                    withTimeoutOrNull(KAVITA_PULL_TIMEOUT) { kavitaSync.syncManga(manga) }
+                }
                 mutableState.update { it.copy(manga = manga, source = source) }
                 if (chapterId == -1L) chapterId = initialChapterId
 
@@ -595,6 +602,17 @@ class ReaderViewModel(
                     lastPageRead = readerChapter.chapter.last_page_read.toLong()
                 },
             )
+
+            manga?.let { manga ->
+                kavitaSync.onPageChanged(
+                    manga = manga,
+                    chapterUrl = readerChapter.chapter.url,
+                    chapterMemo = readerChapter.chapter.memo,
+                    pageIndex = pageIndex,
+                    pageCount = readerChapter.pages?.size ?: 0,
+                    chapterRead = readerChapter.chapter.read,
+                )
+            }
         }
     }
 
@@ -1025,3 +1043,6 @@ class ReaderViewModel(
         data class CopyImage(val uri: Uri) : Event
     }
 }
+
+/** How long opening the reader waits for Kavita before going ahead with local progress. */
+private const val KAVITA_PULL_TIMEOUT = 4_000L

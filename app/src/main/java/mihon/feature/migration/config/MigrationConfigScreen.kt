@@ -58,6 +58,7 @@ import mihon.icons.materialsymbols.automirroredrounded.ArrowForward
 import mihon.icons.materialsymbols.rounded.Deselect
 import mihon.icons.materialsymbols.rounded.DragHandle
 import mihon.icons.materialsymbols.rounded.SelectAll
+import mihonka.kavita.KavitaSource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
@@ -357,7 +358,7 @@ class MigrationConfigScreen(private val mangaIds: Collection<Long>) : Screen() {
             val sources = sourceManager.getAll()
                 .asSequence()
                 .filterIsInstance<HttpSource>()
-                .filter { it.lang in languages }
+                .filter { it.lang in languages || it.id == KavitaSource.ID }
                 .map {
                     val source = Source(
                         id = it.id,
