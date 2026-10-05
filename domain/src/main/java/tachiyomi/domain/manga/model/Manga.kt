@@ -77,6 +77,10 @@ data class Manga(
             else -> TriState.DISABLED
         }
 
+    /** Whether gaps in chapter numbers are left unmarked for this manga. */
+    val hideMissingChapters: Boolean
+        get() = chapterFlags and CHAPTER_HIDE_MISSING_MASK == CHAPTER_HIDE_MISSING
+
     fun sortDescending(): Boolean {
         return chapterFlags and CHAPTER_SORT_DIR_MASK == CHAPTER_SORT_DESC
     }
@@ -110,6 +114,9 @@ data class Manga(
         const val CHAPTER_DISPLAY_NAME = 0x00000000L
         const val CHAPTER_DISPLAY_NUMBER = 0x00100000L
         const val CHAPTER_DISPLAY_MASK = 0x00100000L
+
+        const val CHAPTER_HIDE_MISSING = 0x00200000L
+        const val CHAPTER_HIDE_MISSING_MASK = 0x00200000L
 
         fun create() = Manga(
             id = -1L,

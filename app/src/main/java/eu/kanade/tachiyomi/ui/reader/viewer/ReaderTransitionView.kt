@@ -43,6 +43,7 @@ class ReaderTransitionView @JvmOverloads constructor(context: Context, attrs: At
                             source = source,
                         )
                     } ?: false,
+                hideMissingChapters = manga.hideMissingChapters,
             )
         } else {
             null
@@ -61,6 +62,7 @@ class ReaderTransitionView @JvmOverloads constructor(context: Context, attrs: At
                         transition = it.transition,
                         currChapterDownloaded = it.currChapterDownloaded,
                         goingToChapterDownloaded = it.goingToChapterDownloaded,
+                        hideMissingChapters = it.hideMissingChapters,
                     )
                 }
             }
@@ -71,5 +73,6 @@ class ReaderTransitionView @JvmOverloads constructor(context: Context, attrs: At
         val transition: ChapterTransition,
         val currChapterDownloaded: Boolean,
         val goingToChapterDownloaded: Boolean,
+        val hideMissingChapters: Boolean,
     )
 }

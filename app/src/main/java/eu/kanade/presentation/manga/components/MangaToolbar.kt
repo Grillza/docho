@@ -37,6 +37,8 @@ fun MangaToolbar(
     onClickRefresh: () -> Unit,
     onClickMigrate: (() -> Unit)?,
     onClickEditNotes: () -> Unit,
+    hideMissingChapters: Boolean,
+    onClickToggleMissingChapters: () -> Unit,
 
     // For action mode
     actionModeCounter: Int,
@@ -144,6 +146,16 @@ fun MangaToolbar(
                         AppBar.OverflowAction(
                             title = stringResource(MR.strings.action_notes),
                             onClick = onClickEditNotes,
+                        ),
+                    )
+                    add(
+                        AppBar.OverflowAction(
+                            title = if (hideMissingChapters) {
+                                stringResource(MR.strings.action_show_missing_chapters)
+                            } else {
+                                stringResource(MR.strings.action_hide_missing_chapters)
+                            },
+                            onClick = onClickToggleMissingChapters,
                         ),
                     )
                 },

@@ -1107,6 +1107,10 @@
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
 
+    <!-- Mihonka: per-manga missing chapters -->
+    <string name="action_hide_missing_chapters">Hide missing chapters</string>
+    <string name="action_show_missing_chapters">Show missing chapters</string>
+
     <!-- Mihonka: Kavita -->
     <string name="pref_category_kavita" translatable="false">Kavita</string>
     <string name="pref_kavita_summary">Server, browsing and reading progress sync</string>

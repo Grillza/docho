@@ -914,6 +914,14 @@ class MangaViewModel(
      * Sets the active display mode.
      * @param mode the mode to set.
      */
+    fun toggleHideMissingChapters() {
+        val manga = successState?.manga ?: return
+
+        viewModelScope.launchNonCancellable {
+            setMangaChapterFlags.awaitSetHideMissingChapters(manga, !manga.hideMissingChapters)
+        }
+    }
+
     fun setDisplayMode(mode: Long) {
         val manga = successState?.manga ?: return
 
@@ -1144,7 +1152,7 @@ class MangaViewModel(
             }
 
             val chapterListItems by lazy {
-                if (hideMissingChapters) {
+                if (hideMissingChapters || manga.hideMissingChapters) {
                     return@lazy processedChapters
                 }
 

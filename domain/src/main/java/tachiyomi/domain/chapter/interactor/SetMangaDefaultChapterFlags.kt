@@ -16,20 +16,20 @@ class SetMangaDefaultChapterFlags(
 
     suspend fun await(manga: Manga) {
         withNonCancellableContext {
-            setDefaultFlags(listOf(manga.id))
+            setDefaultFlags(listOf(manga))
         }
     }
 
     suspend fun awaitAll() {
         withNonCancellableContext {
-            setDefaultFlags(getFavorites.await().map { it.id })
+            setDefaultFlags(getFavorites.await())
         }
     }
 
-    private suspend fun setDefaultFlags(mangaIds: List<Long>) {
+    private suspend fun setDefaultFlags(mangas: List<Manga>) {
         with(libraryPreferences) {
             setMangaChapterFlags.awaitSetAllFlags(
-                mangaIds = mangaIds,
+                mangas = mangas,
                 unreadFilter = filterChapterByRead.get(),
                 downloadedFilter = filterChapterByDownloaded.get(),
                 bookmarkedFilter = filterChapterByBookmarked.get(),
