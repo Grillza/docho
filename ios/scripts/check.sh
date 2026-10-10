@@ -1,29 +1,54 @@
 #!/bin/sh
-# Generates the project, builds, runs the tests on an iPhone and an iPad mini simulator, and
-# fails on any warning in our own sources. SWIFT_TREAT_WARNINGS_AS_ERRORS doesn't promote
-# every diagnostic group (some concurrency warnings slip through), hence the log check.
-# Usage: ios/scripts/check.sh
+# Generates the project, builds, runs the tests on the iPad mini simulator (the main target),
+# and fails on any warning in our own sources. Set IPHONE_SIMULATOR to test on an iPhone too.
+# SWIFT_TREAT_WARNINGS_AS_ERRORS doesn't promote every diagnostic group (some concurrency
+# warnings slip through), hence the log check.
+# Usage: ios/scripts/check.sh    or    IPHONE_SIMULATOR="iPhone 18 Pro" ios/scripts/check.sh
 set -eu
 
 ios_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ios_dir"
 xcodegen --quiet
 
-iphone="${IPHONE_SIMULATOR:-iPhone 18 Pro}"
 ipad="${IPAD_SIMULATOR:-iPad mini (A17 Pro)}"
+set -- -destination "platform=iOS Simulator,name=$ipad"
+if [ -n "${IPHONE_SIMULATOR:-}" ]; then
+    set -- "$@" -destination "platform=iOS Simulator,name=$IPHONE_SIMULATOR"
+fi
 log="$(mktemp)"
-trap 'rm -f "$log"' EXIT
+results="$(mktemp -d)/results.xcresult"
+trap 'rm -rf "$log" "$(dirname "$results")"' EXIT
 
 status=0
 xcodebuild clean test \
     -project Mihonka.xcodeproj \
     -scheme Mihonka \
     -derivedDataPath build/DerivedData \
-    -destination "platform=iOS Simulator,name=$iphone" \
-    -destination "platform=iOS Simulator,name=$ipad" \
+    -resultBundlePath "$results" \
+    "$@" \
     >"$log" 2>&1 || status=$?
 
-grep -E "Test case .*(passed|failed)|Testing (passed|failed)|error:" "$log" | sort -u || true
+grep -E "error:" "$log" | sort -u || true
+if [ -d "$results" ]; then
+    xcrun xcresulttool get test-results tests --path "$results" | python3 -c '
+import json, sys
+def walk(node, out):
+    if node.get("nodeType") == "Test Case":
+        out.append((node.get("result"), node.get("nodeIdentifier")))
+    for child in node.get("children", []):
+        walk(child, out)
+cases = []
+for node in json.load(sys.stdin)["testNodes"]:
+    walk(node, cases)
+for result, name in sorted(cases):
+    if result != "Passed":
+        print(f"  {result}: {name}")
+counts = {}
+for result, _ in cases:
+    counts[result] = counts.get(result, 0) + 1
+print("tests:", ", ".join(f"{n} {r.lower()}" for r, n in sorted(counts.items())))
+' || true
+fi
 
 warnings="$(grep -E "^$ios_dir/(Mihonka|MihonkaTests|MihonkaUITests)/.*: warning:" "$log" | sort -u || true)"
 if [ -n "$warnings" ]; then

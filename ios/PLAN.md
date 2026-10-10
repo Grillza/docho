@@ -356,7 +356,7 @@ Also add **engine tests** using a fake `URLProtocol` server, covering:
 
 | Table | Contents |
 |---|---|
-| `series` | Kavita `seriesId` (PK), `libraryId`, name, summary, authors, genres, status, `coverUrl`, `inLibrary` flag, `readerMode` override, `lastOpenedAt` |
+| `series` | Kavita series id (PK, column `id`), `libraryId`, name, summary, authors, genres, status, `inLibrary` flag, `readerMode` override, `lastOpenedAt`. No `coverUrl`: it's built from the id when shown, since it contains the server address and API key |
 | `chapter` | Kavita `chapterId` (PK), `seriesId`, `volumeId`, `libraryId`, name, `number` (as above), `readingOrder` index, `pages`, `read`, `lastPageRead`, `dateUpload`, `isDownloaded` |
 | `pendingProgress` | the sync queue described above, with `chapterId` as PK |
 | `library` | Kavita libraries, for the filter |
@@ -417,7 +417,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
    - Port the models, `normalizeApiUrl`, auth and endpoints into `actor KavitaClient`.
    - The settings screen shows connection status. The API key is stored in the Keychain.
    - Port `KavitaUrlsTest` and the normalisation cases.
-3. **Browse and Library:**
+3. **Browse and Library:** ✅ done
    - Browse → Kavita source: a paged series grid with covers, search, library filter, sort and
      pull-to-refresh. EPUBs are excluded. The database stores Kavita libraries.
    - Library: a grid of the added series from the database, with pull-to-refresh running
@@ -452,10 +452,13 @@ and, where relevant, on the device. Commit at the end of every milestone.
 - **Keep this file current.** Tick off milestones, record decisions made along the way, and note
   anything where iOS deliberately differs from Android.
 - **Build and test from the CLI** so results are checkable: `ios/scripts/check.sh` generates the
-  project, does a clean build, runs the tests on an iPhone and an iPad mini simulator, and fails
-  on any warning in our sources. Override the simulators with `IPHONE_SIMULATOR` /
-  `IPAD_SIMULATOR`. Lint with `cd ios && swiftlint`.
-- **Live tests** (`KavitaLiveTests`, `SettingsUITests`) run against a real Kavita server and are
+  project, does a clean build, runs the tests on the iPad mini simulator, and fails on any
+  warning in our sources. Day-to-day builds and tests are iPad-only to save time (the user's
+  request, 2026-10-10); the app stays universal. Set `IPHONE_SIMULATOR="iPhone 18 Pro"` to add
+  an iPhone run, and `IPAD_SIMULATOR` to pick another iPad. For quick builds use
+  `-destination 'platform=iOS Simulator,name=iPad mini (A17 Pro)'`, not
+  `generic/platform=iOS Simulator`, which also compiles x86_64. Lint with `cd ios && swiftlint`.
+- **Live tests** (`KavitaLiveTests`, `LiveUITests`) run against a real Kavita server and are
   skipped unless it's given: `TEST_RUNNER_KAVITA_LIVE_URL=… TEST_RUNNER_KAVITA_LIVE_KEY=…
   ios/scripts/check.sh` (add `TEST_RUNNER_SCREENSHOT_DIR=…` for Settings screenshots). Kavita's
   public demo works: `https://demo.kavitareader.com`, signing in as `demouser` / `Demouser64`
@@ -509,6 +512,32 @@ and, where relevant, on the device. Commit at the end of every milestone.
 - `Package.resolved` is now committed (GRDB 7.11.1, Nuke 12.9.0) through `.gitignore` exceptions.
 - Verified: all tests pass on both simulators, and the live tests passed against the Kavita
   demo server (0.9.1.4). Settings shows "Connected to Kavita 0.9.1.4 as demouser".
+
+### Milestone 3: Browse and Library (2026-10-10)
+
+- `Data/AppDatabase.swift` holds the GRDB setup and migration `v1` (`library`, `series`), in
+  `Application Support/mihonka.sqlite`. `Data/Records.swift` has the records and queries;
+  views observe the database with `ValueObservation` (`for try await` in `.task`).
+  `chapter` and `pendingProgress` come in their own migrations (milestones 4 and 6).
+- Browse → Kavita (`KavitaBrowseView` + `KavitaBrowseModel`): a paged grid (30 per page, loads
+  more near the end), search (debounced 350 ms), library filter, sort (name, recently added,
+  last chapter added, reading progress) with an ascending toggle, and pull-to-refresh.
+  `KavitaBrowseRequest.filter` ports Android's statements and always excludes EPUBs.
+  Results for an older request are dropped, and series already shown are de-duplicated.
+- Kavita libraries are saved to the database whenever Browse opens, so the filter works offline.
+- **Long-press a cover in Browse to add it to the library, or remove it**, as in Mihon. Series
+  in the library are dimmed with an "In library" badge. Removing keeps the cached row.
+- Library: series with `inLibrary`, sorted by name. Pull-to-refresh currently refreshes names
+  and libraries from Kavita; library sync (progress) joins it in milestone 6.
+- Covers: Nuke's `LazyImage`, downsampled to the grid size, with the disk cache
+  (`ImagePipeline(configuration: .withDataCache)`). `seriesCoverURL` / `pageImageURL` include the
+  `apiKey` so Nuke can load them without the bearer token.
+- Builds and tests are iPad-only by default (see the working notes); `check.sh` prints a
+  summary from the result bundle, including skipped tests.
+- Verified on the iPad mini simulator: 51 tests pass, including the live tests against the demo
+  server. They browse Kavita (covers load), add a series by long-press, see it in Library with
+  its cover, and remove it. Paging, search, filter and sort are covered by stub-server tests;
+  the demo server has only 10 non-EPUB series, so paging wasn't exercised live.
 
 ## Open questions
 

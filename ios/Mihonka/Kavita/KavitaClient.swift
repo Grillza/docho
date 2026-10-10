@@ -156,12 +156,13 @@ actor KavitaClient {
         _ = try await send("POST", "/Reader/\(endpoint)", body: JSONEncoder().encode(body))
     }
 
+    /// Image URLs carry the `apiKey`, so image loaders can fetch them without the bearer token.
     nonisolated func seriesCoverURL(seriesId: Int) throws -> URL {
-        try url(apiURL(), "/Image/series-cover?seriesId=\(seriesId)")
+        try imageURL("/Image/series-cover?seriesId=\(seriesId)")
     }
 
     nonisolated func pageImageURL(chapterId: Int, page: Int) throws -> URL {
-        try url(apiURL(), "/Reader/image?chapterId=\(chapterId)&page=\(page)&extractPdf=true")
+        try imageURL("/Reader/image?chapterId=\(chapterId)&page=\(page)&extractPdf=true")
     }
 
     /// Address of the series in Kavita's own web UI.
@@ -252,6 +253,10 @@ actor KavitaClient {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
+    }
+
+    private nonisolated func imageURL(_ pathAndQuery: String) throws -> URL {
+        try Self.addingApiKeyIfImage(url(apiURL(), pathAndQuery), apiKey: credentials().apiKey)
     }
 
     private nonisolated func apiURL() throws -> String {

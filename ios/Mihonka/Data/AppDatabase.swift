@@ -1,0 +1,48 @@
+import Foundation
+import GRDB
+
+/// The app's SQLite database. Schema changes go in new migrations; never edit a shipped one.
+struct AppDatabase: Sendable {
+    let writer: any DatabaseWriter
+
+    init(_ writer: any DatabaseWriter) throws {
+        self.writer = writer
+        try Self.migrator.migrate(writer)
+    }
+
+    /// `Application Support/mihonka.sqlite`.
+    static func onDisk() throws -> AppDatabase {
+        let directory = try FileManager.default.url(
+            for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+        )
+        return try AppDatabase(DatabasePool(path: directory.appending(path: "mihonka.sqlite").path()))
+    }
+
+    static func inMemory() throws -> AppDatabase {
+        try AppDatabase(DatabaseQueue())
+    }
+
+    private static var migrator: DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+        migrator.registerMigration("v1") { db in
+            try db.create(table: "library") { table in
+                table.primaryKey("id", .integer)
+                table.column("name", .text).notNull()
+                table.column("type", .integer).notNull().defaults(to: 0)
+            }
+            try db.create(table: "series") { table in
+                table.primaryKey("id", .integer) // Kavita series id
+                table.column("libraryId", .integer).notNull()
+                table.column("name", .text).notNull()
+                table.column("summary", .text)
+                table.column("authors", .text)
+                table.column("genres", .text)
+                table.column("status", .integer)
+                table.column("inLibrary", .boolean).notNull().defaults(to: false).indexed()
+                table.column("readerMode", .text)
+                table.column("lastOpenedAt", .datetime)
+            }
+        }
+        return migrator
+    }
+}

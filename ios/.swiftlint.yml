@@ -9,3 +9,8 @@ line_length:
 
 trailing_comma:
   mandatory_comma: true
+
+identifier_name:
+  excluded:
+    - db # GRDB's conventional name for the database connection
+    - id

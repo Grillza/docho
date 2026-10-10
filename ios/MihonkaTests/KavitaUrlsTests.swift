@@ -54,11 +54,11 @@ final class KavitaUrlsTests: XCTestCase {
         let client = KavitaClient { credentials.current }
         XCTAssertEqual(
             try client.seriesCoverURL(seriesId: 42).absoluteString,
-            "https://example.com/kavita/api/Image/series-cover?seriesId=42"
+            "https://example.com/kavita/api/Image/series-cover?seriesId=42&apiKey=key-1"
         )
         XCTAssertEqual(
             try client.pageImageURL(chapterId: 7, page: 0).absoluteString,
-            "https://example.com/kavita/api/Reader/image?chapterId=7&page=0&extractPdf=true"
+            "https://example.com/kavita/api/Reader/image?chapterId=7&page=0&extractPdf=true&apiKey=key-1"
         )
         XCTAssertEqual(
             try client.seriesWebURL(libraryId: 3, seriesId: 42).absoluteString,

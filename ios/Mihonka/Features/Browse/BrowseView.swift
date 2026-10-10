@@ -1,11 +1,24 @@
 import SwiftUI
 
-/// Lists the sources. Kavita is the only one; its series grid arrives in milestone 3.
+/// Lists the sources. Kavita is the only one.
 struct BrowseView: View {
+    @Environment(AppModel.self) private var app
+
     var body: some View {
         List {
-            Section("Sources") {
-                Label("Kavita", systemImage: "server.rack")
+            Section {
+                NavigationLink {
+                    KavitaBrowseView(client: app.kavita)
+                } label: {
+                    Label("Kavita", systemImage: "server.rack")
+                }
+                .disabled(!app.settings.credentials.isConfigured)
+            } header: {
+                Text("Sources")
+            } footer: {
+                if !app.settings.credentials.isConfigured {
+                    Text("Add your Kavita server in Settings first.")
+                }
             }
         }
         .navigationTitle("Browse")
@@ -14,4 +27,5 @@ struct BrowseView: View {
 
 #Preview {
     NavigationStack { BrowseView() }
+        .environment(AppModel())
 }
