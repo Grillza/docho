@@ -73,6 +73,8 @@ struct SettingsView: View {
                 )
             }
 
+            ReaderSettingsSection(settings: model.readerSettings)
+
             Section("About") {
                 LabeledContent("Version", value: Bundle.main.appVersion)
             }
@@ -161,4 +163,28 @@ private extension Bundle {
 #Preview {
     NavigationStack { SettingsView() }
         .environment(AppModel())
+}
+
+/// The default mode for series without their own, and two-page spreads on iPad.
+private struct ReaderSettingsSection: View {
+    @Bindable var settings: ReaderSettings
+
+    var body: some View {
+        Section {
+            Picker("Default reading mode", selection: $settings.defaultMode) {
+                ForEach(ReaderMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                Toggle("Two-page spreads in landscape", isOn: $settings.spreads)
+                Toggle("First page alone", isOn: $settings.coverAlone)
+                    .disabled(!settings.spreads)
+            }
+        } header: {
+            Text("Reader")
+        } footer: {
+            Text("Each series remembers the mode you pick for it in the reader.")
+        }
+    }
 }

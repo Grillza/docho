@@ -1,25 +1,6 @@
 import Foundation
 import Observation
 
-/// How pages are laid out. Stored per series in `series.readerMode`; milestone 7 adds webtoon
-/// mode and a default in Settings.
-enum ReadingDirection: String, CaseIterable, Identifiable, Sendable {
-    case leftToRight = "ltr"
-    case rightToLeft = "rtl"
-
-    /// Mihon's default.
-    static let `default` = ReadingDirection.rightToLeft
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .leftToRight: String(localized: "Left to right")
-        case .rightToLeft: String(localized: "Right to left")
-        }
-    }
-}
-
 /// The chapter being read and the page shown. Progress is saved locally on every page change and
 /// handed to `KavitaSync`, which sends it to Kavita after a short pause.
 @MainActor
@@ -32,7 +13,8 @@ final class ReaderModel {
     private(set) var pageCount: Int
     /// 0-based index of the page shown.
     private(set) var page: Int
-    private(set) var direction: ReadingDirection
+    /// Paged left to right or right to left, or webtoon.
+    private(set) var mode: ReaderMode
     private(set) var loadError: String?
     /// Pages are shown once the latest progress has been pulled (or that took too long).
     private(set) var isReady = false
@@ -55,7 +37,7 @@ final class ReaderModel {
         chapter = start
         pageCount = start.pages
         page = Self.resumePage(start)
-        direction = readerMode.flatMap(ReadingDirection.init(rawValue:)) ?? .default
+        mode = readerMode.flatMap(ReaderMode.init(rawValue:)) ?? app.readerSettings.defaultMode
     }
 
     /// Read chapters start again from the first page.
@@ -141,10 +123,13 @@ final class ReaderModel {
         if atEnd { page = max(pageCount - 1, 0) }
     }
 
-    func setDirection(_ direction: ReadingDirection) async {
-        self.direction = direction
-        try? await app.database.setReaderMode(seriesId: seriesId, direction.rawValue)
+    /// Changes the mode for this series.
+    func setMode(_ mode: ReaderMode) async {
+        self.mode = mode
+        try? await app.database.setReaderMode(seriesId: seriesId, mode.rawValue)
     }
+
+    var settings: ReaderSettings { app.readerSettings }
 
     private func update(_ change: (inout ChapterRecord) -> Void) {
         change(&chapter)

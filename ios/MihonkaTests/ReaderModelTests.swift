@@ -14,7 +14,10 @@ final class ReaderModelTests: XCTestCase {
         settings.serverURL = "https://kavita.test"
         settings.apiKey = "key-1"
         settings.syncProgress = false // KavitaSyncTests covers what the reader sends
-        app = AppModel(settings: settings, session: StubURLProtocol.session(), database: try .inMemory())
+        app = AppModel(
+            settings: settings, session: StubURLProtocol.session(), database: try .inMemory(),
+            readerSettings: ReaderSettings(defaults: defaults)
+        )
 
         let series = try JSONDecoder().decode(KavitaSeries.self, from: Data(#"{"id": 7, "name": "S", "libraryId": 2}"#.utf8))
         let details = KavitaSeriesDetails(try JSONDecoder().decode(KavitaSeriesMetadata.self, from: Data("{}".utf8)))
@@ -111,15 +114,28 @@ final class ReaderModelTests: XCTestCase {
         XCTAssertEqual(StubURLProtocol.requests.last?.query("chapterId"), "12")
     }
 
-    func testReadingDirectionDefaultsToRightToLeftAndIsSavedPerSeries() async throws {
+    func testTheModeDefaultsToRightToLeftAndIsSavedPerSeries() async throws {
         let reader = try await model()
-        XCTAssertEqual(reader.direction, .rightToLeft)
+        XCTAssertEqual(reader.mode, .rightToLeft)
 
-        await reader.setDirection(.leftToRight)
+        await reader.setMode(.webtoon)
         let mode = try await app.database.writer.read { try SeriesRecord.fetchOne($0, key: 7)?.readerMode }
-        XCTAssertEqual(mode, "ltr")
+        XCTAssertEqual(mode, "webtoon")
         let reopened = try await model(readerMode: mode)
-        XCTAssertEqual(reopened.direction, .leftToRight)
+        XCTAssertEqual(reopened.mode, .webtoon)
+    }
+
+    func testSeriesWithoutAModeUseTheDefaultFromSettings() async throws {
+        app.readerSettings.defaultMode = .leftToRight
+        let reader = try await model(readerMode: nil)
+        XCTAssertEqual(reader.mode, .leftToRight)
+        let own = try await model(readerMode: "rtl")
+        XCTAssertEqual(own.mode, .rightToLeft)
+
+        let stored = ReaderSettings(defaults: try XCTUnwrap(UserDefaults(suiteName: defaultsSuite)))
+        XCTAssertEqual(stored.defaultMode, .leftToRight, "saved")
+        XCTAssertFalse(stored.spreads)
+        XCTAssertTrue(stored.coverAlone)
     }
 
     func testJumpsOnlyToPagesThatExist() async throws {

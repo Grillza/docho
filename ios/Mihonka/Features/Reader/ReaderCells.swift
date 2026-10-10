@@ -1,16 +1,23 @@
 import Nuke
 import UIKit
 
-/// One page: an image in a zooming scroll view, centred while it's smaller than the view.
+/// One page, or two side by side (a spread), in a zooming scroll view, centred while smaller
+/// than the view. Until an image arrives it's laid out as a portrait page.
 final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
     static let reuseIdentifier = "page"
+    private static let placeholderAspect: CGFloat = 2 / 3
+
+    /// Called with each page's image size once it has loaded.
+    var onImageSize: (Int, CGSize) -> Void = { _, _ in }
 
     private let scrollView = UIScrollView()
-    private let imageView = UIImageView()
+    private let container = UIView()
+    private var imageViews: [UIImageView] = []
     private let spinner = UIActivityIndicatorView(style: .large)
     private let errorLabel = UILabel()
-    private var loadTask: Task<Void, Never>?
-    private var request: ImageRequest?
+    private var loadTasks: [Task<Void, Never>] = []
+    private var pages: [Int] = []
+    private var rightToLeft = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -22,8 +29,7 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.contentInsetAdjustmentBehavior = .never
-        scrollView.addSubview(imageView)
-        imageView.contentMode = .scaleAspectFit
+        scrollView.addSubview(container)
         contentView.addSubview(scrollView)
 
         spinner.color = .lightGray
@@ -50,64 +56,98 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        loadTask?.cancel()
-        imageView.image = nil
+        loadTasks.forEach { $0.cancel() }
+        loadTasks = []
         resetZoom()
     }
 
-    func configure(request: ImageRequest?, page: Int, pageCount: Int) {
-        accessibilityLabel = String(localized: "Page \(page + 1) of \(pageCount)")
-        self.request = request
-        load()
+    /// Shows `pages` (one or two) from `requests`, in reading order.
+    func configure(requests: [ImageRequest?], pages: [Int], pageCount: Int, rightToLeft: Bool) {
+        loadTasks.forEach { $0.cancel() }
+        loadTasks = []
+        self.pages = pages
+        self.rightToLeft = rightToLeft
+        accessibilityLabel = pages.count == 1
+            ? String(localized: "Page \(pages[0] + 1) of \(pageCount)")
+            : String(localized: "Pages \(pages[0] + 1)–\(pages[pages.count - 1] + 1) of \(pageCount)")
+        accessibilityValue = nil
+        while imageViews.count < pages.count {
+            let imageView = UIImageView()
+            imageView.contentMode = .scaleAspectFit
+            container.addSubview(imageView)
+            imageViews.append(imageView)
+        }
+        for (index, imageView) in imageViews.enumerated() {
+            imageView.image = nil
+            imageView.isHidden = index >= pages.count
+        }
+        errorLabel.isHidden = true
+        layoutImages()
+        for (index, request) in requests.enumerated() where index < pages.count {
+            load(request, into: index)
+        }
     }
 
-    private func load() {
-        loadTask?.cancel()
-        errorLabel.isHidden = true
+    private func load(_ request: ImageRequest?, into index: Int) {
         guard let request else { return }
         if let cached = ImagePipeline.shared.cache.cachedImage(for: request) {
-            show(cached.image)
+            show(cached.image, at: index)
             return
         }
         spinner.startAnimating()
-        loadTask = Task { [weak self] in
+        loadTasks.append(Task { [weak self] in
             do {
                 let image = try await ImagePipeline.shared.image(for: request)
-                self?.show(image)
+                self?.show(image, at: index)
             } catch {
                 guard !Task.isCancelled else { return }
                 self?.spinner.stopAnimating()
                 self?.errorLabel.text = String(localized: "Couldn't load this page.\n\(error.localizedDescription)")
                 self?.errorLabel.isHidden = false
             }
-        }
+        })
     }
 
-    private func show(_ image: UIImage) {
-        spinner.stopAnimating()
-        imageView.image = image
-        accessibilityValue = String(localized: "Loaded")
-        layoutImage()
+    private func show(_ image: UIImage, at index: Int) {
+        imageViews[index].image = image
+        let visible = imageViews.prefix(pages.count)
+        if visible.allSatisfy({ $0.image != nil }) {
+            spinner.stopAnimating()
+            accessibilityValue = String(localized: "Loaded")
+        }
+        if scrollView.zoomScale == 1 { layoutImages() }
+        onImageSize(pages[index], image.size)
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if scrollView.zoomScale == 1 { layoutImage() }
+        if scrollView.zoomScale == 1 { layoutImages() }
     }
 
-    /// Fits the image in the cell and centres it.
-    private func layoutImage() {
-        guard let size = imageView.image?.size, size.width > 0, size.height > 0 else { return }
+    /// Fits the pages, side by side at one height, in the cell and centres them. In right to
+    /// left, the first page is on the right.
+    private func layoutImages() {
         let bounds = scrollView.bounds.size
-        let scale = min(bounds.width / size.width, bounds.height / size.height)
-        let fitted = CGSize(width: size.width * scale, height: size.height * scale)
+        guard !pages.isEmpty, bounds.width > 0, bounds.height > 0 else { return }
+        let aspects = imageViews.prefix(pages.count).map { view -> CGFloat in
+            guard let size = view.image?.size, size.width > 0, size.height > 0 else { return Self.placeholderAspect }
+            return size.width / size.height
+        }
+        let height = min(bounds.height, bounds.width / aspects.reduce(0, +))
+        var left: CGFloat = 0
+        let order = rightToLeft ? Array(aspects.indices.reversed()) : Array(aspects.indices)
+        for index in order {
+            let width = aspects[index] * height
+            imageViews[index].frame = CGRect(x: left, y: 0, width: width, height: height)
+            left += width
+        }
         scrollView.zoomScale = 1
-        imageView.frame = CGRect(origin: .zero, size: fitted)
-        scrollView.contentSize = fitted
-        centerImage()
+        container.frame = CGRect(x: 0, y: 0, width: left, height: height)
+        scrollView.contentSize = container.frame.size
+        centerContent()
     }
 
-    private func centerImage() {
+    private func centerContent() {
         let bounds = scrollView.bounds.size
         let content = scrollView.contentSize
         scrollView.contentInset = UIEdgeInsets(
@@ -127,7 +167,7 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
         if scrollView.zoomScale > 1 {
             scrollView.setZoomScale(1, animated: true)
         } else {
-            let location = imageView.convert(point, from: self)
+            let location = container.convert(point, from: self)
             let scale: CGFloat = 2.5
             let size = CGSize(width: scrollView.bounds.width / scale, height: scrollView.bounds.height / scale)
             let origin = CGPoint(x: location.x - size.width / 2, y: location.y - size.height / 2)
@@ -135,10 +175,35 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
         }
     }
 
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? { imageView }
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? { container }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
-        centerImage()
+        centerContent()
+    }
+}
+
+/// Which pages share a screen in two-page mode.
+enum PageSpreads {
+    /// Pairs pages in reading order. Wide pages (already a spread in the scan) stand alone, and so
+    /// does the first page when `coverAlone` is on; a page left over after a wide one or at the
+    /// end stands alone too.
+    static func pair(pageCount: Int, wide: Set<Int>, coverAlone: Bool) -> [[Int]] {
+        var spreads: [[Int]] = []
+        var page = 0
+        if coverAlone, pageCount > 0 {
+            spreads.append([0])
+            page = 1
+        }
+        while page < pageCount {
+            if wide.contains(page) || page + 1 >= pageCount || wide.contains(page + 1) {
+                spreads.append([page])
+                page += 1
+            } else {
+                spreads.append([page, page + 1])
+                page += 2
+            }
+        }
+        return spreads
     }
 }
 

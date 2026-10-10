@@ -440,7 +440,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
      - Read on Android, open the same series on iOS → iOS shows the Android page.
      - Read further on iOS while offline, go back online → Kavita and Android get iOS's page.
      - Read further on Android meanwhile → it's never undone.
-7. **Webtoon mode and iPad spreads,** with per-series reader settings and a default in settings.
+7. **Webtoon mode and iPad spreads,** with per-series reader settings and a default in settings. ✅ done
 8. **Downloads:** engine, queue UI, offline reading, delete options.
 9. **Polish:**
    - App icon (reuse `icons/`), empty and error states, and accessibility labels.
@@ -639,6 +639,38 @@ and, where relevant, on the device. Commit at the end of every milestone.
   a smaller page queued here never undoes a further page from elsewhere, which is pulled
   instead. Not yet tried with the real Android app on the same server, nor background refresh
   on a device (`BGTaskScheduler` doesn't run in the simulator).
+
+### Milestone 7: webtoon mode and iPad spreads (2026-10-11)
+
+- `ReaderMode` (`ltr` / `rtl` / `webtoon`) replaces the reading direction, still stored per
+  series in `series.readerMode`. `ReaderSettings` (UserDefaults, `@Observable`) holds the
+  default mode (right to left), **two-page spreads** (off by default) and **first page alone**
+  (on). Settings has a Reader section; the reader's top-bar menu picks the series' mode and, on
+  iPad in paged modes, toggles spreads.
+- Both readers implement a small `ReaderController` protocol and share one SwiftUI bridge,
+  `ReaderPagesView<Controller>`.
+- **Spreads** (`PagedReaderController`): with spreads on and the view wider than tall, items
+  are page groups from `PageSpreads.pair` (cover alone if set; wide pages alone; a page left
+  over before a wide one or at the end alone). A page found to be wide once loaded re-pairs the
+  chapter, staying on the current page. Rotation re-pairs too. A spread reports its later page
+  as the one shown (both are on screen). `PageCell` lays one or two images side by side at one
+  height, first page on the right in right to left, and zooms them together.
+- **Webtoon** (`WebtoonReaderController`): a vertical collection view at full width inside a
+  zooming scroll view (1×–3×, pinch or double-tap). Heights start as a guess (3:2) and are
+  corrected as images load; the three pages either side of the reading position are loaded
+  ahead so most corrections happen off screen, and a correction above the screen's top shifts
+  the scroll position by the change above the top, so the view doesn't jump (Android's gap
+  bug). Images are scaled to the screen width in pixels, never up. The current page is the one
+  at the middle of the screen, or the last once the end is in view. Taps: top third back, bottom
+  third on (75% of a screen), middle overlay; at an end, or pulling 80 pt past it, moves to the
+  neighbouring chapter.
+- `check.sh` now passes `-collect-test-diagnostics never`: after a UI test failure, collecting
+  simulator diagnostics took ten minutes.
+- Tests: `PageSpreadsTests`, reader mode defaults; live UI test
+  `testReadsInSpreadsAndInWebtoonMode` rotates to landscape and finds a loaded two-page spread
+  (screenshot: pages 2–3 with page 2 on the right), then switches to webtoon and checks that
+  scrolling moves the page on. Not yet tried on a device: webtoon pinch zoom feel and long
+  strips.
 
 ## Open questions
 

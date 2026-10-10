@@ -10,6 +10,7 @@ final class AppModel {
     let settings: KavitaSettings
     let kavita: KavitaClient
     let database: AppDatabase
+    let readerSettings: ReaderSettings
     let sync: KavitaSync
     private var triggers: SyncTriggers?
 
@@ -20,9 +21,11 @@ final class AppModel {
         settings: KavitaSettings = KavitaSettings(),
         session: URLSession = .shared,
         database: AppDatabase? = nil,
+        readerSettings: ReaderSettings? = nil,
         pageDebounce: Duration = KavitaSync.pageDebounce
     ) {
         self.settings = settings
+        self.readerSettings = readerSettings ?? ReaderSettings()
         kavita = KavitaClient(session: session) { [settings] in settings.credentials }
         self.database = database ?? Self.openDatabase()
         sync = KavitaSync(kavita: kavita, database: self.database, settings: settings, pageDebounce: pageDebounce)

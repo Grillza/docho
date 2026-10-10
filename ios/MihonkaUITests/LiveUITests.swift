@@ -133,6 +133,97 @@ final class LiveUITests: XCTestCase {
         XCTAssertTrue(waitFor(row, value: "Page 2 of", prefix: true), "progress not shown: \(row.value ?? "nil")")
     }
 
+    @MainActor
+    func testReadsInSpreadsAndInWebtoonMode() throws {
+        let app = try launchConnected()
+        let spreads = app.switches["Two-page spreads in landscape"]
+        XCTAssertTrue(spreads.waitForExistence(timeout: 5))
+        setSwitch(spreads, on: true)
+        addTeardownBlock { @MainActor in XCUIDevice.shared.orientation = .portrait }
+
+        app.buttons["Browse"].firstMatch.tap()
+        app.buttons["Kavita"].firstMatch.tap()
+        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
+        first.tap()
+        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
+        row.tap()
+
+        let pages = app.collectionViews["reader.pages"]
+        XCTAssertTrue(pages.waitForExistence(timeout: 10), "reader didn't open")
+        setMode(app, pages, "Right to left")
+
+        // Landscape pairs pages; the cover stands alone, so a page or two on there's a pair.
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let pair = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Pages '")).firstMatch
+        for _ in 0..<2 where !pair.waitForExistence(timeout: 3) {
+            pages.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(pair.waitForExistence(timeout: 5), "no two-page spread in landscape")
+        XCTAssertTrue(waitFor(pair, value: "Loaded", timeout: 20), "the spread didn't load")
+        hideOverlay(app, pages)
+        screenshot("spreads")
+        XCUIDevice.shared.orientation = .portrait
+
+        // Webtoon: scrolling down moves through the pages.
+        setMode(app, pages, "Webtoon")
+        let loaded = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page ' AND value == 'Loaded'"))
+        XCTAssertTrue(loaded.firstMatch.waitForExistence(timeout: 20), "no webtoon page loaded")
+        // The overlay is still up from picking the mode.
+        let slider = app.descendants(matching: .any).matching(identifier: "reader.page").firstMatch
+        XCTAssertTrue(slider.waitForExistence(timeout: 3))
+        let before = pageNumber(slider)
+        hideOverlay(app, pages)
+        for _ in 0..<4 {
+            pages.swipeUp(velocity: .fast)
+        }
+        Thread.sleep(forTimeInterval: 2) // let the pages load for the screenshot
+        screenshot("webtoon")
+        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(slider.waitForExistence(timeout: 3))
+        XCTAssertGreaterThan(pageNumber(slider), before, "scrolling didn't move on")
+
+        // Leave the series as the other tests expect it, and spreads off.
+        setMode(app, pages, "Right to left")
+        app.buttons["reader.close"].tap()
+        app.buttons["Settings"].firstMatch.tap()
+        setSwitch(spreads, on: false)
+    }
+
+    /// Picks a mode from the reader's menu, showing the overlay first if needed.
+    @MainActor
+    private func setMode(_ app: XCUIApplication, _ pages: XCUIElement, _ mode: String) {
+        let menu = app.buttons["reader.settings"]
+        if !menu.exists || !menu.isHittable {
+            pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(menu.waitForExistence(timeout: 3))
+        menu.tap()
+        app.buttons[mode].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+    }
+
+    @MainActor
+    private func hideOverlay(_ app: XCUIApplication, _ pages: XCUIElement) {
+        guard app.buttons["reader.close"].exists else { return }
+        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        _ = app.buttons["reader.close"].waitForNonExistence(timeout: 3)
+    }
+
+    /// The current page from the slider's value, "3 of 57".
+    @MainActor
+    private func pageNumber(_ slider: XCUIElement) -> Int {
+        Int((slider.value as? String)?.split(separator: " ").first ?? "") ?? 0
+    }
+
+    @MainActor
+    private func setSwitch(_ toggle: XCUIElement, on isOn: Bool) {
+        guard (toggle.value as? String == "1") != isOn else { return }
+        toggle.switches.firstMatch.tap()
+        XCTAssertTrue(waitFor(toggle, value: isOn ? "1" : "0"))
+    }
+
     private func waitFor(_ element: XCUIElement, value: String, prefix: Bool = false, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: prefix ? "value BEGINSWITH %@" : "value == %@", value)
         return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed

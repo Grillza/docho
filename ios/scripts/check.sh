@@ -25,6 +25,7 @@ xcodebuild clean test \
     -scheme Mihonka \
     -derivedDataPath build/DerivedData \
     -resultBundlePath "$results" \
+    -collect-test-diagnostics never \
     "$@" \
     >"$log" 2>&1 || status=$?
 

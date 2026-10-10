@@ -1,20 +1,43 @@
 import SwiftUI
+import UIKit
 
-/// SwiftUI wrapper for `PagedReaderController`, driven by a `ReaderModel`.
-struct PagedReaderView: UIViewControllerRepresentable {
+/// Leaving the chapter from one of its ends.
+enum ReaderLeave {
+    case previous
+    case next
+}
+
+/// What `ReaderPagesView` needs from a UIKit reader: paged or webtoon.
+@MainActor
+protocol ReaderController: UIViewController {
+    var onPageShown: (Int) -> Void { get set }
+    var onToggleOverlay: () -> Void { get set }
+    var onLeave: (ReaderLeave) -> Void { get set }
+    var pageURL: (Int) -> URL? { get set }
+    var content: ReaderContent? { get }
+
+    init()
+    func show(_ content: ReaderContent, page: Int)
+    func go(toPage page: Int, animated: Bool)
+}
+
+/// SwiftUI wrapper for a reader controller, driven by a `ReaderModel`.
+struct ReaderPagesView<Controller: ReaderController>: UIViewControllerRepresentable {
     let model: ReaderModel
 
-    func makeUIViewController(context: Context) -> PagedReaderController {
-        let controller = PagedReaderController()
+    func makeUIViewController(context: Context) -> Controller {
+        let controller = Controller()
         context.coordinator.attach(controller, to: model)
         return controller
     }
 
-    func updateUIViewController(_ controller: PagedReaderController, context: Context) {
-        let content = PagedReaderContent(
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        let content = ReaderContent(
             chapterId: model.chapter.id,
             pageCount: model.pageCount,
-            direction: model.direction,
+            rightToLeft: model.mode.isRightToLeft,
+            spreads: model.settings.spreads,
+            coverAlone: model.settings.coverAlone,
             previousTitle: model.previousChapter?.name,
             nextTitle: model.nextChapter?.name,
             currentTitle: model.chapter.name
@@ -34,7 +57,7 @@ struct PagedReaderView: UIViewControllerRepresentable {
     final class Coordinator {
         var lastJump: ReaderModel.PageJump?
 
-        func attach(_ controller: PagedReaderController, to model: ReaderModel) {
+        func attach(_ controller: Controller, to model: ReaderModel) {
             controller.pageURL = { [weak model] in model?.pageURL($0) }
             controller.onPageShown = { [weak model] page in
                 Task { await model?.pageShown(page) }

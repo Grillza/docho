@@ -22,8 +22,13 @@ struct ReaderView: View {
                 }
                 .foregroundStyle(.white)
             } else if model.isReady && model.pageCount > 0 {
-                PagedReaderView(model: model)
-                    .ignoresSafeArea()
+                if model.mode == .webtoon {
+                    ReaderPagesView<WebtoonReaderController>(model: model)
+                        .ignoresSafeArea()
+                } else {
+                    ReaderPagesView<PagedReaderController>(model: model)
+                        .ignoresSafeArea()
+                }
             } else {
                 ProgressView().tint(.white)
             }
@@ -64,21 +69,7 @@ struct ReaderView: View {
                 Text(model.chapter.name).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
-            Menu {
-                Picker("Reading direction", selection: Binding(
-                    get: { model.direction },
-                    set: { direction in Task { await model.setDirection(direction) } }
-                )) {
-                    ForEach(ReadingDirection.allCases) { direction in
-                        Text(direction.title).tag(direction)
-                    }
-                }
-            } label: {
-                Image(systemName: "book.pages")
-                    .font(.title3)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Reading direction")
+            ReaderSettingsMenu(model: model)
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
@@ -93,7 +84,7 @@ struct ReaderView: View {
             PageSlider(model: model)
             chapterButton(previous: false)
         }
-        .environment(\.layoutDirection, model.direction == .rightToLeft ? .rightToLeft : .leftToRight)
+        .environment(\.layoutDirection, model.mode.isRightToLeft ? .rightToLeft : .leftToRight)
         .padding(.horizontal)
         .padding(.vertical, 10)
         .background(.bar)
@@ -102,7 +93,7 @@ struct ReaderView: View {
     /// The arrows point the way reading goes: in right to left, "next" points left.
     private func chapterButton(previous: Bool) -> some View {
         let target = previous ? model.previousChapter : model.nextChapter
-        let leftPointing = previous != (model.direction == .rightToLeft)
+        let leftPointing = previous != model.mode.isRightToLeft
         return Button {
             guard let target else { return }
             Task { await model.open(target, atEnd: false) }
@@ -112,6 +103,38 @@ struct ReaderView: View {
         }
         .disabled(target == nil)
         .accessibilityLabel(previous ? "Previous chapter" : "Next chapter")
+    }
+}
+
+/// The mode for this series, and on iPad, two-page spreads (for every series).
+private struct ReaderSettingsMenu: View {
+    let model: ReaderModel
+
+    var body: some View {
+        @Bindable var settings = model.settings
+        Menu {
+            Picker("Reading mode", selection: Binding(
+                get: { model.mode },
+                set: { mode in Task { await model.setMode(mode) } }
+            )) {
+                ForEach(ReaderMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.systemImage).tag(mode)
+                }
+            }
+            if UIDevice.current.userInterfaceIdiom == .pad && model.mode != .webtoon {
+                Section("In landscape") {
+                    Toggle("Two-page spreads", isOn: $settings.spreads)
+                    Toggle("First page alone", isOn: $settings.coverAlone)
+                        .disabled(!settings.spreads)
+                }
+            }
+        } label: {
+            Image(systemName: model.mode.systemImage)
+                .font(.title3)
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("Reader settings")
+        .accessibilityIdentifier("reader.settings")
     }
 }
 
