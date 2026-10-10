@@ -21,7 +21,7 @@ struct ReaderView: View {
                     Button("Retry") { Task { await model.loadPageCount() } }
                 }
                 .foregroundStyle(.white)
-            } else if model.pageCount > 0 {
+            } else if model.isReady && model.pageCount > 0 {
                 PagedReaderView(model: model)
                     .ignoresSafeArea()
             } else {
@@ -35,14 +35,14 @@ struct ReaderView: View {
         }
         .statusBarHidden(!model.overlayVisible)
         .persistentSystemOverlays(model.overlayVisible ? .automatic : .hidden)
-        .task { await model.loadPageCount() }
+        .task { await model.prepare() }
     }
 
     private var overlay: some View {
         VStack(spacing: 0) {
             topBar
             Spacer()
-            if model.pageCount > 0 {
+            if model.isReady && model.pageCount > 0 {
                 bottomBar
             }
         }

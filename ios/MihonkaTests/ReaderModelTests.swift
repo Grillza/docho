@@ -13,6 +13,7 @@ final class ReaderModelTests: XCTestCase {
         let settings = KavitaSettings(defaults: defaults, keychainService: "app.mihonka.tests.reader")
         settings.serverURL = "https://kavita.test"
         settings.apiKey = "key-1"
+        settings.syncProgress = false // KavitaSyncTests covers what the reader sends
         app = AppModel(settings: settings, session: StubURLProtocol.session(), database: try .inMemory())
 
         let series = try JSONDecoder().decode(KavitaSeries.self, from: Data(#"{"id": 7, "name": "S", "libraryId": 2}"#.utf8))

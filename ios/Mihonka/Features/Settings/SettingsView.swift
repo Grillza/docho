@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var apiKey = ""
     @State private var syncProgress = true
     @State private var loaded = false
+    @State private var pendingCount = 0
 
     private var draft: KavitaCredentials {
         KavitaCredentials(serverURL: serverURL, apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -51,7 +52,18 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Sync reading progress", isOn: $syncProgress)
-                    .onChange(of: syncProgress) { model.settings.syncProgress = syncProgress }
+                    .onChange(of: syncProgress) {
+                        model.settings.syncProgress = syncProgress
+                        if syncProgress { Task { await model.sync.syncQueued() } }
+                    }
+                if pendingCount > 0 {
+                    LabeledContent("Waiting to be sent", value: "\(pendingCount)")
+                        .accessibilityIdentifier("sync.pending")
+                    Button("Send Now") {
+                        Task { await model.sync.syncQueued() }
+                    }
+                    .disabled(!syncProgress)
+                }
             } header: {
                 Text("Reading progress")
             } footer: {
@@ -66,6 +78,11 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .task {
+            do {
+                for try await count in model.database.pendingCount() { pendingCount = count }
+            } catch {}
+        }
         .onAppear {
             guard !loaded else { return }
             serverURL = model.settings.serverURL

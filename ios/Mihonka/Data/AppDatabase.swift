@@ -63,6 +63,19 @@ struct AppDatabase: Sendable {
                 table.column("isDownloaded", .boolean).notNull().defaults(to: false)
             }
         }
+        migrator.registerMigration("v3") { db in
+            // Progress waiting to reach Kavita; one entry per chapter. Not tied to `chapter`, so
+            // an entry survives the chapter being deleted locally.
+            try db.create(table: "pendingProgress") { table in
+                table.primaryKey("chapterId", .integer)
+                table.column("seriesId", .integer).notNull().indexed()
+                table.column("libraryId", .integer).notNull()
+                table.column("volumeId", .integer).notNull()
+                table.column("pageNum", .integer).notNull()
+                table.column("markedByUser", .boolean).notNull().defaults(to: false)
+                table.column("queuedAt", .datetime).notNull()
+            }
+        }
         return migrator
     }
 }

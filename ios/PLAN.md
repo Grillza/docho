@@ -432,7 +432,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
 5. **Reader (paged):** ✅ done
    - Left-to-right and right-to-left, zoom, overlay and slider, and chapter transitions.
    - Local `lastPageRead` and `read` updates, and resuming at the last page.
-6. **Progress sync:**
+6. **Progress sync:** ✅ done
    - The full engine: queue, debounced push, hand marks, reconcile on series and reader open,
      library sync, `NWPathMonitor` and scene-phase flushes, and `BGAppRefreshTask`.
    - Port `KavitaSyncRulesTest` and add the engine tests.
@@ -600,6 +600,45 @@ and, where relevant, on the device. Commit at the end of every milestone.
   turns to page 2 with a left tap, checks "2 of 57" in the overlay, goes to the next chapter,
   closes, and sees "Page 2 of 57" on the chapter row. Right-to-left layout of the bar and slider
   was checked by screenshot. Not yet tried on a real device: pinch zoom and rotation.
+
+### Milestone 6: progress sync (2026-10-11)
+
+- `Kavita/KavitaSync.swift` (`actor KavitaSync`) ports `KavitaSync.kt` rule for rule:
+  `shouldSend`, `mergePending`, delivery (sent / dropped / failed), the 1.5 s per-chapter page
+  debounce, hand marks in one `mark-multiple-read/-unread` request, `syncSeries` (queued
+  entries first, then the four pull rules, pushes queued before sending), `syncLibrary` and
+  `syncQueued`. The comparison is a separate `Reconciliation` value.
+- The queue is the `pendingProgress` table (migration v3), one row per chapter. Removing a
+  delivered entry compares the change itself (progress + `markedByUser`), not `queuedAt`, since
+  SQLite rounds dates to milliseconds.
+- Hooks: page changes from `ReaderModel.pageShown`; hand marks from `SeriesModel.setRead` (so
+  "mark previous as read" too); `syncSeries` after every series refresh, reusing the volumes
+  the refresh just fetched (instead of Android's 30 s cache); library sync on launch and on
+  pull-to-refresh in the Library.
+- **Reader open:** `ReaderModel.prepare()` pulls first and waits at most 4 s (Android's
+  `KAVITA_PULL_TIMEOUT`), then opens at the stored page. A slow pull isn't cancelled; it still
+  lands in the database.
+- **Retries** (`App/SyncTriggers.swift`): a failed delivery asks for a retry; the app retries
+  with backoff from 1 to 30 minutes, flushes when `NWPathMonitor` sees the network come back,
+  when the scene becomes active, and when it goes to the background (with
+  `beginBackgroundTask`, sending pages still in their debounce first). A `BGAppRefreshTask`
+  (`app.mihonka.progress-sync`, via SwiftUI's `.backgroundTask`) is submitted whenever
+  something is left queued.
+- **Deliberate difference:** `syncQueued` reconciles every series with queued changes, not only
+  library ones, because series opened from Browse keep their chapters locally here.
+- Settings shows how many chapters are waiting to be sent, with **Send Now**. Turning sync back
+  on flushes the queue.
+- Tests: `KavitaSyncRulesTests` (port of `KavitaSyncRulesTest`) and `KavitaSyncTests` against a
+  fake Kavita: debounce, finished chapters, drops, the `get-progress` 404 fallback, the queue
+  surviving failures, stopping at the first failure, re-sign-in on 401, sync off, hand marks
+  (and a failed one winning later), the four pull rules, clamping, queue-before-compare, and the
+  reader's pull and its timeout.
+- **Acceptance**, `KavitaSyncLiveTests` on the demo server, with "another device" played by
+  direct API calls: a page set elsewhere shows up after opening the series; a page read while
+  offline (server address pointed at a dead port) is queued and reaches the server once back;
+  a smaller page queued here never undoes a further page from elsewhere, which is pulled
+  instead. Not yet tried with the real Android app on the same server, nor background refresh
+  on a device (`BGTaskScheduler` doesn't run in the simulator).
 
 ## Open questions
 

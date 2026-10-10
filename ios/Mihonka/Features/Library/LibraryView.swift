@@ -56,7 +56,7 @@ struct LibraryView: View {
         }
     }
 
-    /// Picks up renamed or moved series from Kavita. Progress sync joins in milestone 6.
+    /// Picks up renamed or moved series from Kavita, then runs library sync (progress both ways).
     private func refresh() async {
         let ids = series.map(\.id)
         let kavita = app.kavita
@@ -76,6 +76,7 @@ struct LibraryView: View {
         } catch {
             refreshError = error.localizedDescription
         }
+        await app.sync.syncLibrary()
     }
 }
 

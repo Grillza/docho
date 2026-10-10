@@ -20,8 +20,8 @@ enum ReadingDirection: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// The chapter being read and the page shown. Progress is saved locally on every page change;
-/// milestone 6 sends it to Kavita.
+/// The chapter being read and the page shown. Progress is saved locally on every page change and
+/// handed to `KavitaSync`, which sends it to Kavita after a short pause.
 @MainActor
 @Observable
 final class ReaderModel {
@@ -34,6 +34,8 @@ final class ReaderModel {
     private(set) var page: Int
     private(set) var direction: ReadingDirection
     private(set) var loadError: String?
+    /// Pages are shown once the latest progress has been pulled (or that took too long).
+    private(set) var isReady = false
     var overlayVisible = false
     /// A page the view should move to, e.g. from the slider. A new value is a new request.
     private(set) var jump: PageJump?
@@ -73,6 +75,35 @@ final class ReaderModel {
         try? app.kavita.pageImageURL(chapterId: chapter.id, page: page)
     }
 
+    /// Before the first page: picks up the page reached on another device, waiting at most
+    /// `timeout` (then the pull carries on and local progress is used), and fetches the page
+    /// count if it's missing.
+    func prepare(timeout: Duration = .seconds(4)) async {
+        if !isReady, app.sync.isEnabled {
+            // Whichever finishes first; the pull isn't cancelled, so it still lands in the database.
+            let (finished, signal) = AsyncStream<Void>.makeStream()
+            Task { [app, seriesId] in
+                await app.sync.syncSeries(seriesId)
+                signal.yield()
+            }
+            let timer = Task {
+                try? await Task.sleep(for: timeout)
+                signal.yield()
+            }
+            for await _ in finished { break }
+            timer.cancel()
+            if let stored = try? await app.database.chapterList(seriesId: seriesId),
+               let current = stored.first(where: { $0.id == chapter.id }) {
+                chapters = stored
+                chapter = current
+                if current.pages > 0 { pageCount = current.pages }
+                page = Self.resumePage(current)
+            }
+        }
+        isReady = true
+        await loadPageCount()
+    }
+
     /// Fetches the page count when the chapter list didn't have it.
     func loadPageCount() async {
         guard pageCount == 0 else { return }
@@ -91,6 +122,7 @@ final class ReaderModel {
         let read = chapter.read || page >= pageCount - 1
         update { $0.lastPageRead = page; $0.read = read }
         try? await app.database.saveProgress(chapterId: chapter.id, lastPageRead: page, read: read)
+        await app.sync.pageChanged(chapter, page: page, pageCount: pageCount, read: read)
     }
 
     func jump(to page: Int) {

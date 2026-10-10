@@ -40,9 +40,12 @@ final class SeriesModel {
             async let series = app.kavita.series(id: seriesId)
             async let metadata = app.kavita.seriesMetadata(seriesId: seriesId)
             async let volumes = app.kavita.volumes(seriesId: seriesId)
-            let (fetched, details, chapters) = try await (series, KavitaSeriesDetails(metadata), KavitaChapterList.build(volumes))
-            try await app.database.saveSeries(fetched, details: details, chapters: chapters, seedProgress: app.settings.syncProgress)
+            let (fetched, details, remote) = try await (series, KavitaSeriesDetails(metadata), volumes)
+            try await app.database.saveSeries(
+                fetched, details: details, chapters: KavitaChapterList.build(remote), seedProgress: app.settings.syncProgress
+            )
             refreshError = nil
+            await app.sync.syncSeries(seriesId, volumes: remote)
         } catch {
             guard !(error is CancellationError), (error as? URLError)?.code != .cancelled else { return }
             refreshError = error.localizedDescription
@@ -53,9 +56,13 @@ final class SeriesModel {
         try? await app.database.setInLibrary(seriesId: seriesId, inLibrary)
     }
 
-    /// Local only for now; milestone 6 sends hand marks to Kavita.
+    /// Marks chapters by hand: saved locally, then sent to Kavita as is (see `KavitaSync`).
     func setRead(_ chapterIds: some Collection<Int>, _ read: Bool) async {
-        try? await app.database.setChaptersRead(Array(chapterIds), read: read)
+        let ids = Array(chapterIds)
+        do {
+            try await app.database.setChaptersRead(ids, read: read)
+            await app.sync.readStatusChanged(try await app.database.chapters(ids: ids), read: read)
+        } catch {}
     }
 
     func markPreviousRead(_ chapter: ChapterRecord) async {
