@@ -1,0 +1,93 @@
+# XcodeGen spec. Generate the project with `xcodegen` in this directory;
+# Mihonka.xcodeproj and Info.plist are generated and git-ignored.
+name: Mihonka
+
+options:
+  bundleIdPrefix: app.mihonka
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "7.0.0"
+  Nuke:
+    url: https://github.com/kean/Nuke
+    from: "12.0.0"
+
+targets:
+  Mihonka:
+    type: application
+    platform: iOS
+    sources:
+      - path: Mihonka
+    dependencies:
+      - package: GRDB
+      - package: Nuke
+      - package: Nuke
+        product: NukeUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.mihonka
+        PRODUCT_NAME: Mihonka
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+    info:
+      path: Mihonka/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Mihonka
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Kavita often runs on plain http on the LAN. NSAllowsLocalNetworking covers local IPs
+        # and .local names; NSAllowsArbitraryLoads is also on because this is a personal,
+        # sideloaded app and the server address is whatever the user types in.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoads: true
+        NSLocalNetworkUsageDescription: Mihonka connects to your Kavita server on your local network.
+        # "fetch" enables BGAppRefreshTask for opportunistic delivery of queued reading progress.
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - app.mihonka.progress-sync
+    scheme:
+      testTargets:
+        - MihonkaTests
+      gatherCoverageData: false
+
+  MihonkaTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MihonkaTests
+    dependencies:
+      # GRDB and Nuke come in through the host app; linking them here too would duplicate them.
+      - target: Mihonka
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.mihonka.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"

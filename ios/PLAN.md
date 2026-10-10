@@ -24,10 +24,13 @@ with no other context. Work through the [milestones](#milestones) in order.
 
 1. **Settings:** Kavita server address and API key. A connection status shows the username
    and Kavita version, or the error. A toggle turns progress sync on and off.
-2. **Library:** a grid of series from Kavita with covers, filterable by Kavita library,
-   searchable by name, and sortable (name, date created, last chapter added, read progress).
-   EPUB series are excluded, as on Android.
-3. **Series screen:** cover, summary, authors, genres and status, then the chapter list in
+2. **Browse and Library, as in Mihon:**
+   - **Browse** lists Kavita as a source. Opening it shows a grid of the server's series with
+     covers, filterable by Kavita library, searchable by name, and sortable (name, date
+     created, last chapter added, read progress). EPUB series are excluded, as on Android.
+   - **Library** shows only the series you've added (from the series screen), stored locally.
+3. **Series screen:** cover, summary, authors, genres and status, an "Add to library" /
+   "In library" toggle, then the chapter list in
    **Kavita reading order**. Each row shows read/unread state and how far you've got. You can
    mark one or many chapters read or unread, and download chapters.
 4. **Reader:**
@@ -84,7 +87,8 @@ ios/
     Data/                    database (GRDB), records, migrations, repositories
     Features/
       Settings/
-      Library/
+      Library/               added series (Mihon-style favourites)
+      Browse/                sources list; the Kavita source browses the server
       Series/
       Reader/                UIKit-backed paged and webtoon readers wrapped for SwiftUI
       Downloads/
@@ -97,8 +101,9 @@ ios/
   as reviewable text with no merge conflicts. Commit `project.yml` and git-ignore `*.xcodeproj`.
   After pulling, run `cd ios && xcodegen`.
 - **Bundle id** `app.mihonka`, matching Android. Display name **Mihonka**.
-- **Minimum iOS 17.** That gives Observation (`@Observable`), the modern SwiftUI navigation
-  APIs, and `ScrollView` paging improvements. iPhone and iPad, all orientations.
+- **Minimum iOS 18** (raised from 17 on 2026-10-10). That gives Observation (`@Observable`),
+  the modern SwiftUI navigation APIs, `ScrollView` paging improvements, and the `Tab` API with
+  `.sidebarAdaptable`. iPhone and iPad, all orientations.
 - **Swift 6 language mode** with strict concurrency. Use `async/await` and actors throughout.
 - **Dependencies** (Swift Package Manager), kept deliberately small:
   - [GRDB](https://github.com/groue/GRDB.swift) for SQLite. Predictable migrations and easy to
@@ -358,10 +363,9 @@ Also add **engine tests** using a fake `URLProtocol` server, covering:
 
 Use migrations from day one (`DatabaseMigrator`).
 
-Decide in milestone 2 whether the "library" means *every series on the server* (simplest,
-mirrors Kavita) or *series you've added*, like Mihon's favourites. **Recommendation:** show all
-Kavita series, with a filter for "Reading" (has progress). Kavita is already the curated
-collection.
+**Decided:** the library is *series you've added*, like Mihon's favourites (`inLibrary = true`).
+Kavita's full catalogue is browsed through the Kavita source under Browse. Series opened from
+Browse but not added are still cached in `series` and `chapter` so the reader and sync work.
 
 ## Reader design
 
@@ -394,7 +398,7 @@ collection.
   downloads list. Write a chapter's pages to a temp folder and move it into place only once all
   pages are complete, so a half-finished download never looks complete.
 - **Image extension:** take it from the response `Content-Type` (Kavita can serve webp, avif,
-  png or jpg). iOS 16+ decodes webp natively; check avif on the minimum OS version.
+  png or jpg). iOS 18 decodes webp and avif natively.
 - **Offline:** downloaded chapters open with no network. Progress goes into the queue as usual.
 - **Delete:** per chapter, per series, and "delete read chapters".
 
@@ -403,19 +407,21 @@ collection.
 Each milestone ends with: builds with no warnings, tests pass, and it was run on a simulator
 and, where relevant, on the device. Commit at the end of every milestone.
 
-1. **Skeleton:**
+1. **Skeleton:** ✅ done
    - `project.yml`, app target, test target, GRDB and Nuke added, and the Info.plist keys
      (ATS, local network, background modes).
-   - A root tab or sidebar layout: Library / Downloads / Settings on iPhone, and a
-     `NavigationSplitView` on iPad.
+   - A root layout for Library / Browse / Downloads / Settings: a tab bar on iPhone and an
+     adaptive tab bar/sidebar on iPad (`TabView` with `.sidebarAdaptable`).
    - `ios/scripts/build-ipa.sh` produces an unsigned `.ipa` that SideStore can sign.
 2. **Kavita client and settings:**
    - Port the models, `normalizeApiUrl`, auth and endpoints into `actor KavitaClient`.
    - The settings screen shows connection status. The API key is stored in the Keychain.
    - Port `KavitaUrlsTest` and the normalisation cases.
-3. **Library:**
-   - Paged series grid with covers, search, library filter and sort, and pull-to-refresh.
-   - EPUBs are excluded. The database stores series and libraries.
+3. **Browse and Library:**
+   - Browse → Kavita source: a paged series grid with covers, search, library filter, sort and
+     pull-to-refresh. EPUBs are excluded. The database stores Kavita libraries.
+   - Library: a grid of the added series from the database, with pull-to-refresh running
+     library sync. Adding and removing happens on the series screen (milestone 4).
 4. **Series screen and chapter list:**
    - Metadata, plus chapter ordering, naming and numbering exactly as specified above.
    - Port `KavitaChapterNumbersTest`. Mark read/unread for one chapter or a multi-selection
@@ -452,12 +458,34 @@ and, where relevant, on the device. Commit at the end of every milestone.
   own branch.
 - **Commits:** small, one per milestone or sub-step, on the `ios` branch.
 
+## Progress log
+
+### Milestone 1: skeleton (2026-10-10)
+
+- Built with Xcode 27.0 (iOS 27 SDK, Swift 6.4) on the Mac, with a minimum of iOS 18.
+- `Info.plist` is generated by XcodeGen from the `info:` section of `project.yml`, so the ATS
+  comment lives there, and the generated plist is git-ignored along with the `.xcodeproj`.
+- Warnings are errors (`SWIFT_TREAT_WARNINGS_AS_ERRORS`), so "builds with no warnings" is enforced.
+- The background refresh task identifier is `app.mihonka.progress-sync` (`UIBackgroundModes` = `fetch`).
+- The test target links only the app. GRDB and Nuke come in through the host app, so they
+  aren't duplicated, and tests can still `import GRDB`.
+- Root layout: a single `TabView` using the `Tab` API with `.sidebarAdaptable`. That's a tab
+  bar on iPhone, and on iPad a top tab bar that the user can expand into a sidebar.
+- The dependency container in `App/` is left until milestone 2, when there's something to hold.
+- `ios/scripts/build-ipa.sh [out-dir]` writes an unsigned `build/Mihonka.ipa`.
+
 ## Open questions
 
 Answer these as they come up, and record the answers here:
 
-1. Should the library show all Kavita series, or only ones you've added? (Recommendation above:
-   all, with a "Reading" filter.)
-2. Free Apple ID (7-day re-signing) or a paid developer account?
-3. Which iPad model and iOS version is the main target? This affects the avif decoding check
-   and the minimum iOS version.
+1. ~~Should the library show all Kavita series, or only ones you've added?~~ **Answered
+   2026-10-10:** like Mihon. Kavita appears as a source under Browse, and you add the series
+   you want to the library.
+2. ~~Free Apple ID or a paid developer account?~~ **Answered:** a free Apple ID. The app must be
+   re-signed every 7 days (SideStore can do that on the device). Don't rely on entitlements a
+   free Personal Team can't sign, such as iCloud, push notifications or app groups. Background
+   fetch and background `URLSession` are fine.
+3. ~~Main iPad and iOS version?~~ **Answered:** the latest iPad mini on iOS 27. AVIF and WebP
+   decode natively there. The minimum is iOS 18 (enough for the `Tab` API, without
+   ruling out an iPhone that isn't on 27). Test on an iPad mini simulator as well as an
+   iPhone one.
