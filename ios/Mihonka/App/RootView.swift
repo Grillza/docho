@@ -19,7 +19,7 @@ struct RootView: View {
 }
 
 private extension AppSection {
-    @ViewBuilder
+    @MainActor @ViewBuilder
     var screen: some View {
         switch self {
         case .library: LibraryView()
@@ -32,4 +32,5 @@ private extension AppSection {
 
 #Preview {
     RootView()
+        .environment(AppModel())
 }

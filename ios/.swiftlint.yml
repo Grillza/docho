@@ -1,0 +1,11 @@
+included:
+  - Mihonka
+  - MihonkaTests
+  - MihonkaUITests
+
+line_length:
+  warning: 140
+  ignores_comments: true
+
+trailing_comma:
+  mandatory_comma: true

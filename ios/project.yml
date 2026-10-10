@@ -76,6 +76,7 @@ targets:
     scheme:
       testTargets:
         - MihonkaTests
+        - MihonkaUITests
       gatherCoverageData: false
 
   MihonkaTests:
@@ -91,3 +92,17 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.mihonka.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
+
+  MihonkaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MihonkaUITests
+    dependencies:
+      - target: Mihonka
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.mihonka.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        TEST_TARGET_NAME: Mihonka

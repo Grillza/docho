@@ -413,7 +413,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
    - A root layout for Library / Browse / Downloads / Settings: a tab bar on iPhone and an
      adaptive tab bar/sidebar on iPad (`TabView` with `.sidebarAdaptable`).
    - `ios/scripts/build-ipa.sh` produces an unsigned `.ipa` that SideStore can sign.
-2. **Kavita client and settings:**
+2. **Kavita client and settings:** ✅ done
    - Port the models, `normalizeApiUrl`, auth and endpoints into `actor KavitaClient`.
    - The settings screen shows connection status. The API key is stored in the Keychain.
    - Port `KavitaUrlsTest` and the normalisation cases.
@@ -451,9 +451,15 @@ and, where relevant, on the device. Commit at the end of every milestone.
   `Codable`.
 - **Keep this file current.** Tick off milestones, record decisions made along the way, and note
   anything where iOS deliberately differs from Android.
-- **Build and test from the CLI** so results are checkable:
-  `cd ios && xcodegen && xcodebuild -scheme Mihonka -destination 'platform=iOS Simulator,name=iPhone 16' test`.
-  Use whichever simulator `xcrun simctl list devices available` offers.
+- **Build and test from the CLI** so results are checkable: `ios/scripts/check.sh` generates the
+  project, does a clean build, runs the tests on an iPhone and an iPad mini simulator, and fails
+  on any warning in our sources. Override the simulators with `IPHONE_SIMULATOR` /
+  `IPAD_SIMULATOR`. Lint with `cd ios && swiftlint`.
+- **Live tests** (`KavitaLiveTests`, `SettingsUITests`) run against a real Kavita server and are
+  skipped unless it's given: `TEST_RUNNER_KAVITA_LIVE_URL=… TEST_RUNNER_KAVITA_LIVE_KEY=…
+  ios/scripts/check.sh` (add `TEST_RUNNER_SCREENSHOT_DIR=…` for Settings screenshots). Kavita's
+  public demo works: `https://demo.kavitareader.com`, signing in as `demouser` / `Demouser64`
+  through `POST /api/Account/login` returns an `apiKey`.
 - **Don't touch the Android app** from this work, except to read it. Android changes go on their
   own branch.
 - **Commits:** small, one per milestone or sub-step, on the `ios` branch.
@@ -475,6 +481,34 @@ and, where relevant, on the device. Commit at the end of every milestone.
 - `ios/scripts/build-ipa.sh [out-dir]` writes an unsigned `build/Mihonka.ipa`.
 - Verified: tests pass and the app launches on the iPhone 18 Pro and iPad mini (A17 Pro)
   simulators (iOS 27.0). Not yet installed on a real device.
+
+### Milestone 2: Kavita client and settings (2026-10-10)
+
+- `Kavita/KavitaModels.swift`, `KavitaClient.swift` and `KavitaSettings.swift` port `KavitaModels.kt`,
+  `KavitaApi.kt` and `KavitaPreferences.kt`. `App/AppModel.swift` is the dependency container,
+  injected with `.environment`.
+- **Deliberate difference from Android:** `normalizeApiUrl` only cuts at `/api` as a *path
+  segment after the host*. Android cuts at the first `/api` anywhere, so `https://api.example.com`
+  becomes `https://api` and `https://example.com/apiary` becomes `https://example.com`. This is
+  probably worth fixing on Android too. An input with no host (`https://`) returns nil.
+- Numbers are `Double` (Android uses `Float`); they're only compared locally.
+- Models decode leniently through `KeyedDecodingContainer.lenient(_:default:)`: a missing, null
+  or wrongly typed field takes its default. `KavitaUser.token` and each object's `id` are required.
+  A chapter `number` sent as a JSON number is accepted too.
+- Sign-in: `actor KavitaClient` keeps one session per (api URL, API key). Concurrent requests
+  await the same sign-in `Task`. On a 401 it signs in again only if the refused token is still
+  the current one, then retries once. The connection status reaches the UI through
+  `connectionChanges` (an `AsyncStream` that keeps only the newest value).
+- The API key is in the Keychain (`kSecAttrAccessibleAfterFirstUnlock`, so background refresh
+  can use it), cached in memory. The server address and the sync toggle are in UserDefaults.
+- Settings saves and re-checks 300 ms after an edit, and on opening, as on Android.
+- `KavitaUrlsTest`'s manga/chapter URL half isn't ported: iOS stores Kavita ids directly instead
+  of encoding them in Mihon URLs. `seriesWebURL` is tested instead.
+- `SWIFT_TREAT_WARNINGS_AS_ERRORS` doesn't promote every diagnostic group (a main-actor
+  isolation warning got through), so `check.sh` also fails on warnings found in the log.
+- `Package.resolved` is now committed (GRDB 7.11.1, Nuke 12.9.0) through `.gitignore` exceptions.
+- Verified: all tests pass on both simulators, and the live tests passed against the Kavita
+  demo server (0.9.1.4). Settings shows "Connected to Kavita 0.9.1.4 as demouser".
 
 ## Open questions
 
