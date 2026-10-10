@@ -18,6 +18,46 @@ with no other context. Work through the [milestones](#milestones) in order.
 | Cross-device sync | **Through Kavita** | The Android and iOS apps both sync progress with Kavita, so they never need to talk to each other |
 | Distribution | **Sideload** (SideStore/AltStore, or Xcode straight to the device) | No App Store |
 
+## Building and installing (README)
+
+Version 1 is complete (milestones 1–9). To build and install it:
+
+**Requirements:** a Mac with Xcode 27 or later, `brew install xcodegen swiftlint`, and an
+iPhone or iPad on iOS 18 or later. The main target is an iPad mini on iOS 27.
+
+**Build an .ipa and sideload it** (free Apple ID):
+
+1. `ios/scripts/build-ipa.sh` builds an unsigned `ios/build/Mihonka.ipa` (Release).
+2. Copy it to the device (AirDrop, Files) and install it with **SideStore** or **AltStore**,
+   which sign it with your Apple ID.
+3. With a free Apple ID the app must be re-signed every **7 days**; SideStore can refresh it on
+   the device. The app's data (library, progress, downloads) survives a refresh.
+
+**Or run it from Xcode:** `cd ios && xcodegen`, open `Mihonka.xcodeproj`, choose your Personal
+Team under Signing & Capabilities, plug the device in, and run. Developer Mode must be on.
+
+**First launch:** Settings → enter the Kavita server address (e.g. `https://kavita.example.com`
+or `192.168.1.10:5000`) and the API key from Kavita (your user settings → API Key / OPDS).
+The status shows "Connected to Kavita". Then Browse → Kavita, press and hold a cover to add a
+series to the Library, and tap it to read.
+
+**Using it:**
+
+- **Reading:** tap the left or right third to turn pages (in reading direction), the middle for
+  the overlay. Double-tap or pinch to zoom. The overlay's menu picks the mode for the series
+  (left to right, right to left, webtoon) and, on iPad, two-page spreads in landscape. With a
+  keyboard, the arrow keys and space turn pages and Escape closes the reader.
+- **Progress** syncs with Kavita page by page, both ways, as on Android: the side that has read
+  further wins, except marks made by hand. Offline progress is queued (Settings shows how much)
+  and sent when the server is reachable again.
+- **Downloads:** the button on each chapter row, Select → Download, or the series' download
+  menu. Downloaded chapters open without a network. The Downloads tab shows the queue and
+  what's on the device.
+
+**Developing:** `ios/scripts/check.sh` generates the project, builds, runs all tests on the
+iPad mini simulator, and fails on warnings. Live tests against a Kavita server are described
+under [Working notes](#working-notes-for-the-session-doing-the-work).
+
 ## Scope
 
 ### Version 1
@@ -442,7 +482,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
      - Read further on Android meanwhile → it's never undone.
 7. **Webtoon mode and iPad spreads,** with per-series reader settings and a default in settings. ✅ done
 8. **Downloads:** engine, queue UI, offline reading, delete options. ✅ done
-9. **Polish:**
+9. **Polish:** ✅ done
    - App icon (reuse `icons/`), empty and error states, and accessibility labels.
    - Dark mode check, iPad multitasking and keyboard shortcuts (arrow keys turn pages).
    - A README section in this file on building and installing.
@@ -709,6 +749,34 @@ and, where relevant, on the device. Commit at the end of every milestone.
   offline reader). Live UI test `testDownloadsAChapterAndReadsItOffline`: downloads the first
   demo chapter (57 pages), finds it under Downloads, points the server at a dead port, and
   opens the chapter with its pages loaded from the device.
+
+### Milestone 9: polish (2026-10-11)
+
+- **App icon:** the Android adaptive icon (`app/src/main/res/drawable/ic_launcher_*.xml`)
+  converted to `ios/design/AppIcon.svg`, with the ring and glyph scaled up 1.55× since iOS
+  shows the whole square, rendered to a 1024 px PNG without alpha. (The plan said `icons/`,
+  but that folder holds Material Symbols and Simple Icons, not the app icon.) The accent colour
+  is the icon's blue, `#0058A0`, with `#7EBBED` in dark mode.
+- **Keyboard:** in paged mode ← and → turn pages the way they point (← is next in right to
+  left), space and shift-space go on and back; in webtoon ↓/↑ and space scroll. Escape closes
+  the reader. Covered in the live UI test.
+- **Dark mode:** checked by screenshot (series, Settings, Downloads); everything uses system
+  colours. Fixed along the way: the series title and Resume button inherited the header's
+  secondary style (`.primary` is relative to the inherited style), and the "In library" badge
+  now uses the background colour for its text so it reads on both tints.
+- **Accessibility:** chapter counts are inflected ("1 chapter"), the decorative cover in the
+  series header is hidden from VoiceOver; rows, reader pages, the slider, the reader menu and
+  the download buttons have labels and values (checked through the UI tests' queries).
+- **iPad multitasking:** all orientations are supported and full screen isn't required, so
+  Split View and Stage Manager work; both readers re-lay out on size changes (paged also
+  re-pairs spreads).
+- Empty and error states: Library, Browse (including "not set up"), series, reader and
+  Downloads each have one.
+- README: [Building and installing](#building-and-installing-readme) at the top of this file.
+
+**Still to try on a real device:** pinch zoom and rotation in both readers, background
+downloads and background progress delivery (neither runs fully in the simulator), and
+cross-device sync with the Android app on the same server.
 
 ## Open questions
 

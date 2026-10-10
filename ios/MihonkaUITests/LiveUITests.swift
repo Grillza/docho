@@ -114,6 +114,13 @@ final class LiveUITests: XCTestCase {
         let secondPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 2 of'")).firstMatch
         XCTAssertTrue(secondPage.waitForExistence(timeout: 5), "didn't turn to page 2")
 
+        // A keyboard: ← is the next page in right to left, → goes back.
+        app.typeKey(.leftArrow, modifierFlags: [])
+        let thirdPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 3 of'")).firstMatch
+        XCTAssertTrue(thirdPage.waitForExistence(timeout: 5), "← didn't turn to page 3")
+        app.typeKey(.rightArrow, modifierFlags: [])
+        XCTAssertTrue(secondPage.waitForExistence(timeout: 5), "→ didn't go back to page 2")
+
         // The middle shows the overlay with the page position.
         pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let slider = app.descendants(matching: .any).matching(identifier: "reader.page").firstMatch

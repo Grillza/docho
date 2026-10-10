@@ -38,6 +38,13 @@ struct ReaderView: View {
                     .transition(.opacity)
             }
         }
+        .background {
+            // Escape closes the reader, overlay or not.
+            Button("Close") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
         .statusBarHidden(!model.overlayVisible)
         .persistentSystemOverlays(model.overlayVisible ? .automatic : .hidden)
         .task { await model.prepare() }

@@ -231,6 +231,33 @@ final class PagedReaderController: UIViewController, ReaderController {
         prefetched = requests
     }
 
+    // MARK: Keyboard
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        becomeFirstResponder()
+    }
+
+    /// Arrow keys turn pages the way they point (so in right to left, ← is the next page);
+    /// space goes on and shift-space back.
+    override var keyCommands: [UIKeyCommand]? {
+        let commands = [
+            UIKeyCommand(input: UIKeyCommand.inputLeftArrow, modifierFlags: [], action: #selector(leftKey)),
+            UIKeyCommand(input: UIKeyCommand.inputRightArrow, modifierFlags: [], action: #selector(rightKey)),
+            UIKeyCommand(input: " ", modifierFlags: [], action: #selector(nextKey)),
+            UIKeyCommand(input: " ", modifierFlags: .shift, action: #selector(previousKey)),
+        ]
+        commands.forEach { $0.wantsPriorityOverSystemBehavior = true }
+        return commands
+    }
+
+    @objc private func leftKey() { step(content?.rightToLeft == true ? 1 : -1) }
+    @objc private func rightKey() { step(content?.rightToLeft == true ? -1 : 1) }
+    @objc private func nextKey() { step(1) }
+    @objc private func previousKey() { step(-1) }
+
     // MARK: Gestures
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {

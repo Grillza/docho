@@ -41,7 +41,7 @@ struct SeriesView: View {
                 }
             } header: {
                 if !model.chapters.isEmpty {
-                    Text("\(model.chapters.count) chapters")
+                    Text("^[\(model.chapters.count) chapter](inflect: true)")
                 }
             }
         }
@@ -219,26 +219,29 @@ private struct SeriesHeader: View {
             HStack(alignment: .top, spacing: 16) {
                 SeriesCover(url: try? app.kavita.seriesCoverURL(seriesId: model.seriesId))
                     .frame(width: 110)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(series?.name ?? fallbackTitle)
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    if let authors = series?.authors {
-                        Label(authors, systemImage: "person").font(.subheadline)
+                    Group {
+                        if let authors = series?.authors {
+                            Label(authors, systemImage: "person")
+                        }
+                        if let artists = series?.artists, artists != series?.authors {
+                            Label(artists, systemImage: "paintbrush")
+                        }
+                        if let status = PublicationStatus.title(series?.status) {
+                            Label(status, systemImage: "clock")
+                        }
                     }
-                    if let artists = series?.artists, artists != series?.authors {
-                        Label(artists, systemImage: "paintbrush").font(.subheadline)
-                    }
-                    if let status = PublicationStatus.title(series?.status) {
-                        Label(status, systemImage: "clock").font(.subheadline)
-                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     HStack {
                         libraryButton(series)
                         resumeButton
                     }
                     .padding(.top, 4)
                 }
-                .foregroundStyle(.secondary)
                 .labelStyle(.titleAndIcon)
             }
 

@@ -122,7 +122,7 @@ private struct SeriesDownloadRow: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(series.name)
             HStack {
-                Text("\(series.chapters) chapters")
+                Text("^[\(series.chapters) chapter](inflect: true)")
                 if let size {
                     Text(size, format: .byteCount(style: .file))
                 }

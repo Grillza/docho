@@ -22,7 +22,8 @@ struct SeriesGridItem: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(.tint, in: .rect(cornerRadius: 4))
-                            .foregroundStyle(.white)
+                            // Light text on the dark tint, dark text on dark mode's light tint.
+                            .foregroundStyle(Color(uiColor: .systemBackground))
                             .padding(6)
                     }
                 }

@@ -209,25 +209,53 @@ final class WebtoonReaderController: UIViewController, ReaderController {
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
         let position = gesture.location(in: view).y / max(view.bounds.height, 1)
+        switch position {
+        case ..<(1 / 3): scrollBy(screens: -1)
+        case (2 / 3)...: scrollBy(screens: 1)
+        default: onToggleOverlay()
+        }
+    }
+
+    /// Scrolls three quarters of a screen down (or up), or past an end into the next chapter.
+    private func scrollBy(screens direction: Int) {
         let step = collectionView.bounds.height * 0.75
         let offset = collectionView.contentOffset.y
-        switch position {
-        case ..<(1 / 3):
+        if direction < 0 {
             if offset <= 1 {
                 onLeave(.previous)
             } else {
                 collectionView.setContentOffset(CGPoint(x: 0, y: max(offset - step, 0)), animated: true)
             }
-        case (2 / 3)...:
-            if offset >= maxOffset - 1 {
-                onLeave(.next)
-            } else {
-                collectionView.setContentOffset(CGPoint(x: 0, y: min(offset + step, maxOffset)), animated: true)
-            }
-        default:
-            onToggleOverlay()
+        } else if offset >= maxOffset - 1 {
+            onLeave(.next)
+        } else {
+            collectionView.setContentOffset(CGPoint(x: 0, y: min(offset + step, maxOffset)), animated: true)
         }
     }
+
+    // MARK: Keyboard
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        becomeFirstResponder()
+    }
+
+    /// ↓ and space scroll on, ↑ and shift-space back.
+    override var keyCommands: [UIKeyCommand]? {
+        let commands = [
+            UIKeyCommand(input: UIKeyCommand.inputDownArrow, modifierFlags: [], action: #selector(nextKey)),
+            UIKeyCommand(input: UIKeyCommand.inputUpArrow, modifierFlags: [], action: #selector(previousKey)),
+            UIKeyCommand(input: " ", modifierFlags: [], action: #selector(nextKey)),
+            UIKeyCommand(input: " ", modifierFlags: .shift, action: #selector(previousKey)),
+        ]
+        commands.forEach { $0.wantsPriorityOverSystemBehavior = true }
+        return commands
+    }
+
+    @objc private func nextKey() { scrollBy(screens: 1) }
+    @objc private func previousKey() { scrollBy(screens: -1) }
 
     @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
         if zoomView.zoomScale > 1 {
