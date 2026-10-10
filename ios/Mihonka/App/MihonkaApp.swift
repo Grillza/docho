@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct MihonkaApp: App {
+    @UIApplicationDelegateAdaptor private var delegate: AppDelegate
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -25,5 +26,18 @@ struct MihonkaApp: App {
         .backgroundTask(.appRefresh(SyncTriggers.refreshTaskIdentifier)) { [model] in
             await model.backgroundRefresh()
         }
+    }
+}
+
+/// Hands iOS's wake-up for finished background downloads to the download session.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard identifier == BackgroundPageFetcher.identifier else { return completionHandler() }
+        nonisolated(unsafe) let completion = completionHandler
+        BackgroundPageFetcher.shared.setEventsCompletion { completion() }
     }
 }

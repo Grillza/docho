@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Cover, details and the chapter list in Kavita reading order. Chapters can be marked read or
-/// unread one at a time (swipe or press and hold) or several at once (Select).
+/// unread, and downloaded or deleted, one at a time (swipe or press and hold) or several at once
+/// (Select).
 struct SeriesView: View {
     @State private var model: SeriesModel
     @State private var selection = Set<Int>()
@@ -27,7 +28,6 @@ struct SeriesView: View {
             Section {
                 ForEach(model.chapters) { chapter in
                     chapterRow(chapter)
-                        .accessibilityIdentifier("chapter.row")
                         .swipeActions(edge: .leading) { readButton(for: chapter) }
                         .contextMenu {
                             readButton(for: chapter)
@@ -36,6 +36,7 @@ struct SeriesView: View {
                             } label: {
                                 Label("Mark Previous as Read", systemImage: "arrow.up.to.line")
                             }
+                            downloadMenuItem(for: chapter)
                         }
                 }
             } header: {
@@ -63,6 +64,7 @@ struct SeriesView: View {
         }
         .task { await model.observeSeries() }
         .task { await model.observeChapters() }
+        .task { await model.observeDownloads() }
         .task { await model.refresh() }
     }
 
@@ -71,9 +73,37 @@ struct SeriesView: View {
     private func chapterRow(_ chapter: ChapterRecord) -> some View {
         if editMode.isEditing {
             ChapterRow(chapter: chapter).tag(chapter.id)
+                .accessibilityIdentifier("chapter.row")
         } else {
-            Button { reading = chapter } label: { ChapterRow(chapter: chapter) }
-                .buttonStyle(.plain)
+            HStack {
+                Button { reading = chapter } label: { ChapterRow(chapter: chapter) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("chapter.row")
+                DownloadButton(chapter: chapter, download: model.downloads[chapter.id], model: model)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func downloadMenuItem(for chapter: ChapterRecord) -> some View {
+        if chapter.isDownloaded {
+            Button(role: .destructive) {
+                Task { await model.deleteDownloads([chapter.id]) }
+            } label: {
+                Label("Delete Download", systemImage: "trash")
+            }
+        } else if model.downloads[chapter.id] != nil {
+            Button {
+                Task { await model.cancelDownload(chapter.id) }
+            } label: {
+                Label("Cancel Download", systemImage: "xmark.circle")
+            }
+        } else {
+            Button {
+                Task { await model.download([chapter.id]) }
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
+            }
         }
     }
 
@@ -122,6 +152,31 @@ struct SeriesView: View {
                     .disabled(model.chapters.isEmpty)
             }
         }
+        if !editMode.isEditing {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        Task { await model.downloadUnread() }
+                    } label: {
+                        Label("Download Unread", systemImage: "arrow.down.circle")
+                    }
+                    Button(role: .destructive) {
+                        Task { await model.deleteAllDownloads(readOnly: true) }
+                    } label: {
+                        Label("Delete Read Downloads", systemImage: "trash")
+                    }
+                    Button(role: .destructive) {
+                        Task { await model.deleteAllDownloads(readOnly: false) }
+                    } label: {
+                        Label("Delete All Downloads", systemImage: "trash")
+                    }
+                } label: {
+                    Label("Downloads", systemImage: "arrow.down.circle")
+                }
+                .disabled(model.chapters.isEmpty)
+                .accessibilityIdentifier("series.downloads")
+            }
+        }
         if editMode.isEditing {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button(selection.count == model.chapters.count ? "Select None" : "Select All") {
@@ -132,6 +187,13 @@ struct SeriesView: View {
                     .disabled(selection.isEmpty)
                 Button("Mark Unread") { mark(read: false) }
                     .disabled(selection.isEmpty)
+                Button("Download") {
+                    let ids = selection
+                    Task { await model.download(ids) }
+                    selection = []
+                    editMode = .inactive
+                }
+                .disabled(selection.isEmpty)
             }
         }
     }
@@ -270,5 +332,55 @@ private struct ChapterRow: View {
         if chapter.read { return Text("Read") }
         if chapter.inProgress { return Text("Page \(chapter.lastPageRead + 1) of \(chapter.pages)") }
         return Text("Unread")
+    }
+}
+
+/// A chapter's download state; tapping downloads it, cancels it, or retries a failed one.
+private struct DownloadButton: View {
+    let chapter: ChapterRecord
+    let download: DownloadRecord?
+    let model: SeriesModel
+
+    var body: some View {
+        Group {
+            if chapter.isDownloaded {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Downloaded")
+            } else if let download {
+                switch download.state {
+                case .queued:
+                    button("Cancel download", "clock") { await model.cancelDownload(chapter.id) }
+                case .downloading:
+                    Button {
+                        Task { await model.cancelDownload(chapter.id) }
+                    } label: {
+                        ProgressView(value: download.progress)
+                            .progressViewStyle(.circular)
+                            .frame(width: 22, height: 22)
+                    }
+                    .accessibilityLabel("Downloading, \(download.pagesDone) of \(download.pagesTotal) pages")
+                    .accessibilityHint("Cancels the download")
+                case .failed:
+                    button("Download failed, retry", "exclamationmark.circle") { await model.retryDownloads() }
+                        .foregroundStyle(.red)
+                }
+            } else {
+                button("Download", "arrow.down.circle") { await model.download([chapter.id]) }
+            }
+        }
+        .font(.title3)
+        .frame(width: 44, height: 44)
+        .buttonStyle(.borderless)
+        .accessibilityIdentifier("chapter.download")
+    }
+
+    private func button(_ label: LocalizedStringKey, _ image: String, action: @escaping @MainActor () async -> Void) -> some View {
+        Button {
+            Task { await action() }
+        } label: {
+            Image(systemName: image)
+        }
+        .accessibilityLabel(label)
     }
 }

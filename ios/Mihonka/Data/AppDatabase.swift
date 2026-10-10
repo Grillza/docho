@@ -15,7 +15,13 @@ struct AppDatabase: Sendable {
         let directory = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
         )
-        return try AppDatabase(DatabasePool(path: directory.appending(path: "mihonka.sqlite").path()))
+        return try onDisk(in: directory)
+    }
+
+    /// The database file in `directory`. The path is passed unencoded: `URL.path()` would turn
+    /// "Application Support" into "Application%20Support".
+    static func onDisk(in directory: URL) throws -> AppDatabase {
+        try AppDatabase(DatabasePool(path: directory.appending(path: "mihonka.sqlite").path(percentEncoded: false)))
     }
 
     static func inMemory() throws -> AppDatabase {
@@ -73,6 +79,19 @@ struct AppDatabase: Sendable {
                 table.column("volumeId", .integer).notNull()
                 table.column("pageNum", .integer).notNull()
                 table.column("markedByUser", .boolean).notNull().defaults(to: false)
+                table.column("queuedAt", .datetime).notNull()
+            }
+        }
+        migrator.registerMigration("v4") { db in
+            // Chapters waiting to download, or downloading, or failed. Done ones leave the queue
+            // and are marked `chapter.isDownloaded`.
+            try db.create(table: "download") { table in
+                table.primaryKey("chapterId", .integer)
+                table.column("seriesId", .integer).notNull().indexed()
+                table.column("state", .text).notNull()
+                table.column("pagesDone", .integer).notNull().defaults(to: 0)
+                table.column("pagesTotal", .integer).notNull().defaults(to: 0)
+                table.column("error", .text)
                 table.column("queuedAt", .datetime).notNull()
             }
         }

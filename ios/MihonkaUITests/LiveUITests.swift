@@ -191,6 +191,91 @@ final class LiveUITests: XCTestCase {
         setSwitch(spreads, on: false)
     }
 
+    @MainActor
+    func testDownloadsAChapterAndReadsItOffline() throws {
+        let app = try launchConnected()
+        app.buttons["Browse"].firstMatch.tap()
+        app.buttons["Kavita"].firstMatch.tap()
+        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
+        first.tap()
+        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
+
+        // Start from nothing downloaded.
+        app.buttons["series.downloads"].tap()
+        app.buttons["Delete All Downloads"].tap()
+        let download = app.buttons.matching(identifier: "chapter.download").firstMatch
+        XCTAssertTrue(download.waitForExistence(timeout: 5))
+        download.tap()
+        let done = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Downloaded'")).firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 120), "the chapter didn't finish downloading")
+        screenshot("series-downloaded")
+
+        app.buttons["Downloads"].firstMatch.tap()
+        let downloaded = app.descendants(matching: .any).matching(identifier: "downloads.series").firstMatch
+        XCTAssertTrue(downloaded.waitForExistence(timeout: 5), "not listed in Downloads")
+        screenshot("downloads")
+
+        // No server: the chapter still opens, from the device.
+        app.buttons["Settings"].firstMatch.tap()
+        let server = app.textFields["kavita.serverURL"]
+        server.clearText()
+        server.typeText("http://127.0.0.1:9")
+        Thread.sleep(forTimeInterval: 0.5)
+        app.buttons["Downloads"].firstMatch.tap()
+        downloaded.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let pages = app.collectionViews["reader.pages"]
+        XCTAssertTrue(pages.waitForExistence(timeout: 15), "reader didn't open")
+        let loaded = pages.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH 'Page' AND value == 'Loaded'"))
+            .firstMatch
+        XCTAssertTrue(loaded.waitForExistence(timeout: 15), "no page loaded offline")
+        screenshot("reader-offline")
+
+        // Tidy up.
+        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["reader.close"].tap()
+        app.buttons["series.downloads"].tap()
+        app.buttons["Delete All Downloads"].tap()
+        XCTAssertTrue(download.waitForExistence(timeout: 5))
+    }
+
+    /// Launches the app and enters the live server in Settings, waiting until it connects.
+    @MainActor
+    private func launchConnected() throws -> XCUIApplication {
+        guard let url = env["KAVITA_LIVE_URL"], let key = env["KAVITA_LIVE_KEY"] else {
+            throw XCTSkip("Set KAVITA_LIVE_URL and KAVITA_LIVE_KEY to run against a real server")
+        }
+        let app = XCUIApplication()
+        app.launch()
+        app.buttons["Settings"].firstMatch.tap()
+
+        let server = app.textFields["kavita.serverURL"]
+        server.clearText()
+        server.typeText(url)
+        let apiKey = app.secureTextFields["kavita.apiKey"]
+        apiKey.clearText()
+        apiKey.typeText(key)
+
+        let connected = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Connected to Kavita'")).firstMatch
+        XCTAssertTrue(connected.waitForExistence(timeout: 20), "not connected")
+        // Let the debounced save finish before leaving Settings.
+        Thread.sleep(forTimeInterval: 0.5)
+        return app
+    }
+
+    @MainActor
+    private func screenshot(_ name: String) {
+        guard let dir = env["SCREENSHOT_DIR"] else { return }
+        let idiom = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
+        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(filePath: dir).appending(path: "\(name)-\(idiom).png"))
+    }
+}
+
+extension LiveUITests {
     /// Picks a mode from the reader's menu, showing the overlay first if needed.
     @MainActor
     private func setMode(_ app: XCUIApplication, _ pages: XCUIElement, _ mode: String) {
@@ -227,37 +312,6 @@ final class LiveUITests: XCTestCase {
     private func waitFor(_ element: XCUIElement, value: String, prefix: Bool = false, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: prefix ? "value BEGINSWITH %@" : "value == %@", value)
         return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
-    }
-
-    /// Launches the app and enters the live server in Settings, waiting until it connects.
-    @MainActor
-    private func launchConnected() throws -> XCUIApplication {
-        guard let url = env["KAVITA_LIVE_URL"], let key = env["KAVITA_LIVE_KEY"] else {
-            throw XCTSkip("Set KAVITA_LIVE_URL and KAVITA_LIVE_KEY to run against a real server")
-        }
-        let app = XCUIApplication()
-        app.launch()
-        app.buttons["Settings"].firstMatch.tap()
-
-        let server = app.textFields["kavita.serverURL"]
-        server.clearText()
-        server.typeText(url)
-        let apiKey = app.secureTextFields["kavita.apiKey"]
-        apiKey.clearText()
-        apiKey.typeText(key)
-
-        let connected = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Connected to Kavita'")).firstMatch
-        XCTAssertTrue(connected.waitForExistence(timeout: 20), "not connected")
-        // Let the debounced save finish before leaving Settings.
-        Thread.sleep(forTimeInterval: 0.5)
-        return app
-    }
-
-    @MainActor
-    private func screenshot(_ name: String) {
-        guard let dir = env["SCREENSHOT_DIR"] else { return }
-        let idiom = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
-        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(filePath: dir).appending(path: "\(name)-\(idiom).png"))
     }
 }
 

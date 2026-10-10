@@ -207,6 +207,83 @@ enum PageSpreads {
     }
 }
 
+/// One page of a webtoon strip, at full width.
+final class WebtoonPageCell: UICollectionViewCell {
+    static let reuseIdentifier = "webtoonPage"
+
+    var onImageSize: (CGSize) -> Void = { _ in }
+
+    private let imageView = UIImageView()
+    private let spinner = UIActivityIndicatorView(style: .large)
+    private let errorLabel = UILabel()
+    private var loadTask: Task<Void, Never>?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        imageView.frame = contentView.bounds
+        imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        imageView.contentMode = .scaleAspectFit
+        contentView.addSubview(imageView)
+        spinner.color = .lightGray
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        errorLabel.textColor = .lightGray
+        errorLabel.numberOfLines = 0
+        errorLabel.textAlignment = .center
+        errorLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(spinner)
+        contentView.addSubview(errorLabel)
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            errorLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            errorLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            errorLabel.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, multiplier: 0.8),
+        ])
+        isAccessibilityElement = true
+        accessibilityTraits = .image
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        loadTask?.cancel()
+        imageView.image = nil
+    }
+
+    func configure(request: ImageRequest?, page: Int, pageCount: Int) {
+        accessibilityLabel = String(localized: "Page \(page + 1) of \(pageCount)")
+        accessibilityValue = nil
+        errorLabel.isHidden = true
+        loadTask?.cancel()
+        guard let request else { return }
+        if let cached = ImagePipeline.shared.cache.cachedImage(for: request) {
+            show(cached.image)
+            return
+        }
+        spinner.startAnimating()
+        loadTask = Task { [weak self] in
+            do {
+                let image = try await ImagePipeline.shared.image(for: request)
+                self?.show(image)
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.spinner.stopAnimating()
+                self?.errorLabel.text = String(localized: "Couldn't load this page.\n\(error.localizedDescription)")
+                self?.errorLabel.isHidden = false
+            }
+        }
+    }
+
+    private func show(_ image: UIImage) {
+        spinner.stopAnimating()
+        imageView.image = image
+        accessibilityValue = String(localized: "Loaded")
+        onImageSize(image.size)
+    }
+}
+
 /// The page between chapters: what was finished and what comes next.
 final class TransitionCell: UICollectionViewCell {
     static let reuseIdentifier = "transition"

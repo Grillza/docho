@@ -73,4 +73,14 @@ final class AppDatabaseTests: XCTestCase {
         XCTAssertEqual(all.map(\.name), ["After"])
         XCTAssertEqual(all.first?.libraryId, 4)
     }
+
+    func testOpensOnDiskInAFolderWithASpace() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: "Application Support \(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        _ = try AppDatabase.onDisk(in: directory)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appending(path: "mihonka.sqlite").path(percentEncoded: false)))
+    }
 }

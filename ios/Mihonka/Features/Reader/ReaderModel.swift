@@ -28,6 +28,8 @@ final class ReaderModel {
     }
 
     private let app: AppModel
+    /// The chapter's pages on the device, when it's downloaded.
+    private var pageFiles: [URL] = []
 
     init(app: AppModel, seriesId: Int, seriesName: String, readerMode: String?, chapters: [ChapterRecord], start: ChapterRecord) {
         self.app = app
@@ -37,6 +39,7 @@ final class ReaderModel {
         chapter = start
         pageCount = start.pages
         page = Self.resumePage(start)
+        pageFiles = app.downloads.store.pageFiles(seriesId: seriesId, chapterId: start.id)
         mode = readerMode.flatMap(ReaderMode.init(rawValue:)) ?? app.readerSettings.defaultMode
     }
 
@@ -53,9 +56,13 @@ final class ReaderModel {
         return chapters.indices.contains(index + offset) ? chapters[index + offset] : nil
     }
 
+    /// The downloaded file, or the page on the server.
     func pageURL(_ page: Int) -> URL? {
-        try? app.kavita.pageImageURL(chapterId: chapter.id, page: page)
+        if pageFiles.indices.contains(page) { return pageFiles[page] }
+        return try? app.kavita.pageImageURL(chapterId: chapter.id, page: page)
     }
+
+    var isDownloaded: Bool { !pageFiles.isEmpty }
 
     /// Before the first page: picks up the page reached on another device, waiting at most
     /// `timeout` (then the pull carries on and local progress is used), and fetches the page
@@ -88,6 +95,9 @@ final class ReaderModel {
 
     /// Fetches the page count when the chapter list didn't have it.
     func loadPageCount() async {
+        if !pageFiles.isEmpty, pageCount != pageFiles.count {
+            pageCount = pageFiles.count
+        }
         guard pageCount == 0 else { return }
         do {
             pageCount = try await app.kavita.chapter(id: chapter.id).pages
@@ -115,6 +125,7 @@ final class ReaderModel {
     /// Opens the previous or next chapter: the previous at its last page, the next at its start.
     func open(_ target: ChapterRecord, atEnd: Bool) async {
         chapter = target
+        pageFiles = app.downloads.store.pageFiles(seriesId: seriesId, chapterId: target.id)
         pageCount = target.pages
         page = atEnd ? max(target.pages - 1, 0) : 0
         jump = nil

@@ -441,7 +441,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
      - Read further on iOS while offline, go back online → Kavita and Android get iOS's page.
      - Read further on Android meanwhile → it's never undone.
 7. **Webtoon mode and iPad spreads,** with per-series reader settings and a default in settings. ✅ done
-8. **Downloads:** engine, queue UI, offline reading, delete options.
+8. **Downloads:** engine, queue UI, offline reading, delete options. ✅ done
 9. **Polish:**
    - App icon (reuse `icons/`), empty and error states, and accessibility labels.
    - Dark mode check, iPad multitasking and keyboard shortcuts (arrow keys turn pages).
@@ -671,6 +671,44 @@ and, where relevant, on the device. Commit at the end of every milestone.
   (screenshot: pages 2–3 with page 2 on the right), then switches to webtoon and checks that
   scrolling moves the page on. Not yet tried on a device: webtoon pinch zoom feel and long
   strips.
+
+### Milestone 8: downloads (2026-10-11)
+
+- **Queue:** the `download` table (migration v4): chapter, series, state (queued /
+  downloading / failed), pages done and total, error. A finished chapter leaves the queue and is
+  marked `chapter.isDownloaded`. On launch, interrupted downloads go back to queued.
+- **Engine:** `actor DownloadManager` works through the queue one chapter at a time, three
+  pages at once. Pages go to `Downloads/<series>/<chapter>.partial/<000>.<ext>` (extension from
+  the response's `Content-Type`, via `UTType`), and the folder is renamed to `<chapter>` once
+  every page is there. Pages already in the partial folder are kept, so a retry or a relaunch
+  only fetches what's missing. A failed page fails the chapter (shown with its error, and
+  retryable). The root is excluded from backup.
+- **Transport:** `BackgroundPageFetcher` uses a background `URLSession`
+  (`app.mihonka.downloads`) with download tasks, so pages keep coming while the app is
+  suspended; `AppDelegate` passes `handleEventsForBackgroundURLSession` to it. Page URLs carry
+  the `apiKey`, so no token is needed. A file finished for a task from before a relaunch is
+  thrown away; the queue fetches the page again. Tests use `SessionPageFetcher` on the fake
+  server.
+- **Offline reading:** `ReaderModel` reads a downloaded chapter's files (page count from the
+  files, `file://` URLs, no Nuke disk-cache writes). Progress goes through the sync queue as
+  usual.
+- **UI:** each chapter row has a download button that shows queued, a progress ring
+  (tap to cancel), failed (tap to retry) or downloaded. Rows' context menu: Download / Cancel /
+  Delete Download. Select mode: Download. The series toolbar's download menu: Download Unread,
+  Delete Read Downloads, Delete All Downloads. The Downloads tab lists the queue (swipe to
+  cancel, Retry Failed) and the series on the device with chapter counts and sizes (swipe to
+  delete, tap to open).
+- **Bug fixed:** since milestone 3 the on-disk database never opened, because `URL.path()`
+  percent-encodes and "Application Support" became "Application%20Support"; the app fell back
+  to an in-memory database, so the library didn't survive a relaunch. Paths now use
+  `path(percentEncoded: false)`, with a regression test.
+- **Not handled yet:** chapters deleted on the server keep their downloaded files until the
+  series' downloads are deleted.
+- Tests: `DownloadTests` (pages and extensions, sequential chapters, page count lookup,
+  failure and partial retry, cancel, delete all / read, skip duplicates, resume on launch,
+  offline reader). Live UI test `testDownloadsAChapterAndReadsItOffline`: downloads the first
+  demo chapter (57 pages), finds it under Downloads, points the server at a dead port, and
+  opens the chapter with its pages loaded from the device.
 
 ## Open questions
 

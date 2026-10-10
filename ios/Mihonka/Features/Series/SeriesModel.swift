@@ -8,6 +8,8 @@ final class SeriesModel {
     let seriesId: Int
     private(set) var series: SeriesRecord?
     private(set) var chapters: [ChapterRecord] = []
+    /// Chapters in the download queue, by id.
+    private(set) var downloads: [Int: DownloadRecord] = [:]
     private(set) var isRefreshing = false
     private(set) var refreshError: String?
 
@@ -30,6 +32,38 @@ final class SeriesModel {
         do {
             for try await chapters in app.database.chapters(seriesId: seriesId) { self.chapters = chapters }
         } catch {}
+    }
+
+    /// Follows this series' download queue until cancelled.
+    func observeDownloads() async {
+        do {
+            for try await downloads in app.database.downloads(seriesId: seriesId) { self.downloads = downloads }
+        } catch {}
+    }
+
+    func download(_ chapterIds: some Collection<Int>) async {
+        let ids = Set(chapterIds)
+        await app.downloads.download(chapters.filter { ids.contains($0.id) })
+    }
+
+    func downloadUnread() async {
+        await app.downloads.download(chapters.filter { !$0.read })
+    }
+
+    func cancelDownload(_ chapterId: Int) async {
+        await app.downloads.cancel([(seriesId, chapterId)])
+    }
+
+    func deleteDownloads(_ chapterIds: some Collection<Int>) async {
+        await app.downloads.delete(seriesId: seriesId, chapterIds: Array(chapterIds))
+    }
+
+    func deleteAllDownloads(readOnly: Bool) async {
+        await app.downloads.deleteSeries(seriesId, readOnly: readOnly)
+    }
+
+    func retryDownloads() async {
+        await app.downloads.retryFailed()
     }
 
     /// Fetches the series, its metadata and its chapters from Kavita and stores them.

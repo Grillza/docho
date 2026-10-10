@@ -214,7 +214,9 @@ final class PagedReaderController: UIViewController, ReaderController {
         let size = CGSize(width: width * scale * 2, height: view.bounds.height * scale * 2)
         return ImageRequest(
             url: url,
-            processors: [.resize(size: size, unit: .pixels, contentMode: .aspectFit, upscale: false)]
+            processors: [.resize(size: size, unit: .pixels, contentMode: .aspectFit, upscale: false)],
+            // Downloaded pages are already on disk.
+            options: url.isFileURL ? [.disableDiskCacheWrites] : []
         )
     }
 

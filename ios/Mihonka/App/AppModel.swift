@@ -12,6 +12,7 @@ final class AppModel {
     let database: AppDatabase
     let readerSettings: ReaderSettings
     let sync: KavitaSync
+    let downloads: DownloadManager
     private var triggers: SyncTriggers?
 
     /// Mirrors the client's latest sign-in outcome for the UI.
@@ -22,13 +23,16 @@ final class AppModel {
         session: URLSession = .shared,
         database: AppDatabase? = nil,
         readerSettings: ReaderSettings? = nil,
-        pageDebounce: Duration = KavitaSync.pageDebounce
+        pageDebounce: Duration = KavitaSync.pageDebounce,
+        downloadStore: DownloadStore = .standard(),
+        pageFetcher: any PageFetcher = BackgroundFetch()
     ) {
         self.settings = settings
         self.readerSettings = readerSettings ?? ReaderSettings()
         kavita = KavitaClient(session: session) { [settings] in settings.credentials }
         self.database = database ?? Self.openDatabase()
         sync = KavitaSync(kavita: kavita, database: self.database, settings: settings, pageDebounce: pageDebounce)
+        downloads = DownloadManager(database: self.database, kavita: kavita, store: downloadStore, fetcher: pageFetcher)
         Task { [weak self, changes = kavita.connectionChanges] in
             for await connection in changes {
                 self?.connection = connection
@@ -36,13 +40,14 @@ final class AppModel {
         }
     }
 
-    /// Starts delivering queued progress in the background, then runs library sync.
+    /// Starts delivering queued progress, resumes downloads, then runs library sync.
     /// Called once by the app; tests leave it out.
     func start() async {
         guard triggers == nil else { return }
         let triggers = SyncTriggers(sync: sync)
         self.triggers = triggers
         triggers.start()
+        await downloads.resume()
         await sync.syncLibrary()
     }
 
