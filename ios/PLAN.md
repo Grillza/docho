@@ -473,6 +473,8 @@ and, where relevant, on the device. Commit at the end of every milestone.
   bar on iPhone, and on iPad a top tab bar that the user can expand into a sidebar.
 - The dependency container in `App/` is left until milestone 2, when there's something to hold.
 - `ios/scripts/build-ipa.sh [out-dir]` writes an unsigned `build/Mihonka.ipa`.
+- Verified: tests pass and the app launches on the iPhone 18 Pro and iPad mini (A17 Pro)
+  simulators (iOS 27.0). Not yet installed on a real device.
 
 ## Open questions
 
