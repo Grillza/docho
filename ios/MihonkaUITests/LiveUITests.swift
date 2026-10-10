@@ -79,9 +79,63 @@ final class LiveUITests: XCTestCase {
         XCTAssertTrue(app.buttons[wasInLibrary ? "In Library" : "Add to Library"].waitForExistence(timeout: 3))
     }
 
-    private func waitFor(_ element: XCUIElement, value: String) -> Bool {
-        let predicate = NSPredicate(format: "value == %@", value)
-        return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: 5) == .completed
+    @MainActor
+    func testReadsAChapterAndResumesThere() throws {
+        let app = try launchConnected()
+        app.buttons["Browse"].firstMatch.tap()
+        app.buttons["Kavita"].firstMatch.tap()
+        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
+        first.tap()
+
+        // Start the first chapter from page 1: mark it unread, then open it.
+        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
+        if row.value as? String != "Unread" {
+            if row.value as? String != "Read" {
+                row.swipeRight()
+                app.buttons["Mark as Read"].firstMatch.tap()
+            }
+            row.press(forDuration: 1.0)
+            app.buttons["Mark as Unread"].tap()
+        }
+        XCTAssertTrue(waitFor(row, value: "Unread"))
+        row.tap()
+
+        let pages = app.collectionViews["reader.pages"]
+        XCTAssertTrue(pages.waitForExistence(timeout: 10), "reader didn't open")
+        let firstPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 1 of'")).firstMatch
+        XCTAssertTrue(firstPage.waitForExistence(timeout: 10))
+        XCTAssertTrue(waitFor(firstPage, value: "Loaded", timeout: 20), "page 1 didn't load")
+        screenshot("reader")
+
+        // Right to left by default: the left third turns to the next page.
+        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
+        let secondPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 2 of'")).firstMatch
+        XCTAssertTrue(secondPage.waitForExistence(timeout: 5), "didn't turn to page 2")
+
+        // The middle shows the overlay with the page position.
+        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let slider = app.descendants(matching: .any).matching(identifier: "reader.page").firstMatch
+        XCTAssertTrue(slider.waitForExistence(timeout: 3))
+        XCTAssertTrue((slider.value as? String)?.hasPrefix("2 of") ?? false, "\(slider.value ?? "nil")")
+        screenshot("reader-overlay")
+
+        // Next chapter from the overlay, then back to the series.
+        let chapterTitle = NSPredicate(format: "label BEGINSWITH 'Vol.' OR label BEGINSWITH 'Ch.' OR label BEGINSWITH 'Volume'")
+        let title = app.staticTexts.matching(chapterTitle).firstMatch
+        let firstTitle = title.label
+        app.buttons["Next chapter"].tap()
+        XCTAssertTrue(waitFor(slider, value: "1 of", prefix: true))
+        XCTAssertNotEqual(title.label, firstTitle)
+
+        app.buttons["reader.close"].tap()
+        XCTAssertTrue(waitFor(row, value: "Page 2 of", prefix: true), "progress not shown: \(row.value ?? "nil")")
+    }
+
+    private func waitFor(_ element: XCUIElement, value: String, prefix: Bool = false, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: prefix ? "value BEGINSWITH %@" : "value == %@", value)
+        return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
     }
 
     /// Launches the app and enters the live server in Settings, waiting until it connects.

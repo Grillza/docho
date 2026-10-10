@@ -98,6 +98,22 @@ extension AppDatabase {
         }
     }
 
+    /// Saves the reader's position. `read` never goes back to false here; only a hand mark does that.
+    func saveProgress(chapterId: Int, lastPageRead: Int, read: Bool) async throws {
+        try await writer.write { db in
+            guard var chapter = try ChapterRecord.fetchOne(db, key: chapterId) else { return }
+            chapter.lastPageRead = lastPageRead
+            chapter.read = chapter.read || read
+            try chapter.update(db)
+        }
+    }
+
+    func setReaderMode(seriesId: Int, _ mode: String?) async throws {
+        try await writer.write { db in
+            _ = try SeriesRecord.filter(key: seriesId).updateAll(db, Column("readerMode").set(to: mode))
+        }
+    }
+
     /// The chapter ids before `chapter` in reading order that aren't read yet.
     func unreadChapterIds(before chapter: ChapterRecord) async throws -> [Int] {
         try await writer.read { db in

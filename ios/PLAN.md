@@ -429,7 +429,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
    - Metadata, plus chapter ordering, naming and numbering exactly as specified above.
    - Port `KavitaChapterNumbersTest`. Mark read/unread for one chapter or a multi-selection
      (local only for now).
-5. **Reader (paged):**
+5. **Reader (paged):** ✅ done
    - Left-to-right and right-to-left, zoom, overlay and slider, and chapter transitions.
    - Local `lastPageRead` and `read` updates, and resuming at the last page.
 6. **Progress sync:**
@@ -567,6 +567,39 @@ and, where relevant, on the device. Commit at the end of every milestone.
 - Verified on the iPad mini simulator: 71 tests pass. The live UI test opens a demo series
   (8 chapters with dates and the server's progress), marks a chapter read then unread, and
   toggles the library button.
+
+### Milestone 5: paged reader (2026-10-10)
+
+- `Features/Reader/`: `ReaderModel` (chapter, page, direction, progress), `PagedReaderController`
+  (UIKit) with `ReaderCells.swift`, `PagedReaderView` (the `UIViewControllerRepresentable`
+  bridge) and `ReaderView` (full-screen SwiftUI with the overlay).
+- **Paging is a horizontal `UICollectionView`**, not `UIPageViewController`: slider jumps,
+  prefetching and size changes are simpler. Right to left uses
+  `semanticContentAttribute = .forceRightToLeft` with a flow layout that sets
+  `flipsHorizontallyInOppositeLayoutDirection`.
+- Items are `[leading transition] + pages + [trailing transition]`. A tap or swipe past a
+  transition page opens the neighbouring chapter: the previous one at its last page, the next
+  at page 1. The overlay also has previous/next chapter buttons.
+- Taps: the outer thirds turn pages in reading direction (in right to left, the left third is
+  next); the middle toggles the overlay. A single tap waits for the double-tap to fail, so
+  there's a short delay.
+- Zoom: each page is its own `UIScrollView` (1×–4×, pinch or double-tap to 2.5× at the tapped
+  point). The image is fitted and centred, and zoom resets when the page changes. **Known
+  limitation:** while zoomed, a swipe pans the page instead of turning it; zoom out first.
+- Images: Nuke with the shared disk cache, downsampled to twice the view size in pixels (never
+  upscaled), and ±3 pages prefetched with `ImagePrefetcher`.
+- Overlay: series and chapter name, close, reading direction (saved per series in
+  `series.readerMode`: `ltr` / `rtl`, default **right to left** as in Mihon), a page slider, and
+  the chapter buttons. The bottom bar follows the reading direction.
+- Progress: every page shown is saved to the database at once (`lastPageRead`). Reaching the
+  last page marks the chapter read, and going back never unmarks it. Opening a chapter resumes
+  at `lastPageRead`, or page 1 if it's read. The series header has Start/Resume for the first
+  chapter not read. Nothing goes to Kavita yet; that's milestone 6's debounced push.
+- If the chapter list had no page count, it's fetched with `GET /Chapter`.
+- Verified on the iPad mini simulator: the live UI test opens a demo chapter, sees page 1 load,
+  turns to page 2 with a left tap, checks "2 of 57" in the overlay, goes to the next chapter,
+  closes, and sees "Page 2 of 57" on the chapter row. Right-to-left layout of the bar and slider
+  was checked by screenshot. Not yet tried on a real device: pinch zoom and rotation.
 
 ## Open questions
 

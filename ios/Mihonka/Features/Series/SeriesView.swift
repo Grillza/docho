@@ -6,25 +6,27 @@ struct SeriesView: View {
     @State private var model: SeriesModel
     @State private var selection = Set<Int>()
     @State private var editMode = EditMode.inactive
+    @State private var reading: ChapterRecord?
+    private let app: AppModel
     private let fallbackTitle: String
 
     init(app: AppModel, seriesId: Int, title: String) {
         _model = State(initialValue: SeriesModel(app: app, seriesId: seriesId))
+        self.app = app
         fallbackTitle = title
     }
 
     var body: some View {
-        List(selection: $selection) {
+        List(selection: editMode.isEditing ? $selection : nil) {
             Section {
-                SeriesHeader(model: model, fallbackTitle: fallbackTitle)
+                SeriesHeader(model: model, fallbackTitle: fallbackTitle) { reading = $0 }
                     .selectionDisabled()
                     .listRowSeparator(.hidden)
             }
 
             Section {
                 ForEach(model.chapters) { chapter in
-                    ChapterRow(chapter: chapter)
-                        .tag(chapter.id)
+                    chapterRow(chapter)
                         .accessibilityIdentifier("chapter.row")
                         .swipeActions(edge: .leading) { readButton(for: chapter) }
                         .contextMenu {
@@ -49,9 +51,30 @@ struct SeriesView: View {
         .navigationTitle(model.series?.name ?? fallbackTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
+        .fullScreenCover(item: $reading) { chapter in
+            ReaderView(model: ReaderModel(
+                app: app,
+                seriesId: model.seriesId,
+                seriesName: model.series?.name ?? fallbackTitle,
+                readerMode: model.series?.readerMode,
+                chapters: model.chapters,
+                start: chapter
+            ))
+        }
         .task { await model.observeSeries() }
         .task { await model.observeChapters() }
         .task { await model.refresh() }
+    }
+
+    /// A tap opens the chapter, except while selecting.
+    @ViewBuilder
+    private func chapterRow(_ chapter: ChapterRecord) -> some View {
+        if editMode.isEditing {
+            ChapterRow(chapter: chapter).tag(chapter.id)
+        } else {
+            Button { reading = chapter } label: { ChapterRow(chapter: chapter) }
+                .buttonStyle(.plain)
+        }
     }
 
     private func readButton(for chapter: ChapterRecord) -> some View {
@@ -124,6 +147,7 @@ struct SeriesView: View {
 private struct SeriesHeader: View {
     let model: SeriesModel
     let fallbackTitle: String
+    let read: (ChapterRecord) -> Void
     @Environment(AppModel.self) private var app
     @State private var summaryExpanded = false
 
@@ -146,8 +170,11 @@ private struct SeriesHeader: View {
                     if let status = PublicationStatus.title(series?.status) {
                         Label(status, systemImage: "clock").font(.subheadline)
                     }
-                    libraryButton(series)
-                        .padding(.top, 4)
+                    HStack {
+                        libraryButton(series)
+                        resumeButton
+                    }
+                    .padding(.top, 4)
                 }
                 .foregroundStyle(.secondary)
                 .labelStyle(.titleAndIcon)
@@ -185,6 +212,21 @@ private struct SeriesHeader: View {
         .padding(.vertical, 8)
     }
 
+    /// Starts or resumes the first chapter not read yet, as Mihon's resume button does.
+    @ViewBuilder
+    private var resumeButton: some View {
+        if let next = model.chapters.first(where: { !$0.read }) {
+            Button {
+                read(next)
+            } label: {
+                Label(next.inProgress ? "Resume" : "Start", systemImage: "play.fill")
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityHint(next.name)
+            .accessibilityIdentifier("series.resume")
+        }
+    }
+
     private func libraryButton(_ series: SeriesRecord?) -> some View {
         let inLibrary = series?.inLibrary ?? false
         return Button {
@@ -218,6 +260,8 @@ private struct ChapterRow: View {
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityValue(state)
     }
