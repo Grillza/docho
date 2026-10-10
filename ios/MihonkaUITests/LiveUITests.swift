@@ -46,6 +46,44 @@ final class LiveUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Your Library Is Empty"].waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testOpensASeriesAndMarksAChapterRead() throws {
+        let app = try launchConnected()
+        app.buttons["Browse"].firstMatch.tap()
+        app.buttons["Kavita"].firstMatch.tap()
+        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
+        first.tap()
+
+        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
+        Thread.sleep(forTimeInterval: 2) // cover and details
+        screenshot("series")
+
+        // The row may start read, unread or part-read (from the server), so go to Read first.
+        if row.value as? String != "Read" {
+            row.swipeRight()
+            app.buttons["Mark as Read"].firstMatch.tap()
+        }
+        XCTAssertTrue(waitFor(row, value: "Read"))
+
+        row.press(forDuration: 1.0)
+        app.buttons["Mark as Unread"].tap()
+        XCTAssertTrue(waitFor(row, value: "Unread"))
+
+        let library = app.buttons["series.library"]
+        let wasInLibrary = library.label == "In Library"
+        library.tap()
+        XCTAssertTrue(app.buttons[wasInLibrary ? "Add to Library" : "In Library"].waitForExistence(timeout: 3))
+        library.tap()
+        XCTAssertTrue(app.buttons[wasInLibrary ? "In Library" : "Add to Library"].waitForExistence(timeout: 3))
+    }
+
+    private func waitFor(_ element: XCUIElement, value: String) -> Bool {
+        let predicate = NSPredicate(format: "value == %@", value)
+        return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: 5) == .completed
+    }
+
     /// Launches the app and enters the live server in Settings, waiting until it connects.
     @MainActor
     private func launchConnected() throws -> XCUIApplication {

@@ -236,8 +236,11 @@ each chapter:
 | Case | Name | Number | Bucket |
 |---|---|---|---|
 | `chapter.isSpecial` **or** volume is SPECIAL (100000) | `displayTitle ?? "Special"` | `index - 200000` (index = position among specials) | specials |
-| Whole volume: `chapterNumber == -100000`, or (`minNumber == nil` and `number == "0"`) | `"Volume " + volDisplay`, plus `" - " + title` if the title is non-blank and differs from the volume name | `volumeNumber - 100000` | volumes |
-| Otherwise | `"Vol. X "` (omitted if loose-leaf) + `(range non-blank ? range : formatNumber(chapterNumber))` + `" - " + title` if present | `chapterNumber` | loose-leaf → loose; else volumes |
+| Whole volume: `chapterNumber == -100000`, or (`minNumber == nil` and `number == "0"`) | `"Volume " + volDisplay`, plus `" - " + titleName` if `titleName` is non-blank and differs from the volume `name` | `volumeNumber - 100000` | volumes |
+| Otherwise | `"Vol. X "` (omitted if loose-leaf) + `"Ch. "` + `(range non-blank ? range : formatNumber(chapterNumber))` + `" - " + titleName` if `titleName` is non-blank and differs from `range` | `chapterNumber` | loose-leaf → loose; else volumes |
+
+*(Corrected in milestone 4 from `KavitaSource.kt`: the original table left out `"Ch. "` and
+the `titleName` conditions.)*
 
 Definitions:
 
@@ -422,7 +425,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
      pull-to-refresh. EPUBs are excluded. The database stores Kavita libraries.
    - Library: a grid of the added series from the database, with pull-to-refresh running
      library sync. Adding and removing happens on the series screen (milestone 4).
-4. **Series screen and chapter list:**
+4. **Series screen and chapter list:** ✅ done
    - Metadata, plus chapter ordering, naming and numbering exactly as specified above.
    - Port `KavitaChapterNumbersTest`. Mark read/unread for one chapter or a multi-selection
      (local only for now).
@@ -538,6 +541,32 @@ and, where relevant, on the device. Commit at the end of every milestone.
   server. They browse Kavita (covers load), add a series by long-press, see it in Library with
   its cover, and remove it. Paging, search, filter and sort are covered by stub-server tests;
   the demo server has only 10 non-EPUB series, so paging wasn't exercised live.
+
+### Milestone 4: series screen and chapter list (2026-10-10)
+
+- `Kavita/KavitaChapters.swift` ports `KavitaSource.chapterList`, `mangaDetails` and `parseDate`.
+  The chapter list is shown in Kavita reading order (Android reverses it to newest first).
+  Dates: an offset or `Z` is honoured; otherwise the value is local time; `0001…` means not set.
+- Migration `v2`: the `chapter` table (PK = Kavita chapter id, cascade-deleted with its series)
+  and a `series.artists` column (Android's `artist`: pencillers, else cover artists).
+- Opening a series (from Browse or Library) caches it and refreshes series, metadata and volumes
+  in parallel, then saves everything in one transaction. **Local reading state is kept** for
+  chapters already stored, and chapters gone from the server are deleted. **New chapters are
+  seeded from the server's `pagesRead`** while sync is on (`read = pagesRead >= pages`, else
+  `lastPageRead = pagesRead`). That's what the milestone 6 pull would do for a chapter with no
+  local progress, and it makes progress visible right away.
+- Series screen: cover, title, authors, artists, status, add/remove from library, a summary that
+  expands on tap, and genres and tags as chips. Chapters show the upload date and "Page x of y"
+  when part-read; read chapters are dimmed. Mark read/unread by swipe or press-and-hold, several
+  at once with Select, plus "Mark Previous as Read" (as in Mihon). Marking unread also resets
+  `lastPageRead` to 0. **Marks are local only** until milestone 6. Pull-to-refresh is there too.
+- Not yet: tapping a chapter opens nothing (the reader is milestone 5), and downloading
+  chapters waits for milestone 8.
+- `KavitaChapterNumbersTest` is ported except its `calculateChapterGap` case, which tests
+  Mihon's missing-chapter detection; iOS has none.
+- Verified on the iPad mini simulator: 71 tests pass. The live UI test opens a demo series
+  (8 chapters with dates and the server's progress), marks a chapter read then unread, and
+  toggles the library button.
 
 ## Open questions
 

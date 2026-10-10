@@ -20,6 +20,7 @@ struct SeriesRecord: Codable, FetchableRecord, PersistableRecord, Identifiable, 
     var name: String
     var summary: String?
     var authors: String?
+    var artists: String?
     var genres: String?
     /// Kavita's `publicationStatus`.
     var status: Int?
@@ -119,7 +120,7 @@ extension AppDatabase {
 extension SeriesRecord {
     init(id: Int, libraryId: Int, name: String, inLibrary: Bool) {
         self.init(
-            id: id, libraryId: libraryId, name: name, summary: nil, authors: nil, genres: nil,
+            id: id, libraryId: libraryId, name: name, summary: nil, authors: nil, artists: nil, genres: nil,
             status: nil, inLibrary: inLibrary, readerMode: nil, lastOpenedAt: nil
         )
     }

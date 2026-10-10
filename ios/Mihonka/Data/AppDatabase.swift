@@ -43,6 +43,26 @@ struct AppDatabase: Sendable {
                 table.column("lastOpenedAt", .datetime)
             }
         }
+        migrator.registerMigration("v2") { db in
+            try db.alter(table: "series") { table in
+                table.add(column: "artists", .text)
+            }
+            try db.create(table: "chapter") { table in
+                table.primaryKey("id", .integer) // Kavita chapter id
+                table.column("seriesId", .integer).notNull().indexed()
+                    .references("series", onDelete: .cascade)
+                table.column("volumeId", .integer).notNull()
+                table.column("libraryId", .integer).notNull()
+                table.column("name", .text).notNull()
+                table.column("number", .double).notNull()
+                table.column("readingOrder", .integer).notNull()
+                table.column("pages", .integer).notNull()
+                table.column("read", .boolean).notNull().defaults(to: false)
+                table.column("lastPageRead", .integer).notNull().defaults(to: 0)
+                table.column("dateUpload", .datetime)
+                table.column("isDownloaded", .boolean).notNull().defaults(to: false)
+            }
+        }
         return migrator
     }
 }

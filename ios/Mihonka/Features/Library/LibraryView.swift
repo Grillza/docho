@@ -17,8 +17,13 @@ struct LibraryView: View {
             }
             LazyVGrid(columns: SeriesGrid.columns, spacing: 16) {
                 ForEach(series) { record in
-                    SeriesGridItem(title: record.name, coverURL: try? app.kavita.seriesCoverURL(seriesId: record.id))
-                        .accessibilityIdentifier("library.series")
+                    NavigationLink {
+                        SeriesView(app: app, seriesId: record.id, title: record.name)
+                    } label: {
+                        SeriesGridItem(title: record.name, coverURL: try? app.kavita.seriesCoverURL(seriesId: record.id))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("library.series")
                         .contextMenu {
                             Button(role: .destructive) {
                                 Task { try? await app.database.setInLibrary(seriesId: record.id, false) }
