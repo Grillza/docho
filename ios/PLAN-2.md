@@ -9,6 +9,8 @@ the iOS app up to the Android app:
 3. **Android's settings mirrored** where they make sense on iOS.
 4. **Tachiyomi/Mihon extensions**, run the way Tachimanga runs them: the Android extension APK,
    converted on the device and run in a JVM embedded in the app.
+5. **Komga** as a built-in source with page-by-page progress sync, like Kavita and BookOrbit, so
+   the app covers the common self-hosted servers when it's published.
 
 Like part 1, this file is the hand-off point for a session on the Mac. Read PLAN.md's
 [working notes](PLAN.md#working-notes-for-the-session-doing-the-work) first; they still apply
@@ -22,15 +24,15 @@ These replace part 1's where they disagree. Part 1's "Kavita only, no extension 
 
 | Decision | Choice | Why |
 |---|---|---|
-| Sources | **Kavita, BookOrbit, and installed extensions** | Matches Android |
-| Built-in sources | **Swift**, as Kavita is now. BookOrbit is ported like Kavita was | Kavita's Swift port works and is tested, and its sync queue lives in GRDB. Built-ins must work offline and start instantly, which a JVM doesn't |
+| Sources | **Kavita, BookOrbit, Komga, and installed extensions** | Matches Android, plus Komga for a published app |
+| Built-in sources | **Swift**, as Kavita is now. BookOrbit is ported like Kavita was, and Komga written the same way from [Part H](#part-h-komga) | Kavita's Swift port works and is tested, and its sync queue lives in GRDB. Built-ins must work offline and start instantly, which a JVM doesn't |
 | Extensions | **An embedded JVM runs the unmodified Android extension APKs** (dex2jar on the device, then a class loader), with Suwayomi's Android compatibility layer | It's how Tachimanga does it ([research](#how-tachimanga-runs-extensions)), and the only way to use the existing extension repos without rewriting extensions |
-| Extension runtime origin | **Fork [oneechan-runtime](https://github.com/leros1337/oneechan-runtime)** to `Grillza/mihonka-runtime` and use the fork, behind our own Swift protocol. Take upstream fixes by merging deliberately. If the trial (milestone 15) fails, rebuild the host in the fork from its `jvm-ios` approach and Suwayomi's `AndroidCompat`; don't start from scratch | It already does the hard parts for a Swift app. Writing our own gains nothing in App Review, but a week-old, one-author upstream is a risk for an app we keep, so we own the copy we ship (MPL-2.0 allows it) |
+| Extension runtime origin | **Fork [oneechan-runtime](https://github.com/leros1337/oneechan-runtime)** to `Grillza/mihonka-runtime` and use the fork, behind our own Swift protocol. Take upstream fixes by merging deliberately. If the trial (milestone 16) fails, rebuild the host in the fork from its `jvm-ios` approach and Suwayomi's `AndroidCompat`; don't start from scratch | It already does the hard parts for a Swift app. Writing our own gains nothing in App Review, but a week-old, one-author upstream is a risk for an app we keep, so we own the copy we ship (MPL-2.0 allows it) |
 | JVM | **Eclipse OpenJ9 only** (what oneechan builds), never OpenJDK's HotSpot | OpenJ9's licence (EPL-2.0/Apache-2.0) works on the App Store; HotSpot's GPLv2 is the kind of licence that got VLC pulled. See [App Store route](#app-store-route) |
 | App ↔ JVM | **JSON calls over JNI** through a small C shim, with **page images and HTTP bodies as raw bytes**. All networking goes through **URLSession** | Keeps the Swift side in charge of networking, cookies and Cloudflare (WKWebView), as Tachimanga and oneechan both do |
 | Sync choice | **"Sync progress with: Default (each series with its source) or KOReader"**, app-wide, as on Android | Same behaviour on both apps against the same servers |
 | Download indicator | **An in-app download bar, plus the system's progress Live Activity through `BGContinuedProcessingTask` on iOS/iPadOS 26+.** No widget extension | iPadOS 26 shows a cancellable progress Live Activity for user-started tasks with no extra target. A widget extension would add an app ID, which counts against a free Apple ID's limits |
-| Source ids | **The Android ids:** Kavita `0x4B415649544131` ("KAVITA1"), BookOrbit `0x424F4F4B4F5242` ("BOOKORB"). Extensions use the id their `Source` reports | Keeps the door open for backups shared between the apps |
+| Source ids | **The Android ids:** Kavita `0x4B415649544131` ("KAVITA1"), BookOrbit `0x424F4F4B4F5242` ("BOOKORB"). Komga, which Android doesn't have yet, gets `0x4B4F4D47413031` ("KOMGA01"); Android uses the same id if it adds Komga. Extensions use the id their `Source` reports | Keeps the door open for backups shared between the apps |
 | Distribution | **Sideloaded with a free Apple ID for now; the App Store is the goal later.** Everything is built so it could pass review: see [App Store route](#app-store-route) | The JVM is an interpreter, so it needs no JIT entitlement either way |
 
 ## How Tachimanga runs extensions
@@ -110,6 +112,7 @@ Today `series.id` and `chapter.id` are Kavita's ids. Migration **v5**:
 - `remoteKey` is what each source understands:
   - Kavita: its id.
   - BookOrbit: Android's URLs, `/series/{id}` and `/book/{bookId}/file/{fileId}`.
+  - Komga: `/series/{seriesId}` and `/book/{bookId}` (Komga ids are strings).
   - Extensions: the `SManga.url` and `SChapter.url`.
 - Add a `memo` JSON column to `chapter` (Android's chapter memo), holding Kavita's
   series/library/volume ids, BookOrbit's ids, KOReader hashes and the file name used for sorting.
@@ -144,9 +147,10 @@ it) becomes the iOS Settings' first screen, **Sync**, using the same wording:
 
 | Group | Items |
 |---|---|
-| **Reading progress** | **Sync progress with:** "Default - Sync with source" / "KOReader". The KOReader summary: "every series syncs with the KOReader sync server below instead of its source. Works for Kavita, BookOrbit and downloaded archives; online sources have no files to match, so they don't sync." |
+| **Reading progress** | **Sync progress with:** "Default - Sync with source" / "KOReader". The KOReader summary: "every series syncs with the KOReader sync server below instead of its source. Works for Kavita, BookOrbit, Komga and downloaded archives; online sources have no files to match, so they don't sync." |
 | **Kavita** | Server address ("e.g. https://kavita.example.com"), API key ("Saved (hidden)"; "Copy it from Kavita: your user settings, under API Key / OPDS"), Connection ("Connected to Kavita 0.8.x as name", "Couldn't connect: …", tap to check), **Sync reading progress**, **Sync library now** ("Synced N Kavita series"), Browse Kavita, and iOS's "Waiting to be sent: N / Send Now" |
 | **BookOrbit** | Server address ("The address you open BookOrbit at, e.g. http://bookorbit.lan:3010"), username and password ("The account you sign in to BookOrbit with"), Connection, Sync reading progress, Sync library now, Browse BookOrbit, waiting to be sent |
+| **Komga** | Server address ("e.g. http://komga.lan:25600"), API key ("Create one in Komga: your account settings → API Keys"), Connection ("Connected to Komga as name"), Sync reading progress, Sync library now, Browse Komga, waiting to be sent. No Android equivalent yet; same wording pattern |
 | **KOReader sync** | Server address ("The address KOReader uses, e.g. http://bookorbit.lan:3010/api/v1/koreader"), username, password ("In BookOrbit, create it under Settings → KOReader"), Connection ("Signed in as …"), Sync library now ("Only runs while sync is set to KOReader"), and the matching note |
 
 **KOReader sync** (port of `mihonka/koreader/` and `sync/ProgressSync.kt`):
@@ -158,6 +162,9 @@ it) becomes the iOS Settings' first screen, **Sync**, using the same wording:
   - **Kavita:** its stored `koreaderHash` for single-file chapters, or one computed from ranged
     requests to the download endpoint.
   - **BookOrbit:** its stored file hash.
+  - **Komga:** computed from ranged requests to `GET /api/v1/books/{id}/file`, like Kavita's
+    fallback, and cached per book. Komga runs its own KOReader sync server at
+    `{server}/koreader`, which can be the server set under KOReader sync.
   - **Extensions:** no file, so they don't sync in KOReader mode.
   - iOS downloads are loose pages, not the archive, so they can't be hashed. Use the source's
     hash instead, even for a downloaded chapter.
@@ -209,14 +216,17 @@ These landed on Android on 2026-10-29 (version 0.22.0) and should match on iOS:
   - Sort by source order, chapter number, upload date, alphabetically, or **by file name**.
   - File-name sort uses natural order, so v2 comes before v10. It reads the chapter memo's
     `fileName`: Kavita's file path (`files[].filePath`, folder removed), or BookOrbit's book
-    title, which BookOrbit takes from the file name. Otherwise it falls back to the chapter name.
+    title, which BookOrbit takes from the file name; or Komga's book `url` (the file path), folder
+    removed. Otherwise it falls back to the chapter name.
     This is what keeps a series like JoJo, whose volume numbers restart per part, in order.
   - Ascending/descending, and filters for unread, downloaded and bookmarked.
   - Part 1 shows Kavita reading order only, which stays the default ("by source").
-- **Unread listing in Browse:** next to Popular and Latest, Kavita and BookOrbit offer
+- **Unread listing in Browse:** next to Popular and Latest, Kavita, BookOrbit and Komga offer
   **Unread**: series not finished, most recently added first.
   - **Kavita:** filter `{comparison: 9 (NOT_EQUAL), field: 20 (READ_PROGRESS), value: "100"}`,
     sort LAST_CHAPTER_ADDED (4) descending. That's Kavita's own "unread" filter.
+  - **Komga:** filter by read status unread or in progress, sorted `lastModified` descending
+    (what Komga's own "latest" uses). Unlike BookOrbit, this runs on the server.
   - **BookOrbit:** its series API can only filter one status at a time, so load all series
     sorted by `lastAddedAt` descending, keeping those with `readCount < bookCount`.
 
@@ -340,8 +350,79 @@ generated from the runtime's `NOTICE` at build time.
   tracking; server addresses and credentials stay on the device, in the Keychain).
 - Archive with Xcode's distribution signing instead of `build-ipa.sh`.
 - Check the app size: the JVM and class library add tens of MB, which is fine but should be
-  measured (milestone 15).
+  measured (milestone 16).
 - Run through the review checklist above with extensions off, then on.
+
+## Part H: Komga
+
+Komga is a self-hosted comics server, like Kavita. Android doesn't have it, so there's no code to
+port: this is written from Komga's API (checked against Komga 1.29.2's source,
+[gotson/komga](https://github.com/gotson/komga)), following the shape of the Kavita and BookOrbit
+ports. Each Komga series is a series, and each book a chapter.
+
+### Connection
+
+- **Server address:** normalise it like Kavita's (scheme defaults to `http://`, trailing `/` and
+  anything from `/api` cut), then add `/api`.
+- **Sign-in:** an **API key** sent as the `X-API-Key` header on every request. Users create keys
+  in Komga under their account settings (`/api/v2/users/me/api-keys`). Keep it in the Keychain.
+  Komga also accepts basic auth, but an API key avoids keeping a password.
+- **Connection check:** `GET /api/v2/users/me` shows "Connected to Komga as …", or the error. A
+  401 means a bad key.
+- Image requests (covers, pages) need the header too, so load them through a Nuke pipeline that
+  adds it rather than putting the key in the URL.
+
+### Browse and chapters
+
+| Purpose | Request |
+|---|---|
+| Libraries | `GET /api/v1/libraries` |
+| Series (popular, search, filters) | `POST /api/v1/series/list?page=N&size=…&sort=…` with a search body (Komga 1.19+; `GET /api/v1/series` is deprecated). Search by title, library filter, sort by title (`metadata.titleSort`), created, last modified, or books count |
+| Latest | the same, sorted `lastModified,desc` |
+| Unread | the same, with a read-status condition of UNREAD or IN_PROGRESS |
+| Series details | `GET /api/v1/series/{id}`: title, summary, authors, genres, tags, status |
+| Books (chapters) | `POST /api/v1/books/list` filtered to the series, sorted by `metadata.numberSort`, all pages |
+| Page list | `GET /api/v1/books/{id}/pages` (numbers start at **1**) |
+| Page image | `GET /api/v1/books/{id}/pages/{n}` |
+| Cover | `GET /api/v1/series/{id}/thumbnail` |
+
+- **Which books:** comic archives and PDFs (`media.mediaProfile` DIVINA or PDF). EPUBs are left
+  out unless `media.epubDivinaCompatible`, as Kavita and BookOrbit leave out ebooks.
+- **Names and numbers:** the name is `metadata.title` (Komga defaults it to the file name), with
+  "Vol. N - " in front when `metadata.number` is set. The number is `metadata.numberSort`. The
+  memo keeps `fileName` (from `url`) for the file-name sort.
+- **Order:** by `metadata.numberSort`, which is Komga's own reading order.
+
+### Progress sync
+
+Komga stores progress per book as `readProgress: {page, completed, …}`, with `page` starting at
+1. The same rules as Kavita and BookOrbit apply: whichever side has read further wins, hand marks
+always go through, and an offline queue keeps what couldn't be sent.
+
+| Action | Request |
+|---|---|
+| Read up to a page | `PATCH /api/v1/books/{id}/read-progress` with `{"page": lastPageRead + 1}`. Komga marks the book completed when the page is the last one, and refuses pages outside `1…pagesCount` |
+| Mark read (hand mark) | the same with `{"completed": true}` |
+| Mark unread (hand mark) | `DELETE /api/v1/books/{id}/read-progress` |
+| Pull | the books list carries each book's `readProgress` and `media.pagesCount`, so one request covers a series |
+
+- **Mapping:** Komga's `page` (1-based, the page reached) is compared with `lastPageRead + 1`. A
+  book with no `readProgress` is page 0. `completed` is read.
+- **Several books at once:** Komga has no "mark many" call per book list, but has
+  `POST /api/v1/series/{id}/read-progress` (whole series read) and `DELETE` on the same path
+  (whole series unread). Use them for "mark all"; otherwise send one request per book, queued
+  first like the others.
+- **Unread mark then reading:** same as Kavita: the mark keeps its priority until it's delivered.
+
+### Tests
+
+Stub-server tests like Kavita's: sign-in with the `X-API-Key` header and the 401 message,
+browse/search/latest/unread bodies, book filtering and naming, page URLs (1-based), and the sync
+rules (push further, never undo further progress elsewhere, hand marks, the series-wide calls,
+the queue surviving failures). A live test against a Komga server if one is given
+(`TEST_RUNNER_KOMGA_LIVE_URL`, `TEST_RUNNER_KOMGA_LIVE_KEY`), skipped otherwise. The user
+doesn't run Komga, so set one up in Docker for the live test (`gotson/komga`, a few public-domain
+CBZs).
 
 ## Milestones
 
@@ -359,9 +440,13 @@ iPad, and commit at the end of each.
     matches Android's.
 13. **KOReader sync** (Part D). Accept: in KOReader mode, a page read on iOS shows up in KOReader
     or BookOrbit's KOReader progress for the same file, and back again.
-14. **Settings mirror and recent Android features** (Parts E and F). Accept: the JoJo series
+14. **Komga** (Part H): source, settings group, progress sync, Unread listing and file names.
+    Accept: against a Komga server in Docker, browse and read a series; progress set in Komga's
+    web reader shows up in the app and the other way round; marking unread in the app clears it
+    in Komga.
+15. **Settings mirror and recent Android features** (Parts E and F). Accept: the JoJo series
     sorts by file name on iOS as on Android, and Unread lists unfinished series on both servers.
-15. **Extension runtime trial (go/no-go):**
+16. **Extension runtime trial (go/no-go):**
     - Fork oneechan-runtime to `Grillza/mihonka-runtime` and add the fork as a submodule at
       `ios/Vendor/mihonka-runtime`, pinned to a commit ([The fork](#the-fork)). Build its
       `jvm-ios` (OpenJ9), link it, and wrap it in `ExtensionHost`.
@@ -371,21 +456,21 @@ iPad, and commit at the end of each.
     - **Go** if both work on the iPad, start-up is under ~5 s and the .ipa still signs with
       SideStore. **No-go:** record why, and either rebuild the host in the fork (same protocol)
       or stop at Kavita and BookOrbit.
-16. **Extensions in the app:** repos, extension list, install/update/uninstall, trust, content
+17. **Extensions in the app:** repos, extension list, install/update/uninstall, trust, content
     warnings, and sources under Browse with filters and settings.
-17. **Reading and downloading from extensions:** library, series screen, reader, downloads and
+18. **Reading and downloading from extensions:** library, series screen, reader, downloads and
     the download indicator, plus Cloudflare and WebView handling.
-18. **Polish:** empty and error states for extension failures ("This extension needs an Android
+19. **Polish:** empty and error states for extension failures ("This extension needs an Android
     feature Mihonka for iOS doesn't have"), accessibility, the README in PLAN.md updated for
     sources and extensions, the extensions switch (off by default), and the Acknowledgements
     screen ([App Store route](#app-store-route)).
-19. **App Store readiness** (only when the paid account exists): bundle id, privacy details,
+20. **App Store readiness** (only when the paid account exists): bundle id, privacy details,
     distribution signing, review notes with a demo account, a TestFlight build, and the
     checklist under [Before submitting](#before-submitting).
 
 ## Open questions
 
-1. Is losing extension sources acceptable if the trial (milestone 15) fails, or is rebuilding
+1. Is losing extension sources acceptable if the trial (milestone 16) fails, or is rebuilding
    the host in the fork worth weeks of work?
 2. Should extension series take part in KOReader mode at all? Android says no, since there's no
    file to match. This plan follows Android.
