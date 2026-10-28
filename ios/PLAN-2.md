@@ -162,10 +162,14 @@ it) becomes the iOS Settings' first screen, **Sync**, using the same wording:
   - **Kavita:** its stored `koreaderHash` for single-file chapters, or one computed from ranged
     requests to the download endpoint.
   - **BookOrbit:** its stored file hash.
-  - **Komga:** none. Komga's file download (`GET /api/v1/books/{id}/file`) streams the whole
-    file and ignores ranges, and its API doesn't expose the KOReader hash it can store, so Komga
-    series don't sync in KOReader mode, as on Android. (Komga does run a KOReader sync server at
-    `{server}/koreader`, usable by KOReader itself.)
+  - **Komga:** Komga's file download (`GET /api/v1/books/{id}/file`) only serves whole files,
+    and its API doesn't share the KOReader hash it can store. As on Android (0.24.0,
+    `KomgaKoreaderDocuments.kt`, `KoreaderHash.compute(InputStream, size)`), hash the file while
+    it streams, reading up to the last sample and keeping nothing, and cache the hash per book.
+    Only once the user allows it: choosing KOReader while Komga is set up shows a notice ("Komga
+    and KOReader sync", with "I understand, sync Komga", "Don't sync Komga" and "Don't show this
+    again"), and "Match Komga books" under KOReader sync changes it later. (Komga also runs a
+    KOReader sync server at `{server}/koreader`, usable by KOReader itself.)
   - **Extensions:** no file, so they don't sync in KOReader mode.
   - iOS downloads are loose pages, not the archive, so they can't be hashed. Use the source's
     hash instead, even for a downloaded chapter.
@@ -327,8 +331,11 @@ wrote the runtime doesn't matter to App Review; what the app does and what it sh
 | dex2jar | Apache-2.0 | Fine |
 | Extensions | Their own licences | Not shipped; the user installs them |
 
-Add an **Acknowledgements** screen under Settings → About listing these with their licence texts,
-generated from the runtime's `NOTICE` at build time.
+Add an **Acknowledgements** screen like Android's (0.24.0, `mihonka/acknowledgements/AcknowledgementsScreen.kt`,
+in the More tab where Mihon had Support Us): sections for what the app is built on, servers and
+sync, libraries, icons and tools, each linking to its GitHub repository, then the full licence
+texts. On iOS, list the Swift packages (GRDB, Nuke), the runtime's parts from the table above, and
+the licences generated from the runtime's `NOTICE` at build time.
 
 ### The fork
 
