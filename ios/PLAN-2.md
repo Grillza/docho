@@ -25,12 +25,13 @@ These replace part 1's where they disagree. Part 1's "Kavita only, no extension 
 | Sources | **Kavita, BookOrbit, and installed extensions** | Matches Android |
 | Built-in sources | **Swift**, as Kavita is now. BookOrbit is ported like Kavita was | Kavita's Swift port works and is tested, and its sync queue lives in GRDB. Built-ins must work offline and start instantly, which a JVM doesn't |
 | Extensions | **An embedded JVM runs the unmodified Android extension APKs** (dex2jar on the device, then a class loader), with Suwayomi's Android compatibility layer | It's how Tachimanga does it ([research](#how-tachimanga-runs-extensions)), and the only way to use the existing extension repos without rewriting extensions |
-| Extension runtime origin | **Try [oneechan-runtime](https://github.com/leros1337/oneechan-runtime) first**, pinned to a commit, behind our own Swift protocol. If the trial (milestone 15) fails, build our own host from its `jvm-ios` approach and Suwayomi's `AndroidCompat` | It already does the hard parts for a Swift app, but it's a week old with one author, so it mustn't leak into the rest of the app |
+| Extension runtime origin | **Fork [oneechan-runtime](https://github.com/leros1337/oneechan-runtime)** to `Grillza/mihonka-runtime` and use the fork, behind our own Swift protocol. Take upstream fixes by merging deliberately. If the trial (milestone 15) fails, rebuild the host in the fork from its `jvm-ios` approach and Suwayomi's `AndroidCompat`; don't start from scratch | It already does the hard parts for a Swift app. Writing our own gains nothing in App Review, but a week-old, one-author upstream is a risk for an app we keep, so we own the copy we ship (MPL-2.0 allows it) |
+| JVM | **Eclipse OpenJ9 only** (what oneechan builds), never OpenJDK's HotSpot | OpenJ9's licence (EPL-2.0/Apache-2.0) works on the App Store; HotSpot's GPLv2 is the kind of licence that got VLC pulled. See [App Store route](#app-store-route) |
 | App ↔ JVM | **JSON calls over JNI** through a small C shim, with **page images and HTTP bodies as raw bytes**. All networking goes through **URLSession** | Keeps the Swift side in charge of networking, cookies and Cloudflare (WKWebView), as Tachimanga and oneechan both do |
 | Sync choice | **"Sync progress with: Default (each series with its source) or KOReader"**, app-wide, as on Android | Same behaviour on both apps against the same servers |
 | Download indicator | **An in-app download bar, plus the system's progress Live Activity through `BGContinuedProcessingTask` on iOS/iPadOS 26+.** No widget extension | iPadOS 26 shows a cancellable progress Live Activity for user-started tasks with no extra target. A widget extension would add an app ID, which counts against a free Apple ID's limits |
 | Source ids | **The Android ids:** Kavita `0x4B415649544131` ("KAVITA1"), BookOrbit `0x424F4F4B4F5242` ("BOOKORB"). Extensions use the id their `Source` reports | Keeps the door open for backups shared between the apps |
-| Distribution | Unchanged: sideloaded with a free Apple ID | The JVM is an interpreter, so it needs no JIT entitlement |
+| Distribution | **Sideloaded with a free Apple ID for now; the App Store is the goal later.** Everything is built so it could pass review: see [App Store route](#app-store-route) | The JVM is an interpreter, so it needs no JIT entitlement either way |
 
 ## How Tachimanga runs extensions
 
@@ -275,9 +276,72 @@ SwiftUI ── ExtensionSource (Swift, implements the app's Source protocol)
   WebView/QuickJS. Note which ones fail; don't chase them all.
 - **Free Apple ID:** nothing here needs an entitlement. Rebuilding with the runtime must still
   produce an .ipa SideStore can sign. Check this early.
-- **Licences:** OpenJDK's class library is GPLv2 with the Classpath Exception, OpenJ9 is
-  EPL-2.0/Apache-2.0, and Suwayomi and oneechan are MPL-2.0. Fine for a personal sideloaded app;
-  keep their `NOTICE`/licence files in the bundle.
+- **Licences:** see [App Store route](#app-store-route).
+
+## App Store route
+
+The app is sideloaded for now, but Part 2 is built so it could go to the App Store later. Who
+wrote the runtime doesn't matter to App Review; what the app does and what it ships with does.
+
+### What App Review will look at
+
+- **Downloaded code (guideline 2.5.2):** apps may not download or run code that adds or changes
+  their features. Extensions are that, whoever's runtime runs them. Tachimanga is on the App
+  Store with the same design, and seems to pass because it ships with nothing and the user
+  brings the repos or extension files. Mihonka does the same:
+  - **No repos or extensions built in, suggested, or linked** from the app or its App Store page.
+    Adding a repo means typing or pasting its URL.
+  - **Extensions are off until turned on** (Settings → Browse → Extensions). With them off,
+    nothing about extensions shows in Browse.
+  - **The app is complete without them:** Kavita, BookOrbit, KOReader sync, the reader and
+    downloads all work with extensions off. That's the version to describe and screenshot.
+  - Review is a judgement call, and an approved app can still be pulled later. The app must stay
+    useful if extensions have to go.
+- **Copyright (guideline 5.2):** apps tied to pirated content get rejected or removed. This is
+  the usual way apps like this disappear. The listing, screenshots and review notes talk only
+  about the user's own Kavita and BookOrbit servers. No source names, no manga titles that
+  aren't public domain, no sample content.
+- **Review notes:** give the reviewer a demo Kavita account (Kavita's public demo,
+  `demo.kavitareader.com`, or a server set up for review) so they can use the app without
+  setting anything up.
+
+### Licences
+
+| Part | Licence | On the App Store |
+|---|---|---|
+| Mihonka iOS (our code) | Apache-2.0, like Mihon | Fine |
+| OpenJ9 (the JVM) | EPL-2.0 / Apache-2.0 | Fine. **Use only OpenJ9**, never OpenJDK's HotSpot, which is GPLv2 |
+| OpenJDK class library | GPLv2 with the Classpath Exception | Linking is allowed by the exception. Ship its licence and `NOTICE` |
+| Suwayomi `AndroidCompat`, oneechan-runtime and our fork | MPL-2.0 | Fine. The fork is public, so changes to MPL files are published as the licence requires |
+| dex2jar | Apache-2.0 | Fine |
+| Extensions | Their own licences | Not shipped; the user installs them |
+
+Add an **Acknowledgements** screen under Settings → About listing these with their licence texts,
+generated from the runtime's `NOTICE` at build time.
+
+### The fork
+
+- **`Grillza/mihonka-runtime`**, a GitHub fork of oneechan-runtime, public, MPL-2.0. It's added to
+  this repo as a submodule at `ios/Vendor/mihonka-runtime`, pinned to a commit.
+- `main` follows our needs. Upstream changes come in by merging, after the contract tests pass,
+  never automatically.
+- The **JSON protocol** between Swift and the host is ours from day one. Keep oneechan's
+  "only add, never change" rule and its `contract/fixtures`, and run them in `check.sh`.
+- Strip what Mihonka doesn't use (the desktop dev host, unused JDK modules via `jlink`) to keep
+  the app smaller.
+- A short `ios/Vendor/README.md` records the pinned commit, how to rebuild the JVM
+  (`jvm-ios/package.sh`, about 40 minutes the first time) and how to take upstream changes.
+
+### Before submitting
+
+- Join the **Apple Developer Program** ($99 a year). A free Apple ID can't publish. With a paid
+  account the 7-day re-signing goes away too, and TestFlight becomes available.
+- Change the bundle id if `app.mihonka` is taken, and fill in the App Privacy details (no
+  tracking; server addresses and credentials stay on the device, in the Keychain).
+- Archive with Xcode's distribution signing instead of `build-ipa.sh`.
+- Check the app size: the JVM and class library add tens of MB, which is fine but should be
+  measured (milestone 15).
+- Run through the review checklist above with extensions off, then on.
 
 ## Milestones
 
@@ -298,30 +362,37 @@ iPad, and commit at the end of each.
 14. **Settings mirror and recent Android features** (Parts E and F). Accept: the JoJo series
     sorts by file name on iOS as on Android, and Unread lists unfinished series on both servers.
 15. **Extension runtime trial (go/no-go):**
-    - Vendor oneechan-runtime at a pinned commit as a git submodule (`ios/Vendor/oneechan-runtime`).
-      Build its `jvm-ios`, link it, and wrap it in `ExtensionHost`.
+    - Fork oneechan-runtime to `Grillza/mihonka-runtime` and add the fork as a submodule at
+      `ios/Vendor/mihonka-runtime`, pinned to a commit ([The fork](#the-fork)). Build its
+      `jvm-ios` (OpenJ9), link it, and wrap it in `ExtensionHost`.
     - Install one simple extension and one Cloudflare-protected one from a repo. Browse page 1
       and open a chapter's page list.
     - **Measure:** JVM cold start, first-page time, peak memory and the .ipa size.
     - **Go** if both work on the iPad, start-up is under ~5 s and the .ipa still signs with
-      SideStore. **No-go:** record why, and either build our own host (same protocol) or stop at
-      Kavita and BookOrbit.
+      SideStore. **No-go:** record why, and either rebuild the host in the fork (same protocol)
+      or stop at Kavita and BookOrbit.
 16. **Extensions in the app:** repos, extension list, install/update/uninstall, trust, content
     warnings, and sources under Browse with filters and settings.
 17. **Reading and downloading from extensions:** library, series screen, reader, downloads and
     the download indicator, plus Cloudflare and WebView handling.
 18. **Polish:** empty and error states for extension failures ("This extension needs an Android
-    feature Mihonka for iOS doesn't have"), accessibility, and the README in PLAN.md updated for
-    sources and extensions.
+    feature Mihonka for iOS doesn't have"), accessibility, the README in PLAN.md updated for
+    sources and extensions, the extensions switch (off by default), and the Acknowledgements
+    screen ([App Store route](#app-store-route)).
+19. **App Store readiness** (only when the paid account exists): bundle id, privacy details,
+    distribution signing, review notes with a demo account, a TestFlight build, and the
+    checklist under [Before submitting](#before-submitting).
 
 ## Open questions
 
-1. Is losing extension sources acceptable if the trial (milestone 15) fails, or is building our
-   own runtime worth weeks of work?
+1. Is losing extension sources acceptable if the trial (milestone 15) fails, or is rebuilding
+   the host in the fork worth weeks of work?
 2. Should extension series take part in KOReader mode at all? Android says no, since there's no
    file to match. This plan follows Android.
 3. Pause semantics for the system Live Activity: the plan treats cancel as pause. Should it
    cancel the queue instead, as Android's Cancel does?
+4. App Store name: "Mihonka" or something without Mihon in it? Mihon is Apache-2.0, so the code
+   is fine, but a name close to Mihon's may draw attention in review.
 
 ## Progress log
 
