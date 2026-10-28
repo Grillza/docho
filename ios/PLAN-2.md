@@ -162,9 +162,10 @@ it) becomes the iOS Settings' first screen, **Sync**, using the same wording:
   - **Kavita:** its stored `koreaderHash` for single-file chapters, or one computed from ranged
     requests to the download endpoint.
   - **BookOrbit:** its stored file hash.
-  - **Komga:** computed from ranged requests to `GET /api/v1/books/{id}/file`, like Kavita's
-    fallback, and cached per book. Komga runs its own KOReader sync server at
-    `{server}/koreader`, which can be the server set under KOReader sync.
+  - **Komga:** none. Komga's file download (`GET /api/v1/books/{id}/file`) streams the whole
+    file and ignores ranges, and its API doesn't expose the KOReader hash it can store, so Komga
+    series don't sync in KOReader mode, as on Android. (Komga does run a KOReader sync server at
+    `{server}/koreader`, usable by KOReader itself.)
   - **Extensions:** no file, so they don't sync in KOReader mode.
   - iOS downloads are loose pages, not the archive, so they can't be hashed. Use the source's
     hash instead, even for a downloaded chapter.
@@ -355,10 +356,10 @@ generated from the runtime's `NOTICE` at build time.
 
 ## Part H: Komga
 
-Komga is a self-hosted comics server, like Kavita. Android doesn't have it, so there's no code to
-port: this is written from Komga's API (checked against Komga 1.29.2's source,
-[gotson/komga](https://github.com/gotson/komga)), following the shape of the Kavita and BookOrbit
-ports. Each Komga series is a series, and each book a chapter.
+Komga is a self-hosted comics server, like Kavita. **Android has it since 0.23.0**
+(`app/src/main/java/mihonka/komga/`, with `KomgaSourceTest` and `KomgaSyncRulesTest`), so port
+it like Kavita and BookOrbit: the Android code wins over this summary. Every request below was
+checked against a Komga 1.29 server. Each Komga series is a series, and each book a chapter.
 
 ### Connection
 
@@ -367,8 +368,8 @@ ports. Each Komga series is a series, and each book a chapter.
 - **Sign-in:** an **API key** sent as the `X-API-Key` header on every request. Users create keys
   in Komga under their account settings (`/api/v2/users/me/api-keys`). Keep it in the Keychain.
   Komga also accepts basic auth, but an API key avoids keeping a password.
-- **Connection check:** `GET /api/v2/users/me` shows "Connected to Komga as …", or the error. A
-  401 means a bad key.
+- **Connection check:** `GET /api/v2/users/me` shows "Connected to Komga as <email>", or the
+  error. A 401 means a bad key ("Komga rejected the API key.").
 - Image requests (covers, pages) need the header too, so load them through a Nuke pipeline that
   adds it rather than putting the key in the URL.
 
@@ -377,20 +378,23 @@ ports. Each Komga series is a series, and each book a chapter.
 | Purpose | Request |
 |---|---|
 | Libraries | `GET /api/v1/libraries` |
-| Series (popular, search, filters) | `POST /api/v1/series/list?page=N&size=…&sort=…` with a search body (Komga 1.19+; `GET /api/v1/series` is deprecated). Search by title, library filter, sort by title (`metadata.titleSort`), created, last modified, or books count |
+| Series (popular, search, filters) | `POST /api/v1/series/list?page=N&size=50&sort=…` with `{"condition": {"allOf": [{"deleted": {"operator": "isFalse"}}, …]}, "fullTextSearch": "…"}` (Komga 1.19+; `GET /api/v1/series` is deprecated). Library filter: `{"libraryId": {"operator": "is", "value": "<id>"}}`. Sort `metadata.titleSort`, `created`, `lastModified` or `booksCount`, `,asc`/`,desc`. The response is a Spring page: `content` and `last` |
 | Latest | the same, sorted `lastModified,desc` |
-| Unread | the same, with a read-status condition of UNREAD or IN_PROGRESS |
+| Unread | the same, plus `{"anyOf": [{"readStatus": {"operator": "is", "value": "UNREAD"}}, {"readStatus": {"operator": "is", "value": "IN_PROGRESS"}}]}`, sorted `lastModified,desc` |
 | Series details | `GET /api/v1/series/{id}`: title, summary, authors, genres, tags, status |
-| Books (chapters) | `POST /api/v1/books/list` filtered to the series, sorted by `metadata.numberSort`, all pages |
+| Books (chapters) | `POST /api/v1/books/list?unpaged=true&sort=metadata.numberSort,asc` with `{"condition": {"allOf": [{"seriesId": {"operator": "is", "value": "<id>"}}, {"deleted": {"operator": "isFalse"}}]}}` |
 | Page list | `GET /api/v1/books/{id}/pages` (numbers start at **1**) |
 | Page image | `GET /api/v1/books/{id}/pages/{n}` |
 | Cover | `GET /api/v1/series/{id}/thumbnail` |
 
-- **Which books:** comic archives and PDFs (`media.mediaProfile` DIVINA or PDF). EPUBs are left
-  out unless `media.epubDivinaCompatible`, as Kavita and BookOrbit leave out ebooks.
-- **Names and numbers:** the name is `metadata.title` (Komga defaults it to the file name), with
-  "Vol. N - " in front when `metadata.number` is set. The number is `metadata.numberSort`. The
-  memo keeps `fileName` (from `url`) for the file-name sort.
+- **Which books:** `media.status` READY with pages, and `media.mediaProfile` DIVINA (comic
+  archives) or PDF. EPUBs are left out unless `media.epubDivinaCompatible`, as Kavita and
+  BookOrbit leave out ebooks.
+- **Names and numbers:** "#N - Title" from `metadata.number` and `metadata.title` (Komga defaults
+  the title to the file name, and the number to the book's position), or just "#N" when the title
+  is the number, or the title alone when there's no number. The chapter number is
+  `metadata.numberSort`. The memo keeps `fileName` (from `url`, folder removed; accounts that
+  aren't admins only get the name) for the file-name sort.
 - **Order:** by `metadata.numberSort`, which is Komga's own reading order.
 
 ### Progress sync
