@@ -124,11 +124,20 @@ object KoreaderSettingsGroup {
         val graph = remember { context.appGraph }
         val preferences = remember { graph.koreaderPreferences }
         val sync = remember { graph.koreaderSync }
+        val komgaPreferences = remember { graph.komgaPreferences }
+        val komgaServer by komgaPreferences.serverUrl.collectAsState()
+        val komgaKey by komgaPreferences.apiKey.collectAsState()
         var syncing by remember { mutableStateOf(false) }
 
         return listOf(
             Preference.PreferenceItem.InfoPreference(
                 title = stringResource(MR.strings.pref_koreader_matching_info),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
+                preference = komgaPreferences.koreaderDownloads,
+                title = stringResource(MR.strings.pref_koreader_komga_downloads),
+                subtitle = stringResource(MR.strings.pref_koreader_komga_downloads_summary),
+                visible = komgaServer.isNotBlank() && komgaKey.isNotBlank(),
             ),
             Preference.PreferenceItem.TextPreference(
                 title = stringResource(MR.strings.pref_kavita_sync_now),

@@ -27,5 +27,17 @@ class KomgaPreferences(
         "",
     )
 
+    /**
+     * Whether Komga books may be downloaded in full to match them with KOReader, which knows a
+     * book by a hash of samples across its file. Komga can't serve part of a file.
+     */
+    val koreaderDownloads: Preference<Boolean> = preferenceStore.getBoolean("komga_koreader_downloads", false)
+
+    /** Set by "Don't show this again" on the notice explaining [koreaderDownloads]. */
+    val koreaderNoticeHidden: Preference<Boolean> = preferenceStore.getBoolean(
+        Preference.appStateKey("komga_koreader_notice_hidden"),
+        false,
+    )
+
     fun isConfigured(): Boolean = serverUrl.get().isNotBlank() && apiKey.get().isNotBlank()
 }

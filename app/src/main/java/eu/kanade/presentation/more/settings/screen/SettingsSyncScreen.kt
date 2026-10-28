@@ -1,13 +1,30 @@
 package eu.kanade.presentation.more.settings.screen
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import eu.kanade.presentation.more.settings.Preference
 import mihon.app.di.appGraph
 import mihonka.sync.ProgressSyncMode
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 
 /** The servers Mihonka reads from and syncs with, and where reading progress is synced. */
@@ -31,8 +48,22 @@ object SettingsSyncScreen : SearchableSettings {
     @Composable
     private fun getModeGroup(): Preference.PreferenceGroup {
         val context = LocalContext.current
-        val preferences = remember { context.appGraph.progressSyncPreferences }
+        val graph = remember { context.appGraph }
+        val preferences = remember { graph.progressSyncPreferences }
+        val komgaPreferences = remember { graph.komgaPreferences }
         val koreaderSummary = stringResource(MR.strings.pref_progress_sync_mode_koreader_summary)
+        var showKomgaNotice by remember { mutableStateOf(false) }
+
+        if (showKomgaNotice) {
+            KomgaKoreaderNotice(
+                onAnswer = { allow, hideNotice ->
+                    komgaPreferences.koreaderDownloads.set(allow)
+                    if (hideNotice) komgaPreferences.koreaderNoticeHidden.set(true)
+                    showKomgaNotice = false
+                },
+                onDismissRequest = { showKomgaNotice = false },
+            )
+        }
 
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_progress_sync),
@@ -47,8 +78,60 @@ object SettingsSyncScreen : SearchableSettings {
                     subtitleProvider = { value, entries ->
                         if (value == ProgressSyncMode.KOREADER) koreaderSummary else entries[value]
                     },
+                    onValueChanged = { mode ->
+                        // Komga books can only be matched with KOReader by downloading them, so ask first.
+                        if (mode == ProgressSyncMode.KOREADER &&
+                            preferences.mode.get() != ProgressSyncMode.KOREADER &&
+                            komgaPreferences.isConfigured() &&
+                            !komgaPreferences.koreaderNoticeHidden.get()
+                        ) {
+                            showKomgaNotice = true
+                        }
+                        true
+                    },
                 ),
             ),
+        )
+    }
+
+    /**
+     * Explains that matching Komga books with KOReader means downloading them, and asks whether
+     * to. [onAnswer] gets the choice and whether to stop asking.
+     */
+    @Composable
+    private fun KomgaKoreaderNotice(
+        onAnswer: (allow: Boolean, hideNotice: Boolean) -> Unit,
+        onDismissRequest: () -> Unit,
+    ) {
+        var hideNotice by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            title = { Text(text = stringResource(MR.strings.komga_koreader_notice_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
+                    Text(text = stringResource(MR.strings.komga_koreader_notice_text))
+                    // The whole row ticks the box, not only the box itself.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(value = hideNotice, role = Role.Checkbox, onValueChange = { hideNotice = it }),
+                    ) {
+                        Checkbox(checked = hideNotice, onCheckedChange = null)
+                        Text(text = stringResource(MR.strings.komga_koreader_notice_hide))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { onAnswer(true, hideNotice) }) {
+                    Text(text = stringResource(MR.strings.komga_koreader_notice_allow))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onAnswer(false, hideNotice) }) {
+                    Text(text = stringResource(MR.strings.komga_koreader_notice_deny))
+                }
+            },
         )
     }
 }

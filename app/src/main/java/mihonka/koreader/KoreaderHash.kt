@@ -1,5 +1,6 @@
 package mihonka.koreader
 
+import java.io.InputStream
 import java.security.MessageDigest
 
 /**
@@ -27,5 +28,35 @@ object KoreaderHash {
             md5.update(read(offset, BLOCK_SIZE).first)
         }
         return md5.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Hashes a file that can only be read from the start, such as a download. Reading stops after
+     * the last sample, so only that much of the file is transferred. [size] is the file's length
+     * if known; without it, the samples run until the stream ends, which gives the same hash.
+     */
+    suspend fun compute(input: InputStream, size: Long?): String {
+        var position = 0L
+        return compute { offset, length ->
+            while (position < offset) {
+                val skipped = input.skip(offset - position)
+                if (skipped > 0) {
+                    position += skipped
+                } else if (input.read() >= 0) {
+                    position++
+                } else {
+                    return@compute ByteArray(0) to (size ?: position)
+                }
+            }
+            val block = ByteArray(length)
+            var filled = 0
+            while (filled < length) {
+                val read = input.read(block, filled, length - filled)
+                if (read < 0) break
+                filled += read
+            }
+            position += filled
+            block.copyOf(filled) to (size ?: Long.MAX_VALUE)
+        }
     }
 }

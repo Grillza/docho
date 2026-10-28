@@ -3,6 +3,8 @@ package mihonka.koreader
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.io.ByteArrayInputStream
+import java.io.FilterInputStream
 
 class KoreaderHashTest {
 
@@ -29,6 +31,33 @@ class KoreaderHashTest {
     @Test
     fun `a chapter-sized archive matches KOReader`() {
         assertEquals("26776a0cc9a8a34badc67cca03828cd4", hash(file(5_000_000)))
+    }
+
+    /** A download: skips nothing, so every byte up to a sample has to be read. */
+    private fun download(data: ByteArray) = object : FilterInputStream(ByteArrayInputStream(data)) {
+        var bytesRead = 0
+        override fun skip(n: Long): Long = 0
+        override fun read(): Int = super.read().also { if (it >= 0) bytesRead++ }
+        override fun read(b: ByteArray, off: Int, len: Int): Int =
+            super.read(b, off, minOf(len, 300)).also { if (it > 0) bytesRead += it }
+    }
+
+    @Test
+    fun `a streamed file hashes the same, with or without its size`() {
+        listOf(500, 70_000, 5_000_000).forEach { size ->
+            val data = file(size)
+            assertEquals(hash(data), runBlocking { KoreaderHash.compute(download(data), size.toLong()) })
+            assertEquals(hash(data), runBlocking { KoreaderHash.compute(download(data), null) })
+        }
+    }
+
+    @Test
+    fun `a stream is read only up to the last sample`() {
+        val data = file(5_000_000)
+        val stream = download(data)
+        runBlocking { KoreaderHash.compute(stream, data.size.toLong()) }
+        // The last sample before 5 MB starts at 4 MiB.
+        assertEquals((4L shl 20) + 1024, stream.bytesRead.toLong())
     }
 
     @Test

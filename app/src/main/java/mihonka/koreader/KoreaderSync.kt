@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonObject
 import logcat.LogPriority
 import mihonka.bookorbit.BookOrbitKoreaderDocuments
 import mihonka.kavita.KavitaKoreaderDocuments
+import mihonka.komga.KomgaKoreaderDocuments
 import mihonka.sync.ProgressSyncPreferences
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
@@ -61,6 +62,7 @@ class KoreaderSync(
     private val api: KoreaderApi,
     kavitaDocuments: KavitaKoreaderDocuments,
     bookOrbitDocuments: BookOrbitKoreaderDocuments,
+    komgaDocuments: KomgaKoreaderDocuments,
     localDocuments: LocalKoreaderDocuments,
     private val json: Json,
     private val getChaptersByMangaId: GetChaptersByMangaId,
@@ -69,7 +71,7 @@ class KoreaderSync(
 ) {
 
     private val providers: Map<Long, KoreaderDocumentProvider> =
-        listOf(kavitaDocuments, bookOrbitDocuments, localDocuments).associateBy { it.sourceId }
+        listOf(kavitaDocuments, bookOrbitDocuments, komgaDocuments, localDocuments).associateBy { it.sourceId }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pendingMutex = Mutex()

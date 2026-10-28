@@ -22,6 +22,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import mihonka.koreader.KoreaderHash
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
@@ -29,6 +30,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import tachiyomi.core.common.util.lang.withIOContext
 import java.io.IOException
 
 /**
@@ -138,6 +140,17 @@ class KomgaApi(
         val body = json.encodeToString(update).toRequestBody(jsonMime)
         val request = Request.Builder().url("${apiUrl()}/v1/books/$bookId/read-progress").patch(body).build()
         client.newCall(request).awaitSuccess().close()
+    }
+
+    /**
+     * KOReader's hash of a book's file. Komga only sends whole files, so this downloads the book
+     * up to the last sample KOReader takes (most of the file) and keeps none of it.
+     */
+    suspend fun koreaderHash(bookId: String): String = withIOContext {
+        client.newCall(GET("${apiUrl()}/v1/books/$bookId/file")).awaitSuccess().use { response ->
+            val size = response.body.contentLength().takeIf { it >= 0 }
+            KoreaderHash.compute(response.body.byteStream(), size)
+        }
     }
 
     fun seriesThumbnailUrl(seriesId: String): String = "${apiUrl()}/v1/series/$seriesId/thumbnail"
