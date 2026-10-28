@@ -7,13 +7,17 @@ and is installed by sideloading.
 This file is the hand-off point: a fresh session on the Mac should be able to start from here
 with no other context. Work through the [milestones](#milestones) in order.
 
+> **Part 2:** [PLAN-2.md](PLAN-2.md) continues from milestone 10: a download indicator,
+> BookOrbit, KOReader sync and Android's Sync settings, Android's other settings where they fit,
+> and Tachiyomi extensions through an embedded JVM. Where the two disagree, part 2 wins.
+
 ## Decisions already made
 
 | Decision | Choice | Why |
 |---|---|---|
 | Technology | **Native Swift + SwiftUI** (UIKit only where SwiftUI falls short, e.g. the zooming reader) | Native reader feel and iPad behaviour. Mihon's reader is Android views, so it would be rewritten anyway |
 | Location | **`ios/` in this repo** | The Android Kavita code stays next to it as the reference implementation |
-| Sources | **Kavita only.** No Tachiyomi extensions, no extension runtime | Not needed. Kavita is the only thing this app talks to |
+| Sources | **Kavita only.** No Tachiyomi extensions, no extension runtime | Not needed. Kavita is the only thing this app talks to. *Superseded by [part 2](PLAN-2.md#decisions): Kavita, BookOrbit and extensions* |
 | Code sharing | **None.** Kavita logic is *ported* to Swift, with its tests | Only ~1,250 lines would be shareable; a Kotlin Multiplatform refactor of the Android app costs more than porting |
 | Cross-device sync | **Through Kavita** | The Android and iOS apps both sync progress with Kavita, so they never need to talk to each other |
 | Distribution | **Sideload** (SideStore/AltStore, or Xcode straight to the device) | No App Store |
