@@ -6,6 +6,7 @@ import dev.zacsweers.metro.SingleIn
 import kotlinx.serialization.json.JsonObject
 import mihonka.bookorbit.BookOrbitSync
 import mihonka.kavita.KavitaSync
+import mihonka.komga.KomgaSync
 import mihonka.koreader.KoreaderSync
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.manga.model.Manga
@@ -21,12 +22,15 @@ class ProgressSync(
     private val kavitaSync: KavitaSync,
     private val koreaderSync: KoreaderSync,
     private val bookOrbitSync: BookOrbitSync,
+    private val komgaSync: KomgaSync,
 ) {
 
-    fun isEnabled(): Boolean = kavitaSync.isEnabled() || koreaderSync.isEnabled() || bookOrbitSync.isEnabled()
+    fun isEnabled(): Boolean =
+        kavitaSync.isEnabled() || koreaderSync.isEnabled() || bookOrbitSync.isEnabled() || komgaSync.isEnabled()
 
     fun isEnabledFor(manga: Manga): Boolean =
-        kavitaSync.isEnabledFor(manga) || koreaderSync.isEnabledFor(manga) || bookOrbitSync.isEnabledFor(manga)
+        kavitaSync.isEnabledFor(manga) || koreaderSync.isEnabledFor(manga) ||
+            bookOrbitSync.isEnabledFor(manga) || komgaSync.isEnabledFor(manga)
 
     fun onPageChanged(
         manga: Manga,
@@ -39,12 +43,14 @@ class ProgressSync(
         kavitaSync.onPageChanged(manga, chapterUrl, chapterMemo, pageIndex, pageCount, chapterRead)
         koreaderSync.onPageChanged(manga, chapterUrl, chapterMemo, pageIndex, pageCount, chapterRead)
         bookOrbitSync.onPageChanged(manga, chapterUrl, pageIndex, pageCount, chapterRead)
+        komgaSync.onPageChanged(manga, chapterUrl, pageIndex, pageCount, chapterRead)
     }
 
     fun onReadStatusChanged(manga: Manga, chapters: List<Chapter>, read: Boolean) {
         kavitaSync.onReadStatusChanged(manga, chapters, read)
         koreaderSync.onReadStatusChanged(manga, chapters, read)
         bookOrbitSync.onReadStatusChanged(manga, chapters, read)
+        komgaSync.onReadStatusChanged(manga, chapters, read)
     }
 
     /**
@@ -56,5 +62,6 @@ class ProgressSync(
         kavitaSync.syncManga(manga)
         koreaderSync.syncManga(manga, chapterIds)
         bookOrbitSync.syncManga(manga)
+        komgaSync.syncManga(manga)
     }
 }

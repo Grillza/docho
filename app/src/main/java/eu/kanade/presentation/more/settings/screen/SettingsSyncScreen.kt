@@ -23,6 +23,7 @@ object SettingsSyncScreen : SearchableSettings {
             getModeGroup(),
             KavitaSettingsGroup.getGroup(),
             BookOrbitSettingsGroup.getGroup(),
+            KomgaSettingsGroup.getGroup(),
             KoreaderSettingsGroup.getGroup(),
         )
     }

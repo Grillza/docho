@@ -53,6 +53,10 @@ import mihonka.kavita.KavitaApi
 import mihonka.kavita.KavitaPreferences
 import mihonka.kavita.KavitaSource
 import mihonka.kavita.KavitaSync
+import mihonka.komga.KomgaApi
+import mihonka.komga.KomgaPreferences
+import mihonka.komga.KomgaSource
+import mihonka.komga.KomgaSync
 import mihonka.koreader.KoreaderApi
 import mihonka.koreader.KoreaderPreferences
 import mihonka.koreader.KoreaderSync
@@ -151,6 +155,11 @@ interface AppGraph : ViewModelGraph {
     val bookOrbitApi: BookOrbitApi
     val bookOrbitSource: BookOrbitSource
     val bookOrbitSync: BookOrbitSync
+
+    val komgaPreferences: KomgaPreferences
+    val komgaApi: KomgaApi
+    val komgaSource: KomgaSource
+    val komgaSync: KomgaSync
 
     @DependencyGraph.Factory
     fun interface Factory {

@@ -23,6 +23,8 @@ import mihonka.bookorbit.BookOrbitPreferences
 import mihonka.bookorbit.BookOrbitSource
 import mihonka.kavita.KavitaPreferences
 import mihonka.kavita.KavitaSource
+import mihonka.komga.KomgaPreferences
+import mihonka.komga.KomgaSource
 import tachiyomi.domain.source.model.StubSource
 import tachiyomi.domain.source.repository.StubSourceRepository
 import tachiyomi.domain.source.service.SourceManager
@@ -40,6 +42,8 @@ class AndroidSourceManager(
     private val kavitaPreferences: KavitaPreferences,
     private val bookOrbitSource: BookOrbitSource,
     private val bookOrbitPreferences: BookOrbitPreferences,
+    private val komgaSource: KomgaSource,
+    private val komgaPreferences: KomgaPreferences,
     private val downloadManager: Lazy<DownloadManager>,
 ) : SourceManager {
 
@@ -58,8 +62,8 @@ class AndroidSourceManager(
 
     init {
         scope.launch {
-            // Kavita and BookOrbit are built in; each is offered as a source only while a server
-            // is configured.
+            // Kavita, BookOrbit and Komga are built in; each is offered as a source only while a
+            // server is configured.
             val kavitaConfigured = combine(
                 kavitaPreferences.serverUrl.changes(),
                 kavitaPreferences.apiKey.changes(),
@@ -71,9 +75,16 @@ class AndroidSourceManager(
                 bookOrbitPreferences.password.changes(),
             ) { _, _, _ -> bookOrbitPreferences.isConfigured() }
                 .distinctUntilChanged()
+            val komgaConfigured = combine(
+                komgaPreferences.serverUrl.changes(),
+                komgaPreferences.apiKey.changes(),
+            ) { _, _ -> komgaPreferences.isConfigured() }
+                .distinctUntilChanged()
+            val builtInsConfigured = combine(kavitaConfigured, bookOrbitConfigured, komgaConfigured, ::Triple)
 
-            combine(extensionManager.loadedExtensionsFlow, kavitaConfigured, bookOrbitConfigured, ::Triple)
-                .collectLatest { (extensions, kavitaEnabled, bookOrbitEnabled) ->
+            combine(extensionManager.loadedExtensionsFlow, builtInsConfigured, ::Pair)
+                .collectLatest { (extensions, builtIns) ->
+                    val (kavitaEnabled, bookOrbitEnabled, komgaEnabled) = builtIns
                     val mutableMap = ConcurrentHashMap<Long, Source>(
                         mapOf(LocalSource.ID to localSource),
                     )
@@ -86,6 +97,11 @@ class AndroidSourceManager(
                     if (bookOrbitEnabled) {
                         mutableMap[BookOrbitSource.ID] = bookOrbitSource
                         bookOrbitSource.refreshLibraries()
+                    }
+                    registerStubSource(StubSource.from(komgaSource))
+                    if (komgaEnabled) {
+                        mutableMap[KomgaSource.ID] = komgaSource
+                        komgaSource.refreshLibraries()
                     }
                     extensions.forEach { extension ->
                         extension.sources.forEach {

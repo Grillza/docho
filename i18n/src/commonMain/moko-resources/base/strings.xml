@@ -1136,7 +1136,7 @@
 
     <!-- Mihonka: Sync settings -->
     <string name="pref_category_sync">Sync</string>
-    <string name="pref_sync_summary">Kavita, BookOrbit, KOReader sync and where reading progress goes</string>
+    <string name="pref_sync_summary">Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes</string>
     <string name="pref_progress_sync">Reading progress</string>
     <string name="pref_progress_sync_mode">Sync progress with</string>
     <string name="pref_progress_sync_mode_source">Default - Sync with source</string>
@@ -1154,6 +1154,19 @@
     <string name="pref_bookorbit_sync_now_summary">Reconciles progress for every BookOrbit series in your library</string>
     <string name="bookorbit_sync_running">Syncing with BookOrbit…</string>
     <string name="bookorbit_sync_done">Synced %1$d BookOrbit series</string>
+
+    <!-- Mihonka: Komga -->
+    <string name="pref_category_komga" translatable="false">Komga</string>
+    <string name="pref_komga_server_url_hint">The address you open Komga at, e.g. http://komga.lan:25600</string>
+    <string name="pref_komga_api_key_summary">Create one in Komga: your account settings, under API Keys</string>
+    <string name="komga_not_configured">Enter the server address and API key first</string>
+    <string name="komga_test_success">Connected to Komga as %1$s</string>
+    <string name="pref_komga_browse">Browse Komga</string>
+    <string name="pref_komga_browse_summary">Your Komga series also appear under Browse → Sources. Comic archives and PDFs can be read; text-only EPUBs are left out.</string>
+    <string name="pref_komga_sync_progress_summary">Sends every page you read to Komga and picks up the page reached in its reader or on other devices. The side that has read further wins. Not synced while progress goes to KOReader.</string>
+    <string name="pref_komga_sync_now_summary">Reconciles progress for every Komga series in your library</string>
+    <string name="komga_sync_running">Syncing with Komga…</string>
+    <string name="komga_sync_done">Synced %1$d Komga series</string>
 
     <!-- Mihonka: KOReader sync -->
     <string name="pref_category_koreader">KOReader sync</string>
