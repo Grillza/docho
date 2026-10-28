@@ -37,6 +37,15 @@
     <string name="label_extension_info">Extension info</string>
     <string name="label_help">Help</string>
     <string name="label_support_us">Support Us</string>
+    <string name="label_acknowledgements">Acknowledgements</string>
+    <string name="acknowledgements_intro">Mihonka is built on the work of these open source projects. Tap one to open its source code.</string>
+    <string name="acknowledgements_built_on">Built on</string>
+    <string name="acknowledgements_servers">Servers and sync</string>
+    <string name="acknowledgements_libraries">Libraries</string>
+    <string name="acknowledgements_icons">Icons</string>
+    <string name="acknowledgements_tools">Tools</string>
+    <string name="acknowledgements_all_licenses">All open source licences</string>
+    <string name="acknowledgements_all_licenses_summary">Every library in this build, with its licence</string>
     <string name="label_default">Default</string>
     <string name="label_warning">Warning</string>
     <string name="label_auto">Auto</string>

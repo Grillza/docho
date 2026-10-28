@@ -40,7 +40,7 @@ fun MoreScreen(
     onClickStats: () -> Unit,
     onClickDataAndStorage: () -> Unit,
     onClickSettings: () -> Unit,
-    onClickSupport: () -> Unit,
+    onClickAcknowledgements: () -> Unit,
     onClickAbout: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -135,9 +135,9 @@ fun MoreScreen(
             }
             item {
                 TextPreferenceWidget(
-                    title = stringResource(MR.strings.label_support_us),
+                    title = stringResource(MR.strings.label_acknowledgements),
                     icon = MaterialSymbols.Rounded.VolunteerActivism,
-                    onPreferenceClick = onClickSupport,
+                    onPreferenceClick = onClickAcknowledgements,
                 )
             }
             item {
