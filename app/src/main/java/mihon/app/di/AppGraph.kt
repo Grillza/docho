@@ -45,10 +45,18 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import mihon.core.metro.IsDebugBuild
 import mihon.domain.extension.interactor.GetExtensionStoreCountAsFlow
 import mihon.domain.extension.repository.ExtensionStoreRepository
+import mihonka.bookorbit.BookOrbitApi
+import mihonka.bookorbit.BookOrbitPreferences
+import mihonka.bookorbit.BookOrbitSource
+import mihonka.bookorbit.BookOrbitSync
 import mihonka.kavita.KavitaApi
 import mihonka.kavita.KavitaPreferences
 import mihonka.kavita.KavitaSource
 import mihonka.kavita.KavitaSync
+import mihonka.koreader.KoreaderApi
+import mihonka.koreader.KoreaderPreferences
+import mihonka.koreader.KoreaderSync
+import mihonka.sync.ProgressSyncPreferences
 import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.category.interactor.GetCategories
@@ -133,6 +141,16 @@ interface AppGraph : ViewModelGraph {
     val kavitaApi: KavitaApi
     val kavitaSource: KavitaSource
     val kavitaSync: KavitaSync
+
+    val koreaderPreferences: KoreaderPreferences
+    val koreaderApi: KoreaderApi
+    val koreaderSync: KoreaderSync
+    val progressSyncPreferences: ProgressSyncPreferences
+
+    val bookOrbitPreferences: BookOrbitPreferences
+    val bookOrbitApi: BookOrbitApi
+    val bookOrbitSource: BookOrbitSource
+    val bookOrbitSync: BookOrbitSync
 
     @DependencyGraph.Factory
     fun interface Factory {

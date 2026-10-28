@@ -70,7 +70,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import logcat.LogPriority
-import mihonka.kavita.KavitaSync
+import mihonka.sync.ProgressSync
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -123,7 +123,7 @@ class ReaderViewModel(
     private val coverCache: CoverCache,
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
-    private val kavitaSync: KavitaSync,
+    private val progressSync: ProgressSync,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -333,9 +333,10 @@ class ReaderViewModel(
                 val manga = getManga.await(mangaId) ?: error("Requested manga of id $mangaId not found")
                 val source = sourceManager.getOrStub(manga.source)
                 incognitoMode = getIncognitoState.await(manga.source)
-                if (!incognitoMode && kavitaSync.isEnabledFor(manga)) {
+                if (!incognitoMode && progressSync.isEnabledFor(manga)) {
                     // Pick up the page reached on another device before the chapter list is read.
-                    withTimeoutOrNull(KAVITA_PULL_TIMEOUT) { kavitaSync.syncManga(manga) }
+                    val openingChapterId = if (chapterId == -1L) initialChapterId else chapterId
+                    withTimeoutOrNull(PROGRESS_PULL_TIMEOUT) { progressSync.syncManga(manga, setOf(openingChapterId)) }
                 }
                 mutableState.update { it.copy(manga = manga, source = source) }
                 if (chapterId == -1L) chapterId = initialChapterId
@@ -604,7 +605,7 @@ class ReaderViewModel(
             )
 
             manga?.let { manga ->
-                kavitaSync.onPageChanged(
+                progressSync.onPageChanged(
                     manga = manga,
                     chapterUrl = readerChapter.chapter.url,
                     chapterMemo = readerChapter.chapter.memo,
@@ -1044,5 +1045,5 @@ class ReaderViewModel(
     }
 }
 
-/** How long opening the reader waits for Kavita before going ahead with local progress. */
-private const val KAVITA_PULL_TIMEOUT = 4_000L
+/** How long opening the reader waits for the sync server before going ahead with local progress. */
+private const val PROGRESS_PULL_TIMEOUT = 4_000L

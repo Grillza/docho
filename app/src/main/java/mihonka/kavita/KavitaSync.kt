@@ -19,6 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import logcat.LogPriority
 import mihonka.kavita.KavitaSource.Companion.memoInt
+import mihonka.sync.ProgressSyncPreferences
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.interactor.UpdateChapter
@@ -57,6 +58,7 @@ class KavitaSync(
     private val getChaptersByMangaId: GetChaptersByMangaId,
     private val updateChapter: UpdateChapter,
     private val getFavorites: GetFavorites,
+    private val syncPreferences: ProgressSyncPreferences,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -65,7 +67,9 @@ class KavitaSync(
 
     fun isEnabled(): Boolean = preferences.syncProgress.get() && preferences.isConfigured()
 
-    fun isEnabledFor(manga: Manga): Boolean = manga.source == KavitaSource.ID && isEnabled()
+    /** While progress goes to a KOReader server, [mihonka.koreader.KoreaderSync] does it instead. */
+    fun isEnabledFor(manga: Manga): Boolean =
+        manga.source == KavitaSource.ID && isEnabled() && !syncPreferences.usesKoreader()
 
     /** Called by the reader on every page change; the latest page per chapter is sent after a short pause. */
     fun onPageChanged(
@@ -195,7 +199,7 @@ class KavitaSync(
     /** Reconciles every Kavita manga in the library. Returns how many were synced. */
     suspend fun syncLibrary(): Int {
         if (!isEnabled()) return 0
-        val mangas = getFavorites.await().filter { it.source == KavitaSource.ID }
+        val mangas = getFavorites.await().filter { isEnabledFor(it) }
         mangas.forEach { syncManga(it) }
         flushPending()
         return mangas.size

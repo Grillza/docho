@@ -203,10 +203,10 @@ object SettingsMainScreen : Screen() {
             screen = SettingsTrackingScreen,
         ),
         Item(
-            titleRes = MR.strings.pref_category_kavita,
-            subtitleRes = MR.strings.pref_kavita_summary,
+            titleRes = MR.strings.pref_category_sync,
+            subtitleRes = MR.strings.pref_sync_summary,
             icon = MaterialSymbols.Rounded.Dns,
-            screen = SettingsKavitaScreen,
+            screen = SettingsSyncScreen,
         ),
         Item(
             titleRes = MR.strings.browse,

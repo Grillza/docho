@@ -14,8 +14,8 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import mihonka.kavita.KavitaSource
-import mihonka.kavita.KavitaSync
+import mihonka.BuiltInSources
+import mihonka.sync.ProgressSync
 import tachiyomi.data.chapter.ChapterSanitizer
 import tachiyomi.domain.chapter.interactor.ShouldUpdateDbChapter
 import tachiyomi.domain.chapter.model.Chapter
@@ -39,7 +39,7 @@ class SyncChaptersWithSource(
     private val updateManga: UpdateManga,
     private val getExcludedScanlators: GetExcludedScanlators,
     private val libraryPreferences: LibraryPreferences,
-    private val kavitaSync: KavitaSync,
+    private val progressSync: ProgressSync,
 ) {
 
     /**
@@ -59,7 +59,7 @@ class SyncChaptersWithSource(
     ): List<Chapter> {
         val newChapters = syncChapters(rawSourceChapters, manga, source, manualFetch, fetchWindow)
         // Kavita's chapter list carries the reading progress too, so reconcile it now.
-        kavitaSync.syncManga(manga)
+        progressSync.syncManga(manga)
         return newChapters
     }
 
@@ -112,8 +112,8 @@ class SyncChaptersWithSource(
             if (!sourceUrls.add(chapter.url)) continue
 
             // Recognize chapter number for the chapter.
-            // Kavita's numbers are exact, and its volumes and specials are negative on purpose.
-            val chapterNumber = if (source.id == KavitaSource.ID) {
+            // Built-in sources' numbers are exact; Kavita's volumes and specials are negative on purpose.
+            val chapterNumber = if (BuiltInSources.isBuiltIn(source.id)) {
                 chapter.chapterNumber
             } else {
                 ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapterNumber)

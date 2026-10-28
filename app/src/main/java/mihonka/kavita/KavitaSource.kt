@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -309,12 +310,14 @@ class KavitaSource(
                 put(MEMO_LIBRARY_ID, libraryId)
                 put(MEMO_VOLUME_ID, chapter.volumeId)
                 put(MEMO_PAGES, chapter.pages)
+                chapter.koreaderHash?.let { put(MEMO_KOREADER_HASH, it) }
             }
 
         const val MEMO_SERIES_ID = "kavitaSeriesId"
         const val MEMO_LIBRARY_ID = "kavitaLibraryId"
         const val MEMO_VOLUME_ID = "kavitaVolumeId"
         const val MEMO_PAGES = "kavitaPages"
+        const val MEMO_KOREADER_HASH = "koreaderHash"
 
         /**
          * Like Kavita, a whole-volume file is never compared with a chapter of the same number, so
@@ -328,6 +331,8 @@ class KavitaSource(
         fun specialChapterNumber(index: Int): Float = index - 200_000f
 
         fun JsonObject.memoInt(key: String): Int? = this[key]?.jsonPrimitive?.intOrNull
+
+        fun JsonObject.memoString(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull
 
         private fun KavitaVolumeDto.isLooseLeaf(): Boolean =
             volumeNumber == KavitaConstants.LOOSE_LEAF_VOLUME_NUMBER || (minNumber == null && volumeNumber == 0f)

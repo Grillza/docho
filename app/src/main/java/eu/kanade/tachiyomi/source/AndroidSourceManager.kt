@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import mihonka.bookorbit.BookOrbitPreferences
+import mihonka.bookorbit.BookOrbitSource
 import mihonka.kavita.KavitaPreferences
 import mihonka.kavita.KavitaSource
 import tachiyomi.domain.source.model.StubSource
@@ -36,6 +38,8 @@ class AndroidSourceManager(
     private val localSource: LocalSource,
     private val kavitaSource: KavitaSource,
     private val kavitaPreferences: KavitaPreferences,
+    private val bookOrbitSource: BookOrbitSource,
+    private val bookOrbitPreferences: BookOrbitPreferences,
     private val downloadManager: Lazy<DownloadManager>,
 ) : SourceManager {
 
@@ -54,18 +58,22 @@ class AndroidSourceManager(
 
     init {
         scope.launch {
-            // Kavita is built in; it is offered as a source only while a server is configured.
+            // Kavita and BookOrbit are built in; each is offered as a source only while a server
+            // is configured.
             val kavitaConfigured = combine(
                 kavitaPreferences.serverUrl.changes(),
                 kavitaPreferences.apiKey.changes(),
             ) { _, _ -> kavitaPreferences.isConfigured() }
                 .distinctUntilChanged()
+            val bookOrbitConfigured = combine(
+                bookOrbitPreferences.serverUrl.changes(),
+                bookOrbitPreferences.username.changes(),
+                bookOrbitPreferences.password.changes(),
+            ) { _, _, _ -> bookOrbitPreferences.isConfigured() }
+                .distinctUntilChanged()
 
-            combine(extensionManager.loadedExtensionsFlow, kavitaConfigured) { extensions, kavita ->
-                extensions to
-                    kavita
-            }
-                .collectLatest { (extensions, kavitaEnabled) ->
+            combine(extensionManager.loadedExtensionsFlow, kavitaConfigured, bookOrbitConfigured, ::Triple)
+                .collectLatest { (extensions, kavitaEnabled, bookOrbitEnabled) ->
                     val mutableMap = ConcurrentHashMap<Long, Source>(
                         mapOf(LocalSource.ID to localSource),
                     )
@@ -73,6 +81,11 @@ class AndroidSourceManager(
                     if (kavitaEnabled) {
                         mutableMap[KavitaSource.ID] = kavitaSource
                         kavitaSource.refreshLibraries()
+                    }
+                    registerStubSource(StubSource.from(bookOrbitSource))
+                    if (bookOrbitEnabled) {
+                        mutableMap[BookOrbitSource.ID] = bookOrbitSource
+                        bookOrbitSource.refreshLibraries()
                     }
                     extensions.forEach { extension ->
                         extension.sources.forEach {

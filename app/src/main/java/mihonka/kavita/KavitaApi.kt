@@ -157,6 +157,27 @@ class KavitaApi(
             .close()
     }
 
+    /**
+     * Reads part of a chapter's file through a ranged request to the download endpoint, so
+     * KOReader's partial MD5 can be computed without downloading the file. Only works for
+     * single-file chapters, which Kavita serves as is, and for accounts allowed to download.
+     */
+    suspend fun readFileRange(chapterId: Int, offset: Long, length: Int): KavitaFileRange {
+        val request = Request.Builder()
+            .url("${apiUrl()}/Download/chapter?chapterId=$chapterId")
+            .header("Range", "bytes=$offset-${offset + length - 1}")
+            .build()
+        return client.newCall(request).awaitSuccess().use { response ->
+            // A server that ignores the range would send the whole file.
+            if (response.code != 206) {
+                throw IOException("Kavita did not honour a ranged download (HTTP ${response.code})")
+            }
+            val totalSize = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+                ?: throw IOException("Kavita sent no file size")
+            KavitaFileRange(response.body.bytes(), totalSize)
+        }
+    }
+
     fun seriesCoverUrl(seriesId: Int): String = "${apiUrl()}/Image/series-cover?seriesId=$seriesId"
 
     fun pageImageUrl(chapterId: Int, page: Int): String =
@@ -257,6 +278,8 @@ class KavitaApi(
         }
     }
 }
+
+class KavitaFileRange(val data: ByteArray, val totalSize: Long)
 
 class KavitaNotConfiguredException : IOException("Kavita is not set up. Add your server in Settings → Kavita.")
 

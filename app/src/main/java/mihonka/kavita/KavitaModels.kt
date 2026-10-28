@@ -35,6 +35,7 @@ data class KavitaSeriesDto(
     val libraryName: String? = null,
 ) {
     companion object {
+        const val FORMAT_IMAGE = 0
         const val FORMAT_UNKNOWN = 2
         const val FORMAT_EPUB = 3
     }
@@ -93,11 +94,20 @@ data class KavitaChapterDto(
 ) {
     val chapterNumber: Float
         get() = minNumber ?: number?.replace(',', '.')?.toFloatOrNull() ?: KavitaConstants.DEFAULT_CHAPTER_NUMBER
+
+    /**
+     * The KOReader document hash, lowercased like KOReader sends it. Only a chapter made of a
+     * single file has one, since KOReader would see each file as a separate document.
+     */
+    val koreaderHash: String?
+        get() = files.singleOrNull()?.koreaderHash?.takeIf { it.isNotBlank() }?.lowercase()
 }
 
 @Serializable
 data class KavitaFileDto(
     val format: Int = KavitaSeriesDto.FORMAT_UNKNOWN,
+    /** KOReader's partial MD5 of the file. Kavita only computes it when it (re)scans a file. */
+    val koreaderHash: String? = null,
 )
 
 @Serializable

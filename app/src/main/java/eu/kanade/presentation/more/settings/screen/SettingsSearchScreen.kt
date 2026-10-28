@@ -294,7 +294,7 @@ private val settingScreens = listOf(
     SettingsBrowseScreen,
     SettingsDataScreen,
     SettingsSecurityScreen,
-    SettingsKavitaScreen,
+    SettingsSyncScreen,
     SettingsAdvancedScreen,
 )
 
