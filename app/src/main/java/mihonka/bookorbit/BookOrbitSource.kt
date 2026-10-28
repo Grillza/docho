@@ -15,9 +15,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import logcat.LogPriority
 import okhttp3.OkHttpClient
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.source.model.UnreadListingSource
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -32,7 +37,7 @@ import java.time.ZoneId
 @SingleIn(AppScope::class)
 class BookOrbitSource(
     private val api: BookOrbitApi,
-) : HttpSource() {
+) : HttpSource(), UnreadListingSource {
 
     override val id: Long = ID
 
@@ -74,6 +79,23 @@ class BookOrbitSource(
 
     override suspend fun getLatestUpdates(page: Int): MangasPage =
         browse(page, query = null, sort = SORT_LAST_ADDED, ascending = false, libraryId = null)
+
+    /**
+     * BookOrbit can only filter for series not started or in progress, not both at once, so
+     * the whole list is loaded newest first on the first page and the finished series dropped.
+     */
+    override suspend fun getUnreadManga(page: Int): MangasPage {
+        if (page > 1) return MangasPage(emptyList(), false)
+        val unread = mutableListOf<SManga>()
+        var serverPage = 0
+        while (true) {
+            val result = api.getSeriesPage(serverPage, null, SORT_LAST_ADDED, ascending = false, libraryId = null)
+            result.items.filter { it.readCount < it.bookCount }.mapTo(unread) { it.toSManga() }
+            serverPage++
+            if (result.items.isEmpty() || serverPage * BookOrbitApi.PAGE_SIZE >= result.total) break
+        }
+        return MangasPage(unread, false)
+    }
 
     override suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
         var libraryId: Int? = null
@@ -165,6 +187,9 @@ class BookOrbitSource(
                 name = chapterName(book.title, book.seriesIndex)
                 chapter_number = book.seriesIndex?.toFloatOrNull() ?: -1f
                 date_upload = parseDate(book.addedAt) ?: parseDate(book.publishedDate) ?: 0L
+                // BookOrbit names a book after its file unless metadata renames it, and its book
+                // list sends no file paths, so the title stands in for the file name.
+                book.title?.takeIf { it.isNotBlank() }?.let { memo = fileNameMemo(it) }
             }
         }
             // BookOrbit lists a series in reading order; Mihon wants the newest first.
@@ -240,6 +265,9 @@ class BookOrbitSource(
                 else -> cleanTitle ?: "Untitled"
             }
         }
+
+        private fun fileNameMemo(fileName: String): JsonObject =
+            buildJsonObject { put(Chapter.MEMO_FILE_NAME, fileName) }
 
         private fun parseDate(value: String?): Long? {
             if (value.isNullOrBlank()) return null

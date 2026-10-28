@@ -101,6 +101,10 @@ class SourceRepositoryImpl(
         return SourceLatestPagingSource({ sourceManager.getOrStub(sourceId) }, networkToLocalManga)
     }
 
+    override fun getUnread(sourceId: Long): SourcePagingSource {
+        return SourceUnreadPagingSource({ sourceManager.getOrStub(sourceId) }, networkToLocalManga)
+    }
+
     private fun mapSourceToDomainSource(source: Source): DomainSource = DomainSource(
         id = source.id,
         lang = source.lang,

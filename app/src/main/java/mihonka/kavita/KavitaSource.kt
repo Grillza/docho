@@ -26,6 +26,8 @@ import kotlinx.serialization.json.put
 import logcat.LogPriority
 import okhttp3.OkHttpClient
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.source.model.UnreadListingSource
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -40,7 +42,7 @@ import java.time.ZoneId
 @SingleIn(AppScope::class)
 class KavitaSource(
     private val api: KavitaApi,
-) : HttpSource() {
+) : HttpSource(), UnreadListingSource {
 
     override val id: Long = ID
 
@@ -88,6 +90,22 @@ class KavitaSource(
         browse(
             page,
             KavitaFilterDto(sortOptions = KavitaSortOptionsDto(KavitaConstants.SORT_LAST_CHAPTER_ADDED, false)),
+        )
+
+    /** Kavita's own "unread" filter: read progress below 100%. */
+    override suspend fun getUnreadManga(page: Int): MangasPage =
+        browse(
+            page,
+            KavitaFilterDto(
+                statements = listOf(
+                    KavitaFilterStatementDto(
+                        KavitaConstants.COMPARISON_NOT_EQUAL,
+                        KavitaConstants.FIELD_READ_PROGRESS,
+                        "100",
+                    ),
+                ),
+                sortOptions = KavitaSortOptionsDto(KavitaConstants.SORT_LAST_CHAPTER_ADDED, false),
+            ),
         )
 
     override suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
@@ -311,6 +329,7 @@ class KavitaSource(
                 put(MEMO_VOLUME_ID, chapter.volumeId)
                 put(MEMO_PAGES, chapter.pages)
                 chapter.koreaderHash?.let { put(MEMO_KOREADER_HASH, it) }
+                chapter.fileName?.let { put(Chapter.MEMO_FILE_NAME, it) }
             }
 
         const val MEMO_SERIES_ID = "kavitaSeriesId"

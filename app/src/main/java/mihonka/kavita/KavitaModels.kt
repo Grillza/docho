@@ -101,11 +101,18 @@ data class KavitaChapterDto(
      */
     val koreaderHash: String?
         get() = files.singleOrNull()?.koreaderHash?.takeIf { it.isNotBlank() }?.lowercase()
+
+    /** Name of the chapter's first file, without its folder. */
+    val fileName: String?
+        get() = files.mapNotNull { file -> file.filePath?.substringAfterLast('/')?.substringAfterLast('\\') }
+            .filter { it.isNotBlank() }
+            .minWithOrNull(String.CASE_INSENSITIVE_ORDER)
 }
 
 @Serializable
 data class KavitaFileDto(
     val format: Int = KavitaSeriesDto.FORMAT_UNKNOWN,
+    val filePath: String? = null,
     /** KOReader's partial MD5 of the file. Kavita only computes it when it (re)scans a file. */
     val koreaderHash: String? = null,
 )
@@ -166,11 +173,13 @@ object KavitaConstants {
     // FilterComparison
     const val COMPARISON_MATCHES = 7
     const val COMPARISON_NOT_CONTAINS = 8
+    const val COMPARISON_NOT_EQUAL = 9
     const val COMPARISON_CONTAINS = 5
 
     // SeriesFilterField
     const val FIELD_SERIES_NAME = 1
     const val FIELD_LIBRARIES = 19
+    const val FIELD_READ_PROGRESS = 20
     const val FIELD_FORMATS = 21
 
     // SeriesSortField

@@ -803,6 +803,7 @@
     <string name="sort_by_source">By source</string>
     <string name="sort_by_number">By chapter number</string>
     <string name="sort_by_upload_date">By upload date</string>
+    <string name="sort_by_file_name">By file name</string>
     <string name="manga_download">Download</string>
     <string name="download_unread">Unread</string>
     <string name="download_bookmarked">Bookmarked</string>

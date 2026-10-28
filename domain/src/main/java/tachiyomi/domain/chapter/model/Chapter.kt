@@ -1,6 +1,8 @@
 package tachiyomi.domain.chapter.model
 
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import mihon.core.common.extensions.EMPTY
 
 data class Chapter(
@@ -21,6 +23,10 @@ data class Chapter(
     val isRecognizedNumber: Boolean
         get() = chapterNumber >= 0f
 
+    /** The name of the file the source read this chapter from, or the chapter name if it gave none. */
+    val fileName: String
+        get() = memo[MEMO_FILE_NAME]?.jsonPrimitive?.contentOrNull ?: name
+
     fun copyFrom(other: Chapter): Chapter {
         return copy(
             name = other.name,
@@ -32,6 +38,9 @@ data class Chapter(
     }
 
     companion object {
+        /** Memo key a source can set to the chapter's file name, for sorting by file name. */
+        const val MEMO_FILE_NAME = "fileName"
+
         fun create() = Chapter(
             id = -1,
             mangaId = -1,

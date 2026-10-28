@@ -9,6 +9,7 @@ import mihon.domain.manga.model.toDomainManga
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.source.model.UnreadListingSource
 import tachiyomi.domain.source.repository.SourcePagingSource
 
 class SourceSearchPagingSource(
@@ -37,6 +38,16 @@ class SourceLatestPagingSource(
 ) : BaseSourcePagingSource(source, networkToLocalManga) {
     override suspend fun requestNextPage(source: Source, currentPage: Int): MangasPage {
         return source.getLatestUpdates(currentPage)
+    }
+}
+
+class SourceUnreadPagingSource(
+    source: suspend () -> Source,
+    networkToLocalManga: NetworkToLocalManga,
+) : BaseSourcePagingSource(source, networkToLocalManga) {
+    override suspend fun requestNextPage(source: Source, currentPage: Int): MangasPage {
+        return (source as? UnreadListingSource)?.getUnreadManga(currentPage)
+            ?: throw UnsupportedOperationException("${source.name} has no unread listing")
     }
 }
 

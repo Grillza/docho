@@ -52,11 +52,13 @@ import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.FilterList
 import mihon.icons.materialsymbols.rounded.NewReleases
+import mihon.icons.materialsymbols.rounded.RemoveDone
 import mihon.icons.materialsymbols.roundedfilled.Favorite
 import mihon.presentation.core.util.collectAsLazyPagingItems
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.source.model.StubSource
+import tachiyomi.domain.source.model.UnreadListingSource
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.padding
@@ -185,6 +187,26 @@ data class BrowseSourceScreen(
                                 },
                                 label = {
                                     Text(text = stringResource(MR.strings.latest))
+                                },
+                            )
+                        }
+                        if (source is UnreadListingSource) {
+                            FilterChip(
+                                selected = state.listing == Listing.Unread,
+                                onClick = {
+                                    viewModel.resetFilters()
+                                    viewModel.setListing(Listing.Unread)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = MaterialSymbols.Rounded.RemoveDone,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(FilterChipDefaults.IconSize),
+                                    )
+                                },
+                                label = {
+                                    Text(text = stringResource(MR.strings.unread))
                                 },
                             )
                         }

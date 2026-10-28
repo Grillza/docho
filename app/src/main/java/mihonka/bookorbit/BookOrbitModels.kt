@@ -45,6 +45,9 @@ data class BookOrbitSeriesDto(
     val name: String,
     val authors: List<String> = emptyList(),
     val coverBookIds: List<Int> = emptyList(),
+    val bookCount: Int = 0,
+    /** Books the user has marked read. */
+    val readCount: Int = 0,
 )
 
 @Serializable

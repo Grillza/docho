@@ -24,4 +24,6 @@ interface SourceRepository {
     fun getPopular(sourceId: Long): SourcePagingSource
 
     fun getLatest(sourceId: Long): SourcePagingSource
+
+    fun getUnread(sourceId: Long): SourcePagingSource
 }

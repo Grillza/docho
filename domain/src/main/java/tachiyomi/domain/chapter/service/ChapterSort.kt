@@ -1,5 +1,6 @@
 package tachiyomi.domain.chapter.service
 
+import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import tachiyomi.core.common.util.lang.compareToWithCollator
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.manga.model.Manga
@@ -27,6 +28,10 @@ fun getChapterSort(
         Manga.CHAPTER_SORTING_ALPHABET -> when (sortDescending) {
             true -> { c1, c2 -> c2.name.compareToWithCollator(c1.name) }
             false -> { c1, c2 -> c1.name.compareToWithCollator(c2.name) }
+        }
+        Manga.CHAPTER_SORTING_FILE_NAME -> when (sortDescending) {
+            true -> { c1, c2 -> c2.fileName.compareToCaseInsensitiveNaturalOrder(c1.fileName) }
+            false -> { c1, c2 -> c1.fileName.compareToCaseInsensitiveNaturalOrder(c2.fileName) }
         }
         else -> throw NotImplementedError("Invalid chapter sorting method: ${manga.sorting}")
     }
