@@ -108,7 +108,7 @@ class KoreaderApi(
     }
 
     companion object {
-        private val USER_AGENT = "Mihonka v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
+        private val USER_AGENT = "Doki v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
 
         /** Accepts a bare host or a URL with or without a trailing slash. */
         fun normalizeBaseUrl(input: String): String? {

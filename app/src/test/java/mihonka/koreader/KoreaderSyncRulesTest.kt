@@ -64,7 +64,7 @@ class KoreaderSyncRulesTest {
         val dto = queued(page = 5).toDto("DEVICE")
         assertEquals("5", dto.progress)
         assertEquals(0.25, dto.percentage)
-        assertEquals("Mihonka", dto.device)
+        assertEquals("Doki", dto.device)
 
         val unread = queued(page = 0).toDto("DEVICE")
         assertEquals("1", unread.progress)

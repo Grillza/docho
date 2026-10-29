@@ -329,7 +329,7 @@ class KoreaderSync(
     companion object {
         private const val PAGE_DEBOUNCE_MILLIS = 1_500L
         private const val PARALLEL_REQUESTS = 6
-        const val DEVICE_NAME = "Mihonka"
+        const val DEVICE_NAME = "Doki"
 
         /**
          * The server's position as a page number from 0 (not started) to [pages] (read). The page

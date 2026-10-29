@@ -254,8 +254,8 @@ class BookOrbitApi(
         const val PAGE_SIZE = 50
         private const val BOOKS_PAGE_SIZE = 100
         private const val API_PATH = "/api/v1"
-        private const val DEVICE_LABEL = "Mihonka"
-        private val USER_AGENT = "Mihonka v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
+        private const val DEVICE_LABEL = "Doki"
+        private val USER_AGENT = "Doki v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
 
         /** Accepts a bare host, a URL with or without a trailing slash, or one that already has `/api/…`. */
         fun normalizeApiUrl(input: String): String? {

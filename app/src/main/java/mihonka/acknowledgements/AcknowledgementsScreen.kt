@@ -29,7 +29,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import androidx.compose.foundation.layout.padding as paddingModifier
 
 /**
- * The projects Mihonka is made from, each with a link to its source. The full list of libraries
+ * The projects Dōki is made from, each with a link to its source. The full list of libraries
  * and their licences is one tap further, generated at build time.
  */
 class AcknowledgementsScreen : Screen() {
@@ -112,7 +112,7 @@ class AcknowledgementsScreen : Screen() {
             Section(
                 MR.strings.acknowledgements_built_on,
                 listOf(
-                    Project("Mihon", "The manga reader Mihonka is a fork of", "mihonapp/mihon"),
+                    Project("Mihon", "The manga reader Dōki is a fork of", "mihonapp/mihon"),
                     Project(
                         "Tachiyomi",
                         "The app Mihon carries on from; its repository is no longer online",
@@ -129,7 +129,7 @@ class AcknowledgementsScreen : Screen() {
                     Project("KOReader", "Its progress sync and the way it fingerprints books", "koreader/koreader"),
                     Project(
                         "KOReader sync server",
-                        "The sync protocol Mihonka speaks",
+                        "The sync protocol Dōki speaks",
                         "koreader/koreader-sync-server",
                     ),
                 ),
@@ -137,7 +137,7 @@ class AcknowledgementsScreen : Screen() {
             Section(
                 MR.strings.acknowledgements_libraries,
                 listOf(
-                    Project("Kotlin", "The language Mihonka is written in", "JetBrains/kotlin"),
+                    Project("Kotlin", "The language Dōki is written in", "JetBrains/kotlin"),
                     Project("kotlinx.coroutines", "Background work", "Kotlin/kotlinx.coroutines"),
                     Project("kotlinx.serialization", "Reading and writing JSON", "Kotlin/kotlinx.serialization"),
                     Project("kotlinx-datetime", "Dates and times", "Kotlin/kotlinx-datetime"),
@@ -215,7 +215,7 @@ class AcknowledgementsScreen : Screen() {
                     Project("MockK", "Test doubles", "mockk/mockk"),
                     Project("Kotest", "Test assertions", "kotest/kotest"),
                     Project("LeakCanary", "Finding memory leaks in debug builds", "square/leakcanary"),
-                    Project("Claude Code", "Helped write Mihonka's own features", "anthropics/claude-code"),
+                    Project("Claude Code", "Helped write Dōki's own features", "anthropics/claude-code"),
                 ),
             ),
         )

@@ -259,8 +259,8 @@ class KavitaApi(
 
     companion object {
         const val PAGE_SIZE = 30
-        private const val PLUGIN_NAME = "Mihonka"
-        private val USER_AGENT = "Mihonka v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
+        private const val PLUGIN_NAME = "Doki"
+        private val USER_AGENT = "Doki v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
 
         /**
          * Accepts what people paste: a bare host, a URL with or without a trailing slash, or a link
