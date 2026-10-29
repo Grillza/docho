@@ -38,10 +38,15 @@ object KoreaderSettingsGroup {
 
     @Composable
     fun getGroup(): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val graph = remember { context.appGraph }
         return serverGroup(
             title = stringResource(MR.strings.pref_category_koreader),
             logo = R.drawable.brand_koreader,
             items = getServerItems() + getSyncItems(),
+            onDelete = {
+                graph.koreaderPreferences.reset()
+            },
         )
     }
 

@@ -31,4 +31,9 @@ class KavitaPreferences(
     )
 
     fun isConfigured(): Boolean = serverUrl.get().isNotBlank() && apiKey.get().isNotBlank()
+
+    /** Erases this server's settings, sign-in and unsent progress; Delete in settings. */
+    fun reset() {
+        listOf(serverUrl, apiKey, syncProgress, pendingProgress).forEach { it.delete() }
+    }
 }

@@ -43,10 +43,15 @@ object KavitaSettingsGroup {
 
     @Composable
     fun getGroup(): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val graph = remember { context.appGraph }
         return serverGroup(
             title = stringResource(MR.strings.pref_category_kavita),
             logo = R.drawable.brand_kavita,
             items = getServerItems() + getSyncItems(),
+            onDelete = {
+                graph.kavitaPreferences.reset()
+            },
         )
     }
 

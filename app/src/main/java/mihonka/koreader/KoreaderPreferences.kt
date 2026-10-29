@@ -45,6 +45,14 @@ class KoreaderPreferences(
     fun isConfigured(): Boolean =
         serverUrl.get().isNotBlank() && username.get().isNotBlank() && password.get().isNotBlank()
 
+    /**
+     * Erases the server, sign-in and unsent progress; Delete in settings. The device id and the
+     * documents worked out from local files stay, as they belong to this install, not the server.
+     */
+    fun reset() {
+        listOf(serverUrl, username, password, pendingProgress).forEach { it.delete() }
+    }
+
     fun deviceId(): String = deviceId.get().ifBlank {
         UUID.randomUUID().toString().replace("-", "").uppercase().also { deviceId.set(it) }
     }

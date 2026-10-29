@@ -43,10 +43,16 @@ object BookOrbitSettingsGroup {
 
     @Composable
     fun getGroup(): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val graph = remember { context.appGraph }
         return serverGroup(
             title = stringResource(MR.strings.pref_category_bookorbit),
             logo = R.drawable.brand_bookorbit,
             items = getServerItems() + getSyncItems(),
+            onDelete = {
+                graph.bookOrbitApi.signOut()
+                graph.bookOrbitPreferences.reset()
+            },
         )
     }
 

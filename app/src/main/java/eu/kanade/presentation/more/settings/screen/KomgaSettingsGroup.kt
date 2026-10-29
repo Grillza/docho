@@ -43,10 +43,15 @@ object KomgaSettingsGroup {
 
     @Composable
     fun getGroup(): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val graph = remember { context.appGraph }
         return serverGroup(
             title = stringResource(MR.strings.pref_category_komga),
             logo = R.drawable.brand_komga,
             items = getServerItems() + getSyncItems(),
+            onDelete = {
+                graph.komgaPreferences.reset()
+            },
         )
     }
 

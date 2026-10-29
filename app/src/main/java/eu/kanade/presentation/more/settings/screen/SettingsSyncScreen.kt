@@ -140,19 +140,50 @@ object SettingsSyncScreen : SearchableSettings {
 
 /**
  * A server's section of [SettingsSyncScreen], folded to its [logo], [title] and connection status
- * (the item titled "Connection") until opened.
+ * (the item titled "Connection") until opened. It ends with Delete, which asks before calling
+ * [onDelete] to erase the section's settings.
  */
 @Composable
 internal fun serverGroup(
     title: String,
     @DrawableRes logo: Int,
     items: List<Preference.PreferenceItem<out Any, out Any>>,
+    onDelete: () -> Unit,
 ): Preference.PreferenceGroup {
     val connectionTitle = stringResource(MR.strings.pref_kavita_connection)
     val connection = items.firstOrNull { it.title == connectionTitle } as? Preference.PreferenceItem.TextPreference
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(text = stringResource(MR.strings.pref_server_delete_title, title)) },
+            text = { Text(text = stringResource(MR.strings.pref_server_delete_text, title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        confirmDelete = false
+                    },
+                ) {
+                    Text(text = stringResource(MR.strings.action_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(text = stringResource(MR.strings.action_cancel))
+                }
+            },
+        )
+    }
+
     return Preference.PreferenceGroup(
         title = title,
-        preferenceItems = items,
+        preferenceItems = items + Preference.PreferenceItem.TextPreference(
+            title = stringResource(MR.strings.action_delete),
+            subtitle = stringResource(MR.strings.pref_server_delete_summary, title),
+            onClick = { confirmDelete = true },
+        ),
         collapsible = true,
         icon = painterResource(logo),
         summary = connection?.subtitle,

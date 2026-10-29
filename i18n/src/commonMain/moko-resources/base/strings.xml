@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Mihonka</string>
+    <string name="app_name" translatable="false">Dōki</string>
 
     <!-- Generic strings -->
     <string name="on">On</string>
@@ -40,7 +40,19 @@
     <string name="label_acknowledgements">Acknowledgements</string>
     <string name="action_expanded">Expanded</string>
     <string name="action_collapsed">Collapsed</string>
-    <string name="acknowledgements_intro">Mihonka is built on the work of these open source projects. Tap one to open its source code.</string>
+    <string name="about_general_help">For general help: refer to Mihon troubleshooting page</string>
+    <string name="about_contact">Contact us</string>
+    <string name="about_contact_summary">For further help or app suggestions, email us at %1$s. Tap to copy the address.</string>
+    <string name="pref_server_delete_summary">Erase the %1$s settings on this device</string>
+    <string name="pref_server_delete_title">Delete %1$s settings?</string>
+    <string name="pref_server_delete_text">This erases the %1$s server address, sign-in details, sync options and any progress not yet sent. Nothing is deleted on the server, and your other settings stay as they are.</string>
+    <string name="pref_category_nav_bar">Navigation bar</string>
+    <string name="pref_nav_bar_info">Choose which tabs show in the navigation bar. Library and More always show, so you can always get around the app.</string>
+    <string name="pref_nav_bar_alignment">Tab position</string>
+    <string name="nav_bar_alignment_left">Left</string>
+    <string name="nav_bar_alignment_center">Centred</string>
+    <string name="nav_bar_alignment_right">Right</string>
+    <string name="acknowledgements_intro">Dōki is built on the work of these open source projects. Tap one to open its source code.</string>
     <string name="acknowledgements_built_on">Built on</string>
     <string name="acknowledgements_servers">Servers and sync</string>
     <string name="acknowledgements_libraries">Libraries</string>
@@ -210,7 +222,10 @@
     <string name="onboarding_permission_analytics">Allow analytics</string>
     <string name="onboarding_permission_analytics_description">Send anonymized usage data to improve app features.</string>
     <string name="onboarding_permission_action_grant">Grant</string>
-    <string name="onboarding_guides_new_user">New to %s? We recommend checking out the getting started guide.</string>
+    <string name="onboarding_permission_granted">Granted</string>
+    <string name="onboarding_guides_new_user">New to %s? It\'s built on Mihon, so it shares Mihon\'s getting started guide. We recommend checking it out.</string>
+    <string name="onboarding_guides_self_hosted">Reading from your own Kavita, BookOrbit or Komga server, or syncing with KOReader?</string>
+    <string name="onboarding_guides_self_hosted_action">Learn about setting up sync with self-hosted servers</string>
     <string name="onboarding_guides_returning_user">Reinstalling %s?</string>
 
     <!-- Preferences -->
@@ -222,7 +237,7 @@
     <string name="pref_category_downloads">Downloads</string>
     <string name="pref_category_tracking">Tracking</string>
     <string name="pref_category_advanced">Advanced</string>
-    <string name="pref_category_about">About</string>
+    <string name="pref_category_about">About and Help</string>
 
     <string name="pref_appearance_summary">Theme, date &amp; time format</string>
     <string name="pref_library_summary">Categories, global update, chapter swipe</string>
@@ -1146,7 +1161,7 @@
     <string name="kavita_sync_done">Synced %1$d Kavita series</string>
 
     <!-- Mihonka: Sync settings -->
-    <string name="pref_category_sync">Sync</string>
+    <string name="pref_category_sync">Sync / Self-hosted sources</string>
     <string name="pref_sync_summary">Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes</string>
     <string name="pref_progress_sync">Reading progress</string>
     <string name="pref_progress_sync_mode">Sync progress with</string>
@@ -1179,7 +1194,7 @@
     <string name="komga_sync_running">Syncing with Komga…</string>
     <string name="komga_sync_done">Synced %1$d Komga series</string>
     <string name="komga_koreader_notice_title">Komga and KOReader sync</string>
-    <string name="komga_koreader_notice_text">KOReader recognises a book by a fingerprint taken across its whole file. Komga can only send complete files, so to sync a Komga book with KOReader, Mihonka has to download the book once to work out its fingerprint. The download isn\'t kept, but large books can use a lot of data.\n\nYou can change this later under KOReader sync.</string>
+    <string name="komga_koreader_notice_text">KOReader recognises a book by a fingerprint taken across its whole file. Komga can only send complete files, so to sync a Komga book with KOReader, Dōki has to download the book once to work out its fingerprint. The download isn\'t kept, but large books can use a lot of data.\n\nYou can change this later under KOReader sync.</string>
     <string name="komga_koreader_notice_hide">Don\'t show this again</string>
     <string name="komga_koreader_notice_allow">I understand, sync Komga</string>
     <string name="komga_koreader_notice_deny">Don\'t sync Komga</string>

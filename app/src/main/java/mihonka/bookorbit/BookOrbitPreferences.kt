@@ -40,4 +40,9 @@ class BookOrbitPreferences(
 
     fun isConfigured(): Boolean =
         serverUrl.get().isNotBlank() && username.get().isNotBlank() && password.get().isNotBlank()
+
+    /** Erases this server's settings, sign-in and unsent progress; Delete in settings. */
+    fun reset() {
+        listOf(serverUrl, username, password, refreshToken, syncProgress, pendingProgress).forEach { it.delete() }
+    }
 }
