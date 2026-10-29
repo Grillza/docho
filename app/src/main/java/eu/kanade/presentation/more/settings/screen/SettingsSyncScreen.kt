@@ -1,5 +1,6 @@
 package eu.kanade.presentation.more.settings.screen
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import eu.kanade.presentation.more.settings.Preference
 import mihon.app.di.appGraph
@@ -134,4 +136,26 @@ object SettingsSyncScreen : SearchableSettings {
             },
         )
     }
+}
+
+/**
+ * A server's section of [SettingsSyncScreen], folded to its [logo], [title] and connection status
+ * (the item titled "Connection") until opened.
+ */
+@Composable
+internal fun serverGroup(
+    title: String,
+    @DrawableRes logo: Int,
+    items: List<Preference.PreferenceItem<out Any, out Any>>,
+): Preference.PreferenceGroup {
+    val connectionTitle = stringResource(MR.strings.pref_kavita_connection)
+    val connection = items.firstOrNull { it.title == connectionTitle } as? Preference.PreferenceItem.TextPreference
+    return Preference.PreferenceGroup(
+        title = title,
+        preferenceItems = items,
+        collapsible = true,
+        icon = painterResource(logo),
+        summary = connection?.subtitle,
+        summaryWidget = connection?.widget,
+    )
 }

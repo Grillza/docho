@@ -3,6 +3,7 @@ package eu.kanade.presentation.more.settings
 import androidx.annotation.IntRange
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import eu.kanade.tachiyomi.data.track.Tracker
 import tachiyomi.i18n.MR
@@ -179,10 +180,18 @@ sealed class Preference {
         }
     }
 
+    /**
+     * A titled run of [preferenceItems]. A [collapsible] group starts folded to a header showing
+     * [icon], [title] and, while folded, [summary] and [summaryWidget].
+     */
     data class PreferenceGroup(
         override val title: String,
         override val visible: Boolean = true,
 
         val preferenceItems: List<PreferenceItem<out Any, out Any>>,
+        val collapsible: Boolean = false,
+        val icon: Painter? = null,
+        val summary: String? = null,
+        val summaryWidget: @Composable (() -> Unit)? = null,
     ) : Preference()
 }

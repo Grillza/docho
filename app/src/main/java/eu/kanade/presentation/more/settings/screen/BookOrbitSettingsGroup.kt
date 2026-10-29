@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.more.settings.Preference
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.delay
@@ -42,9 +43,10 @@ object BookOrbitSettingsGroup {
 
     @Composable
     fun getGroup(): Preference.PreferenceGroup {
-        return Preference.PreferenceGroup(
+        return serverGroup(
             title = stringResource(MR.strings.pref_category_bookorbit),
-            preferenceItems = getServerItems() + getSyncItems(),
+            logo = R.drawable.brand_bookorbit,
+            items = getServerItems() + getSyncItems(),
         )
     }
 

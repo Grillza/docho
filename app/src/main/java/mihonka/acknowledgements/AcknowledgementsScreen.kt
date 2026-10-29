@@ -6,6 +6,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -13,7 +17,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.settings.screen.about.OpenSourceLicensesScreen
-import eu.kanade.presentation.more.settings.widget.PreferenceGroupHeader
+import eu.kanade.presentation.more.settings.widget.CollapsiblePreferenceGroupHeader
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.Screen
 import mihon.icons.materialsymbols.MaterialSymbols
@@ -34,6 +38,10 @@ class AcknowledgementsScreen : Screen() {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val uriHandler = LocalUriHandler.current
+        // Sections start folded to their names, so the list fits on a screen.
+        val expandedSections = rememberSaveable(
+            saver = listSaver(save = { it.toList() }, restore = { it.toMutableStateList() }),
+        ) { mutableStateListOf<String>() }
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -56,9 +64,17 @@ class AcknowledgementsScreen : Screen() {
                     )
                 }
                 SECTIONS.forEach { section ->
-                    item(key = section.title.resourceId) {
-                        PreferenceGroupHeader(title = stringResource(section.title))
+                    val key = section.title.resourceId.toString()
+                    val expanded = key in expandedSections
+                    item(key = key) {
+                        CollapsiblePreferenceGroupHeader(
+                            title = stringResource(section.title),
+                            expanded = expanded,
+                            onToggle = { if (expanded) expandedSections.remove(key) else expandedSections.add(key) },
+                            summary = section.projects.joinToString { it.name },
+                        )
                     }
+                    if (!expanded) return@forEach
                     items(section.projects, key = { it.url }) { project ->
                         TextPreferenceWidget(
                             title = project.name,
@@ -186,6 +202,7 @@ class AcknowledgementsScreen : Screen() {
                 listOf(
                     Project("Material Symbols", "Most of the app's icons", "google/material-design-icons"),
                     Project("Simple Icons", "Brand icons", "simple-icons/simple-icons"),
+                    Project("Lucide", "The orbit in BookOrbit's logo", "lucide-icons/lucide"),
                 ),
             ),
             Section(

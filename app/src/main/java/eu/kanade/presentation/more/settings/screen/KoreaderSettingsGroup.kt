@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.more.settings.Preference
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -37,9 +38,10 @@ object KoreaderSettingsGroup {
 
     @Composable
     fun getGroup(): Preference.PreferenceGroup {
-        return Preference.PreferenceGroup(
+        return serverGroup(
             title = stringResource(MR.strings.pref_category_koreader),
-            preferenceItems = getServerItems() + getSyncItems(),
+            logo = R.drawable.brand_koreader,
+            items = getServerItems() + getSyncItems(),
         )
     }
 

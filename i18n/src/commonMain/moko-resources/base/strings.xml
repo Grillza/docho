@@ -38,6 +38,8 @@
     <string name="label_help">Help</string>
     <string name="label_support_us">Support Us</string>
     <string name="label_acknowledgements">Acknowledgements</string>
+    <string name="action_expanded">Expanded</string>
+    <string name="action_collapsed">Collapsed</string>
     <string name="acknowledgements_intro">Mihonka is built on the work of these open source projects. Tap one to open its source code.</string>
     <string name="acknowledgements_built_on">Built on</string>
     <string name="acknowledgements_servers">Servers and sync</string>
