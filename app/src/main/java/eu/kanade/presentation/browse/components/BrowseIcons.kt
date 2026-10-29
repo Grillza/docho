@@ -31,6 +31,7 @@ import eu.kanade.tachiyomi.extension.util.ExtensionLoader
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Dangerous
 import mihon.icons.materialsymbols.rounded.Warning
+import mihonka.BuiltInSources
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.source.model.Source
 import tachiyomi.source.local.isLocal
@@ -45,8 +46,16 @@ fun SourceIcon(
     modifier: Modifier = Modifier,
 ) {
     val icon = produceState<ImageBitmap?>(initialValue = null, source.id) { value = source.icon() }.value
+    val builtInIcon = BuiltInSources.iconRes(source.id)
 
     when {
+        builtInIcon != null -> {
+            Image(
+                painter = painterResource(builtInIcon),
+                contentDescription = null,
+                modifier = modifier.then(defaultModifier).clip(MaterialTheme.shapes.small),
+            )
+        }
         source.isStub && icon == null -> {
             Image(
                 imageVector = MaterialSymbols.Rounded.Warning,
