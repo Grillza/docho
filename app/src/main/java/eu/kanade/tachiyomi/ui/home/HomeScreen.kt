@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -31,6 +33,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
+import eu.kanade.domain.ui.model.NavBarAlignment
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -50,6 +53,7 @@ import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
+import tachiyomi.presentation.core.util.collectAsState
 
 object HomeScreen : Screen() {
 
@@ -107,7 +111,7 @@ object HomeScreen : Screen() {
                     ),
                     navigationItemVerticalArrangement = Arrangement.Center,
                     navigationItems = {
-                        TABS.fastForEach { NavigationSuiteItem(it, navigationSuiteType) }
+                        NavigationItems(navigationSuiteType)
                     },
                 ) {
                     AnimatedContent(
@@ -160,6 +164,61 @@ object HomeScreen : Screen() {
                             navigator.push(DownloadQueueScreen)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * The tabs the user hasn't hidden. On the bottom bar they keep the width they have when all
+     * are shown, sitting left, centred or right as chosen.
+     */
+    @Composable
+    private fun NavigationItems(navigationSuiteType: NavigationSuiteType) {
+        val uiPreferences = LocalContext.current.appGraph.uiPreferences
+        val showUpdates by uiPreferences.showUpdatesTab.collectAsState()
+        val showHistory by uiPreferences.showHistoryTab.collectAsState()
+        val showBrowse by uiPreferences.showBrowseTab.collectAsState()
+        val alignment by uiPreferences.navBarAlignment.collectAsState()
+        val tabs = TABS.filter {
+            when (it) {
+                UpdatesTab -> showUpdates
+                HistoryTab -> showHistory
+                BrowseTab -> showBrowse
+                else -> true
+            }
+        }
+
+        if (navigationSuiteType != NavigationSuiteType.NavigationBar) {
+            tabs.fastForEach { NavigationSuiteItem(it, navigationSuiteType) }
+            return
+        }
+        // The bar spreads its items evenly, so give it one child that places the tabs itself.
+        // A plain Layout, since the bar asks its children for intrinsic sizes.
+        Layout(
+            content = { tabs.fastForEach { NavigationSuiteItem(it, navigationSuiteType) } },
+            modifier = Modifier.fillMaxWidth(),
+        ) { measurables, constraints ->
+            val tabWidth = if (constraints.hasBoundedWidth) {
+                constraints.maxWidth / TABS.size
+            } else {
+                measurables.maxOfOrNull { it.maxIntrinsicWidth(constraints.maxHeight) } ?: 0
+            }
+            val placeables = measurables.map {
+                it.measure(constraints.copy(minWidth = tabWidth, maxWidth = tabWidth, minHeight = 0))
+            }
+            val usedWidth = tabWidth * placeables.size
+            val width = if (constraints.hasBoundedWidth) constraints.maxWidth else usedWidth
+            val height = maxOf(constraints.minHeight, placeables.maxOfOrNull { it.height } ?: 0)
+            val startX = when (alignment) {
+                NavBarAlignment.START -> 0
+                NavBarAlignment.CENTER -> (width - usedWidth) / 2
+                NavBarAlignment.END -> width - usedWidth
+            }
+            layout(width, height) {
+                // placeRelative mirrors this for right-to-left languages.
+                placeables.forEachIndexed { i, placeable ->
+                    placeable.placeRelative(startX + i * tabWidth, (height - placeable.height) / 2)
                 }
             }
         }

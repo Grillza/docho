@@ -4,6 +4,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.domain.ui.model.AppTheme
+import eu.kanade.domain.ui.model.NavBarAlignment
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.tachiyomi.util.system.DeviceUtil
@@ -41,6 +42,18 @@ class UiPreferences(
     val tabletUiMode: Preference<TabletUiMode> = preferenceStore.getEnum("tablet_ui_mode", TabletUiMode.AUTOMATIC)
 
     val imagesInDescription: Preference<Boolean> = preferenceStore.getBoolean("pref_render_images_description", true)
+
+    // Library and More can't be hidden, so the app can always be navigated.
+    val showUpdatesTab: Preference<Boolean> = preferenceStore.getBoolean("nav_show_updates", true)
+
+    val showHistoryTab: Preference<Boolean> = preferenceStore.getBoolean("nav_show_history", true)
+
+    val showBrowseTab: Preference<Boolean> = preferenceStore.getBoolean("nav_show_browse", true)
+
+    val navBarAlignment: Preference<NavBarAlignment> = preferenceStore.getEnum(
+        "nav_bar_alignment",
+        NavBarAlignment.CENTER,
+    )
 
     companion object {
         fun dateFormat(format: String): DateTimeFormatter = when (format) {

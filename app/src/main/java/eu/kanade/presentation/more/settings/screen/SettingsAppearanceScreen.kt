@@ -11,6 +11,7 @@ import androidx.core.app.ActivityCompat
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.ui.UiPreferences
+import eu.kanade.domain.ui.model.NavBarAlignment
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
@@ -42,6 +43,43 @@ object SettingsAppearanceScreen : SearchableSettings {
         return listOf(
             getThemeGroup(uiPreferences = uiPreferences),
             getDisplayGroup(uiPreferences = uiPreferences),
+            getNavigationBarGroup(uiPreferences = uiPreferences),
+        )
+    }
+
+    @Composable
+    private fun getNavigationBarGroup(
+        uiPreferences: UiPreferences,
+    ): Preference.PreferenceGroup {
+        val showUpdates by uiPreferences.showUpdatesTab.collectAsState()
+        val showHistory by uiPreferences.showHistoryTab.collectAsState()
+        val showBrowse by uiPreferences.showBrowseTab.collectAsState()
+
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.pref_category_nav_bar),
+            preferenceItems = listOf(
+                Preference.PreferenceItem.InfoPreference(
+                    title = stringResource(MR.strings.pref_nav_bar_info),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.showUpdatesTab,
+                    title = stringResource(MR.strings.label_recent_updates),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.showHistoryTab,
+                    title = stringResource(MR.strings.label_recent_manga),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.showBrowseTab,
+                    title = stringResource(MR.strings.browse),
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = uiPreferences.navBarAlignment,
+                    entries = NavBarAlignment.entries.associateWith { stringResource(it.titleRes) },
+                    title = stringResource(MR.strings.pref_nav_bar_alignment),
+                    visible = !(showUpdates && showHistory && showBrowse),
+                ),
+            ),
         )
     }
 
