@@ -37,8 +37,8 @@ android {
     defaultConfig {
         applicationId = "io.github.grillza.docho"
 
-        versionCode = 41
-        versionName = "0.26.0"
+        versionCode = 42
+        versionName = "0.26.1"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
