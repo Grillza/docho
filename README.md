@@ -24,6 +24,9 @@ Dōchō is a fork of [Mihon](https://github.com/mihonapp/mihon), the free and op
 It keeps everything Mihon does, including extensions, trackers, backups and the reader, and adds
 built-in support for self-hosted libraries and progress sync. It follows Mihon's releases.
 
+> [!NOTE]
+> Dōchō's additions to Mihon were built with the help of AI, using [Claude](https://claude.ai) by Anthropic.
+
 ## What Dōchō adds
 
 ### Self-hosted servers, built in

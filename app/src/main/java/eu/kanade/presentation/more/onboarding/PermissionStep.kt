@@ -11,7 +11,7 @@ import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
@@ -29,7 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -184,12 +186,18 @@ internal class PermissionStep : OnboardingStep {
                     enabled = !granted,
                     onClick = onButtonClick,
                     colors = ButtonDefaults.outlinedButtonColors(disabledContentColor = GrantedColor),
-                    border = if (granted) BorderStroke(1.dp, GrantedColor) else ButtonDefaults.outlinedButtonBorder(),
+                    border = if (granted) null else ButtonDefaults.outlinedButtonBorder(),
                 ) {
-                    if (granted) {
-                        Text(stringResource(MR.strings.onboarding_permission_granted))
-                    } else {
-                        Text(stringResource(MR.strings.onboarding_permission_action_grant))
+                    // Both labels take up space so the button, and the text beside it, keep the same width
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(MR.strings.onboarding_permission_action_grant),
+                            modifier = Modifier.alpha(if (granted) 0f else 1f),
+                        )
+                        Text(
+                            text = stringResource(MR.strings.onboarding_permission_granted),
+                            modifier = Modifier.alpha(if (granted) 1f else 0f),
+                        )
                     }
                 }
             },
