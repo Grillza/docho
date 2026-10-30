@@ -38,7 +38,6 @@ struct M3ColorScheme: Sendable, Equatable {
     var surfaceContainerHighest: Color
     var isDark = false
 
-    // swiftlint:disable:next function_parameter_count
     init(
         primary: UInt32, onPrimary: UInt32, primaryContainer: UInt32, onPrimaryContainer: UInt32, inversePrimary: UInt32,
         secondary: UInt32, onSecondary: UInt32, secondaryContainer: UInt32, onSecondaryContainer: UInt32,

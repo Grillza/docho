@@ -24,7 +24,9 @@ with no other context. Work through the [milestones](#milestones) in order.
 
 ## Building and installing (README)
 
-Version 1 is complete (milestones 1–9). To build and install it:
+Version 1 (milestones 1–9) and part 2's milestones 10–15 are done: the app looks and works like
+the Android app and reads from Kavita, Komga and BookOrbit. See [PLAN-2.md](PLAN-2.md#progress-log)
+for what's in and what isn't (extensions). To build and install it:
 
 **Requirements:** a Mac with Xcode 27 or later, `brew install xcodegen swiftlint`, and an
 iPhone or iPad on iOS 18 or later. The main target is an iPad mini on iOS 27.
@@ -40,27 +42,41 @@ iPhone or iPad on iOS 18 or later. The main target is an iPad mini on iOS 27.
 **Or run it from Xcode:** `cd ios && xcodegen`, open `Docho.xcodeproj`, choose your Personal
 Team under Signing & Capabilities, plug the device in, and run. Developer Mode must be on.
 
-**First launch:** Settings → enter the Kavita server address (e.g. `https://kavita.example.com`
-or `192.168.1.10:5000`) and the API key from Kavita (your user settings → API Key / OPDS).
-The status shows "Connected to Kavita". Then Browse → Kavita, press and hold a cover to add a
-series to the Library, and tap it to read.
+**First launch:** More → Settings → Sync / Self-hosted sources. Open a server's section and
+enter its address and sign-in, as on Android:
 
-**Using it:**
+- **Kavita:** the address (e.g. `https://kavita.example.com` or `192.168.1.10:5000`) and the API
+  key from your Kavita user settings → API Key / OPDS.
+- **Komga:** the address (e.g. `http://komga.lan:25600`) and an API key from your Komga account
+  settings → API Keys.
+- **BookOrbit:** the address (e.g. `http://bookorbit.lan:3010`), username and password.
+- **KOReader sync** (optional): the sync server, username and password; then set "Sync progress
+  with" to KOReader.
 
-- **Reading:** tap the left or right third to turn pages (in reading direction), the middle for
-  the overlay. Double-tap or pinch to zoom. The overlay's menu picks the mode for the series
-  (left to right, right to left, webtoon) and, on iPad, two-page spreads in landscape. With a
-  keyboard, the arrow keys and space turn pages and Escape closes the reader.
-- **Progress** syncs with Kavita page by page, both ways, as on Android: the side that has read
-  further wins, except marks made by hand. Offline progress is queued (Settings shows how much)
-  and sent when the server is reachable again.
-- **Downloads:** the button on each chapter row, Select → Download, or the series' download
-  menu. Downloaded chapters open without a network. The Downloads tab shows the queue and
-  what's on the device.
+The section's status turns green ("Connected to …"). Then Browse → the server, tap a series and
+Add to library (or press and hold a cover), and Start or Resume to read.
+
+**Using it** (as on Android):
+
+- **Library, Updates, History, Browse, More:** a bottom bar on iPhone, a rail on iPad. Library
+  has categories, search, filters, sort and display options (More → Categories to make some).
+  Updates lists new chapters found by a library update (Library's ⋮ → Update library, or pull
+  down). Browse has Popular, Latest, Unread, search, filters, and global search.
+- **Reading:** tap zones turn pages (Settings → Reader picks the layout), the middle shows the
+  menu: the page slider, previous/next chapter, the reading mode (paged left to right, right to
+  left, vertical, long strip, long strip with gaps), bookmark, and on iPad, dual pages. Pinch or
+  double-tap to zoom. With a keyboard, the arrow keys and space turn pages and Escape closes.
+- **Progress** syncs page by page, both ways, with the series' server (or KOReader): the side
+  that has read further wins, except marks made by hand. Offline progress is queued (the Sync
+  page shows how much) and sent when the server is back.
+- **Downloads:** the button on each chapter row, select mode → Download, or the series' download
+  menu. A bar above the tabs shows progress with pause and cancel; on iOS 26 the system shows it
+  on the Lock Screen too. More → Download queue lists the queue and what's on the device.
 
 **Developing:** `ios/scripts/check.sh` generates the project, builds, runs all tests on the
-iPad mini simulator, and fails on warnings. Live tests against a Kavita server are described
-under [Working notes](#working-notes-for-the-session-doing-the-work).
+iPad mini simulator, and fails on warnings. `ios/scripts/test-servers.sh` starts Kavita and
+Komga in Docker with test comics and prints the variables that run the live tests against them.
+`ios/scripts/import-icons.py` and `generate-themes.py` copy the Android icons and colour themes.
 
 ## Scope
 

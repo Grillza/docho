@@ -33,6 +33,7 @@ These replace part 1's where they disagree. Part 1's "Kavita only, no extension 
 | Sync choice | **"Sync progress with: Default (each series with its source) or KOReader"**, app-wide, as on Android | Same behaviour on both apps against the same servers |
 | Download indicator | **An in-app download bar, plus the system's progress Live Activity through `BGContinuedProcessingTask` on iOS/iPadOS 26+.** No widget extension | iPadOS 26 shows a cancellable progress Live Activity for user-started tasks with no extra target. A widget extension would add an app ID, which counts against a free Apple ID's limits |
 | Source ids | **The Android ids:** Kavita `0x4B415649544131` ("KAVITA1"), BookOrbit `0x424F4F4B4F5242` ("BOOKORB"). Komga, which Android doesn't have yet, gets `0x4B4F4D47413031` ("KOMGA01"); Android uses the same id if it adds Komga. Extensions use the id their `Source` reports | Keeps the door open for backups shared between the apps |
+| Look | **The Android app's, drawn in SwiftUI:** Material 3 colours (Android's themes, generated), Material Symbols, Mihon's layouts. Not stock iOS or Liquid Glass | The user asked for the two apps to look the same (2026-10-30). System pieces stay where Material has no equivalent: menus, text fields, the share sheet |
 | Distribution | **Sideloaded with a free Apple ID for now; the App Store is the goal later.** Everything is built so it could pass review: see [App Store route](#app-store-route) | The JVM is an interpreter, so it needs no JIT entitlement either way |
 
 ## How Tachimanga runs extensions
@@ -492,4 +493,84 @@ iPad, and commit at the end of each.
 
 ## Progress log
 
-*(Add an entry per milestone, as in part 1.)*
+### 2026-10-30: the Android app on iOS (milestones 10–15, and the look)
+
+One pass instead of a commit per milestone, because the data model change (milestone 11) touches
+every screen, and the user asked for the iOS app to match the Android one at the same time.
+
+**Look.** The app is now drawn like Android's, not like a stock iOS app:
+
+- `Design/`: Material 3 colour roles (`M3ColorScheme`), Android's 14 themes generated from the
+  Kotlin sources by `scripts/generate-themes.py`, pure black, light/dark/system; the M3 type
+  scale; components (app bars, navigation bar and rail, preference rows, switches, chips, tabs,
+  dialogs, sheets, the kaomoji empty screen).
+- Icons: the Material Symbols, navigation icons (outlined and filled, taken from Android's
+  animated vectors), the wordmark and the server logos, imported as vector template images by
+  `scripts/import-icons.py`. The app icon is rebuilt from the new 同 launcher icon.
+- Mihon's structure: Library, Updates, History, Browse, More; a navigation rail on iPad; the
+  series screen with the cover backdrop, and the tablet layout (details beside chapters) from
+  840 pt; Mihon's reader menu, settings list and More screen.
+
+**Milestone 11 (sources and data model v5).** `Source/`: a `MangaSource` protocol shaped like
+Tachiyomi's `CatalogueSource` (popular, latest, unread, search with `SourceFilter`s, details,
+chapters, pages, image requests). Kavita, Komga and BookOrbit implement it with Android's URLs
+(`/library/{l}/series/{s}`, `/chapter/{c}`; `/series/{id}`, `/book/{id}`;
+`/book/{b}/file/{f}`) and memo keys, so backups could be shared later.
+- Migration v5 rebuilds `series` and `chapter` with AUTOINCREMENT, keeping every id (download
+  folders and queued progress stay valid), and adds `category`, `seriesCategory`, `history` and
+  `syncQueue`. Kavita's library table is `kavitaLibrary`. Tested by migrating a v4 database.
+- **Deliberate difference:** Kavita keeps its `pendingProgress` table (keyed by Kavita chapter
+  id); Komga, BookOrbit and KOReader share `syncQueue` (Android keeps each queue in a
+  preference). Chapters are stored in reading order, oldest first (Android stores newest first).
+- **Bug caught on the way:** SQLite didn't rewrite `chapter`'s reference to `series_v5` when the
+  table was renamed with foreign keys off; the new table names `series` from the start.
+
+**Milestone 10 (download indicator).** The download bar above the tabs (series - chapter, page
+x of y, "+n queued", pause/resume, cancel; tap for the queue); pause kept across launches (the
+page in flight finishes, no new ones start); local notifications for a finished queue (when the
+app isn't in front) and failed chapters, opening the series; and on iOS 26 a
+`BGContinuedProcessingTask` for downloads the user starts, cancel = pause. Registered in
+`didFinishLaunching` (registering later made the submit throw). Not yet seen on a device: the
+Live Activity itself (the simulator accepts the task).
+
+**Milestone 12 (Sync settings, BookOrbit).** Settings → Sync / Self-hosted sources with
+Android's wording: "Sync progress with", then folding sections per server (logo, name,
+connection status; fields, connection check 300 ms after editing, sync toggle, Sync library now,
+waiting to be sent / Send Now, Browse, Delete). BookOrbit signs in as a native client and keeps
+the refresh token in the Keychain. Not tried against a real BookOrbit server (stub tests only).
+
+**Milestone 13 (KOReader).** `KOReader/`: kosync client, partial MD5 (checked against an
+independent Python implementation), document providers for Kavita (memo hash, else hashed from
+ranged requests and cached), BookOrbit (its stored hash) and Komga (streamed download, only
+after "Match Komga books" / the notice when choosing KOReader). Not tried against a real
+KOReader server.
+
+**Milestone 14 (Komga).** Source and sync as specified. **Accepted** against Komga 1.x in
+Docker (`scripts/test-servers.sh`): a page read in the app reaches Komga, progress set in Komga
+comes down to the app, and marking unread in the app clears it in Komga
+(`LiveUITests.testReadsAKomgaBookAndSyncsProgressBothWays`).
+
+**Milestone 15 (settings and recent Android features).** Settings → Appearance (theme,
+pure black, navigation tabs, date format, relative times), Library (categories, default
+category, update on launch, background updates through `BGAppRefreshTask`, smart update, chapter
+swipe actions), Reader (default mode, background, fullscreen, keep screen on, page number, skip
+read, transitions, tap zones and invert per paged/long strip, double tap zoom, dual pages),
+Downloads (Wi-Fi only, concurrent pages, delete after reading/marking read, new chapters,
+download ahead), Browse (hide in library), Advanced (clear caches, reset viewer settings).
+Chapter sort (source, number, upload date, alphabet, file name in natural order) and filters;
+the Unread listing for all three servers. Also: Updates, History (search, delete), categories,
+library filters/sort/display/badges, continue reading, global search, statistics.
+
+**Tests.** 146 unit tests (stub servers for Kavita, Komga, BookOrbit, KOReader; the migration;
+downloads with pause; the bar's states; tap zones) and 4 live UI tests against Docker Kavita and
+Komga. Tests share `DochoTests/Support/TestApp.swift`, which isolates every server's settings.
+
+**Not done yet:**
+- **Extensions (milestones 16–19).** The user chose not to vendor oneechan-runtime for now
+  (2026-10-30). The `MangaSource` protocol is where an `ExtensionSource` would plug in.
+- From Android, not on iOS yet: the settings file export/import (encrypted), custom colour
+  themes, reordering the navigation tabs (hiding them works), backups, trackers, crop borders.
+- SwiftLint reports about 150 violations, mostly lines of 141–160 characters and some long
+  views; `check.sh` (which fails on compiler warnings) passes.
+- Not tried on a device: the reader's gestures, background downloads and refresh, the Live
+  Activity, cross-device sync with the Android app.

@@ -236,7 +236,7 @@ struct CoverImage: View {
             .overlay {
                 LazyImage(request: request.map { ImageRequest(urlRequest: $0) }) { state in
                     if let image = state.image {
-                        image.resizable().aspectRatio(contentMode: .fill)
+                        image.resizable().scaledToFill()
                     } else {
                         m3.surfaceContainerHighest
                     }

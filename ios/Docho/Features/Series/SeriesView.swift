@@ -185,7 +185,7 @@ struct SeriesView: View {
             ZStack(alignment: .bottom) {
                 // The cover, blurred and faded, behind the title, fading into the background.
                 LazyImage(request: cover.map { ImageRequest(urlRequest: $0) }) { state in
-                    if let image = state.image { image.resizable().aspectRatio(contentMode: .fill) } else { m3.surface }
+                    if let image = state.image { image.resizable().scaledToFill() } else { m3.surface }
                 }
                 .blur(radius: 4)
                 .opacity(0.2)
