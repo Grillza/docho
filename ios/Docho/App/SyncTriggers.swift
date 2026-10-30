@@ -13,14 +13,14 @@ final class SyncTriggers {
     private static let firstRetry: Duration = .seconds(60)
     private static let longestRetry: Duration = .seconds(30 * 60)
 
-    private let sync: KavitaSync
+    private let sync: ProgressSync
     private let monitor = NWPathMonitor()
     private var networkUp = true
     private var retryTask: Task<Void, Never>?
     private var backoff = SyncTriggers.firstRetry
     private var backgroundTask = UIBackgroundTaskIdentifier.invalid
 
-    init(sync: KavitaSync) {
+    init(sync: ProgressSync) {
         self.sync = sync
     }
 

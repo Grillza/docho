@@ -26,7 +26,7 @@ enum KavitaError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .notConfigured: "Kavita is not set up. Add your server in Settings."
+        case .notConfigured: "Kavita is not set up. Add your server in Settings → Sync."
         case .invalidServerAddress: "Invalid server address"
         case .authRejected: "Kavita rejected the API key."
         case .signInFailed(let status): "Kavita sign-in failed (HTTP \(status))"
@@ -156,6 +156,19 @@ actor KavitaClient {
         _ = try await send("POST", "/Reader/\(endpoint)", body: JSONEncoder().encode(body))
     }
 
+    /// Part of a chapter's file, for KOReader's hash of files Kavita has no hash for. Returns the
+    /// bytes and the file's whole size.
+    func readFileRange(chapterId: Int, offset: Int64, length: Int) async throws -> (data: Data, totalSize: Int64) {
+        let (data, response) = try await send(
+            "GET", "/Download/chapter?chapterId=\(chapterId)", headers: ["Range": "bytes=\(offset)-\(offset + Int64(length) - 1)"]
+        )
+        // A server that ignores the range would send the whole file.
+        guard response.statusCode == 206 else { throw KavitaError.http(status: response.statusCode) }
+        guard let total = response.value(forHTTPHeaderField: "Content-Range")?.split(separator: "/").last.flatMap({ Int64($0) })
+        else { throw KavitaError.http(status: response.statusCode) }
+        return (data, total)
+    }
+
     /// Image URLs carry the `apiKey`, so image loaders can fetch them without the bearer token.
     nonisolated func seriesCoverURL(seriesId: Int) throws -> URL {
         try imageURL("/Image/series-cover?seriesId=\(seriesId)")
@@ -179,7 +192,9 @@ actor KavitaClient {
     }
 
     /// Sends an authorized request, signing in again once on a 401.
-    private func send(_ method: String, _ pathAndQuery: String, body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    private func send(
+        _ method: String, _ pathAndQuery: String, body: Data? = nil, headers: [String: String] = [:]
+    ) async throws -> (Data, HTTPURLResponse) {
         let creds = credentials()
         guard creds.isConfigured else { throw KavitaError.notConfigured }
         guard let apiURL = Self.normalizeApiURL(creds.serverURL) else { throw KavitaError.invalidServerAddress }
@@ -190,6 +205,7 @@ actor KavitaClient {
         request.httpBody = body
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
 
         var token = try await token(for: key, replacing: nil)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

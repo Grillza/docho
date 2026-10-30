@@ -2,22 +2,23 @@ import Foundation
 import Observation
 
 /// The chapter being read and the page shown. Progress is saved locally on every page change and
-/// handed to `KavitaSync`, which sends it to Kavita after a short pause.
+/// handed to `ProgressSync`, which sends it to the series' server after a short pause.
 @MainActor
 @Observable
 final class ReaderModel {
-    let seriesId: Int
-    let seriesName: String
+    private(set) var series: SeriesRecord
     private(set) var chapters: [ChapterRecord]
     private(set) var chapter: ChapterRecord
     private(set) var pageCount: Int
     /// 0-based index of the page shown.
     private(set) var page: Int
-    /// Paged left to right or right to left, or webtoon.
+    /// Paged left to right, right to left or vertical, or a long strip.
     private(set) var mode: ReaderMode
     private(set) var loadError: String?
     /// Pages are shown once the latest progress has been pulled (or that took too long).
     private(set) var isReady = false
+    /// The current chapter's page list is known (from its files or its source).
+    private(set) var pagesLoaded = false
     var overlayVisible = false
     /// A page the view should move to, e.g. from the slider. A new value is a new request.
     private(set) var jump: PageJump?
@@ -27,20 +28,25 @@ final class ReaderModel {
         let id = UUID()
     }
 
-    private let app: AppModel
+    let app: AppModel
     /// The chapter's pages on the device, when it's downloaded.
     private var pageFiles: [URL] = []
+    /// The chapter's pages on the server.
+    private var sourcePages: [SourcePage] = []
+    private var source: any MangaSource { app.source(for: series) }
 
-    init(app: AppModel, seriesId: Int, seriesName: String, readerMode: String?, chapters: [ChapterRecord], start: ChapterRecord) {
+    var seriesId: Int { series.id }
+    var seriesName: String { series.name }
+
+    init(app: AppModel, series: SeriesRecord, chapters: [ChapterRecord], start: ChapterRecord) {
         self.app = app
-        self.seriesId = seriesId
-        self.seriesName = seriesName
+        self.series = series
         self.chapters = chapters
         chapter = start
         pageCount = start.pages
         page = Self.resumePage(start)
-        pageFiles = app.downloads.store.pageFiles(seriesId: seriesId, chapterId: start.id)
-        mode = readerMode.flatMap(ReaderMode.init(rawValue:)) ?? app.readerSettings.defaultMode
+        pageFiles = app.downloads.store.pageFiles(seriesId: series.id, chapterId: start.id)
+        mode = series.readerMode.flatMap(ReaderMode.init(rawValue:)) ?? app.readerSettings.defaultMode
     }
 
     /// Read chapters start again from the first page.
@@ -51,28 +57,33 @@ final class ReaderModel {
     var previousChapter: ChapterRecord? { neighbour(-1) }
     var nextChapter: ChapterRecord? { neighbour(1) }
 
+    /// Neighbours in reading order, skipping read chapters if the reader setting says so.
     private func neighbour(_ offset: Int) -> ChapterRecord? {
-        guard let index = chapters.firstIndex(where: { $0.id == chapter.id }) else { return nil }
-        return chapters.indices.contains(index + offset) ? chapters[index + offset] : nil
+        guard var index = chapters.firstIndex(where: { $0.id == chapter.id }) else { return nil }
+        repeat {
+            index += offset
+            guard chapters.indices.contains(index) else { return nil }
+        } while app.readerSettings.skipRead && chapters[index].read && chapters.indices.contains(index + offset)
+        return chapters[index]
     }
 
     /// The downloaded file, or the page on the server.
-    func pageURL(_ page: Int) -> URL? {
-        if pageFiles.indices.contains(page) { return pageFiles[page] }
-        return try? app.kavita.pageImageURL(chapterId: chapter.id, page: page)
+    func pageRequest(_ page: Int) -> URLRequest? {
+        if pageFiles.indices.contains(page) { return URLRequest(url: pageFiles[page]) }
+        guard sourcePages.indices.contains(page) else { return nil }
+        return source.imageRequest(sourcePages[page])
     }
 
     var isDownloaded: Bool { !pageFiles.isEmpty }
 
     /// Before the first page: picks up the page reached on another device, waiting at most
-    /// `timeout` (then the pull carries on and local progress is used), and fetches the page
-    /// count if it's missing.
+    /// `timeout` (then the pull carries on and local progress is used), and loads the page list.
     func prepare(timeout: Duration = .seconds(4)) async {
-        if !isReady, app.sync.isEnabled {
+        if !isReady, app.sync.syncs(series) {
             // Whichever finishes first; the pull isn't cancelled, so it still lands in the database.
             let (finished, signal) = AsyncStream<Void>.makeStream()
-            Task { [app, seriesId] in
-                await app.sync.syncSeries(seriesId)
+            Task { [app, series, chapter] in
+                await app.sync.syncSeries(series, chapterIds: [chapter.id])
                 signal.yield()
             }
             let timer = Task {
@@ -90,18 +101,31 @@ final class ReaderModel {
             }
         }
         isReady = true
-        await loadPageCount()
+        await loadPages()
+        try? await app.database.touchSeries(seriesId)
     }
 
-    /// Fetches the page count when the chapter list didn't have it.
-    func loadPageCount() async {
-        if !pageFiles.isEmpty, pageCount != pageFiles.count {
+    /// Lists the chapter's pages from its files or its source.
+    func loadPages() async {
+        loadError = nil
+        pagesLoaded = false
+        if !pageFiles.isEmpty {
             pageCount = pageFiles.count
+            sourcePages = []
+            pagesLoaded = true
+            return
         }
-        guard pageCount == 0 else { return }
         do {
-            pageCount = try await app.kavita.chapter(id: chapter.id).pages
-            loadError = pageCount == 0 ? String(localized: "This chapter has no pages.") : nil
+            sourcePages = try await source.pages(chapter.schapter)
+            pageCount = sourcePages.count
+            if pageCount == 0 {
+                loadError = SourceError.noPages.localizedDescription
+            } else if chapter.pages != pageCount {
+                try? await app.database.setPageCount(chapterId: chapter.id, pages: pageCount)
+                update { $0.pages = pageCount }
+            }
+            page = min(page, max(pageCount - 1, 0))
+            pagesLoaded = pageCount > 0
         } catch {
             loadError = error.localizedDescription
         }
@@ -111,10 +135,26 @@ final class ReaderModel {
     func pageShown(_ page: Int) async {
         guard page != self.page || !chapter.read && page == pageCount - 1 else { return }
         self.page = page
+        let wasRead = chapter.read
         let read = chapter.read || page >= pageCount - 1
         update { $0.lastPageRead = page; $0.read = read }
-        try? await app.database.saveProgress(chapterId: chapter.id, lastPageRead: page, read: read)
-        await app.sync.pageChanged(chapter, page: page, pageCount: pageCount, read: read)
+        try? await app.database.saveProgress(
+            chapterId: chapter.id, lastPageRead: page, read: read, pages: pageCount, history: !app.preferences.incognitoMode
+        )
+        await app.sync.pageChanged(series, chapter: chapter, page: page, pageCount: pageCount, read: read)
+        if read, !wasRead { await chapterFinished() }
+    }
+
+    /// Delete after reading, and download ahead, as on Android.
+    private func chapterFinished() async {
+        if app.preferences.deleteAfterReading, isDownloaded {
+            await app.downloads.delete(seriesId: seriesId, chapterIds: [chapter.id])
+        }
+        let ahead = app.preferences.downloadAhead
+        if ahead > 0, let index = chapters.firstIndex(where: { $0.id == chapter.id }) {
+            let next = chapters.dropFirst(index + 1).filter { !$0.read }.prefix(ahead)
+            await app.downloads.download(Array(next))
+        }
     }
 
     func jump(to page: Int) {
@@ -126,18 +166,26 @@ final class ReaderModel {
     func open(_ target: ChapterRecord, atEnd: Bool) async {
         chapter = target
         pageFiles = app.downloads.store.pageFiles(seriesId: seriesId, chapterId: target.id)
+        sourcePages = []
+        pagesLoaded = false
         pageCount = target.pages
         page = atEnd ? max(target.pages - 1, 0) : 0
         jump = nil
-        loadError = nil
-        await loadPageCount()
+        await loadPages()
         if atEnd { page = max(pageCount - 1, 0) }
     }
 
     /// Changes the mode for this series.
     func setMode(_ mode: ReaderMode) async {
         self.mode = mode
+        series.readerMode = mode.rawValue
         try? await app.database.setReaderMode(seriesId: seriesId, mode.rawValue)
+    }
+
+    func toggleBookmark() async {
+        let bookmarked = !chapter.bookmark
+        update { $0.bookmark = bookmarked }
+        try? await app.database.setBookmarked([chapter.id], bookmarked)
     }
 
     var settings: ReaderSettings { app.readerSettings }

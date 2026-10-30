@@ -76,47 +76,38 @@ private final class FakeKavita: Sendable {
 final class KavitaSyncTests: XCTestCase {
     private var app: AppModel!
     private var server: FakeKavita!
-    private var defaultsSuite = ""
+    private var series: SeriesRecord!
 
     override func setUp() async throws {
-        defaultsSuite = "io.github.grillza.docho.tests.sync.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "io.github.grillza.docho.tests.sync")
-        settings.serverURL = "https://kavita.test"
-        settings.apiKey = "key-1"
-        app = AppModel(
-            settings: settings, session: StubURLProtocol.session(), database: try .inMemory(), pageDebounce: .milliseconds(50)
-        )
+        app = try TestApp.make("sync").app
         let server = FakeKavita(chapterIds: [10, 11, 12, 13])
         self.server = server
         StubURLProtocol.reset { try server.handle($0) }
-
-        let series = try JSONDecoder().decode(KavitaSeries.self, from: Data(#"{"id": 7, "name": "S", "libraryId": 2}"#.utf8))
-        let details = KavitaSeriesDetails(try JSONDecoder().decode(KavitaSeriesMetadata.self, from: Data("{}".utf8)))
-        let entries = server.chapterIds.map { id in
-            KavitaChapterEntry(
-                chapterId: id, volumeId: 1, name: "Ch. \(id)", number: Double(id), pages: 20, pagesRead: 0, dateUpload: nil
-            )
-        }
-        try await app.database.saveSeries(series, details: details, chapters: entries, seedProgress: false)
-    }
-
-    override func tearDown() async throws {
-        app.settings.apiKey = ""
-        UserDefaults().removePersistentDomain(forName: defaultsSuite)
+        series = try await app.seedKavitaSeries(chapters: server.chapterIds.map { ($0, 20) })
+        StubURLProtocol.reset { try server.handle($0) }
     }
 
     // MARK: Helpers
 
+    /// The local chapter for a Kavita chapter id.
     private func chapter(_ id: Int) async throws -> ChapterRecord {
-        let chapters = try await app.database.chapters(ids: [id])
-        return try XCTUnwrap(chapters.first)
+        let chapter = try await app.kavitaChapter(id)
+        return try XCTUnwrap(chapter)
     }
 
     private func setLocal(_ id: Int, read: Bool, page: Int) async throws {
         try await app.database.writer.write { db in
-            try db.execute(sql: "UPDATE chapter SET read = ?, lastPageRead = ? WHERE id = ?", arguments: [read, page, id])
+            try db.execute(
+                sql: "UPDATE chapter SET read = ?, lastPageRead = ? WHERE url = ?", arguments: [read, page, KavitaSource.chapterURL(id)]
+            )
         }
+    }
+
+    private func seriesModel() async -> SeriesModel {
+        let model = SeriesModel(app: app, seriesId: series.id)
+        Task { await model.observeSeries() }
+        while model.series == nil { await Task.yield() }
+        return model
     }
 
     private func queue() async throws -> [PendingProgress] {
@@ -156,7 +147,7 @@ final class KavitaSyncTests: XCTestCase {
     func testPageTurnsAreDebouncedAndOnlyTheLastPageIsSent() async throws {
         let chapter = try await chapter(10)
         for page in 1...5 {
-            await app.sync.pageChanged(chapter, page: page, pageCount: 20, read: false)
+            await app.sync.pageChanged(series, chapter: chapter, page: page, pageCount: 20, read: false)
         }
         let delivered = await eventually { server.pagesRead(10) == 5 }
         XCTAssertTrue(delivered)
@@ -168,14 +159,14 @@ final class KavitaSyncTests: XCTestCase {
     }
 
     func testFinishingAChapterSendsItsPageCount() async throws {
-        await app.sync.pageChanged(try await chapter(10), page: 19, pageCount: 20, read: true)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 19, pageCount: 20, read: true)
         let delivered = await eventually { server.pagesRead(10) == 20 }
         XCTAssertTrue(delivered)
     }
 
     func testAPageTheServerHasPassedIsDroppedNotSent() async throws {
         server.set { $0.pagesRead[10] = 15 }
-        await app.sync.pageChanged(try await chapter(10), page: 5, pageCount: 20, read: false)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 5, pageCount: 20, read: false)
 
         let asked = await eventually { !requests("/api/Reader/get-progress").isEmpty }
         XCTAssertTrue(asked)
@@ -187,7 +178,7 @@ final class KavitaSyncTests: XCTestCase {
 
     func testOlderServersWithoutGetProgressAreAskedThroughTheVolumes() async throws {
         server.set { $0.getProgressMissing = true; $0.pagesRead[10] = 3 }
-        await app.sync.pageChanged(try await chapter(10), page: 8, pageCount: 20, read: false)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 8, pageCount: 20, read: false)
 
         let delivered = await eventually { server.pagesRead(10) == 8 }
         XCTAssertTrue(delivered)
@@ -196,7 +187,7 @@ final class KavitaSyncTests: XCTestCase {
 
     func testTheQueueSurvivesAFailedRequest() async throws {
         server.set { $0.down = true }
-        await app.sync.pageChanged(try await chapter(10), page: 4, pageCount: 20, read: false)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 4, pageCount: 20, read: false)
 
         let retried = await retryRequested()
         XCTAssertTrue(retried)
@@ -227,15 +218,15 @@ final class KavitaSyncTests: XCTestCase {
     func testSigningInAgainOn401StillDelivers() async throws {
         await app.kavita.checkConnection() // signed in
         server.set { $0.refuseTokenOnce = true }
-        await app.sync.pageChanged(try await chapter(10), page: 6, pageCount: 20, read: false)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 6, pageCount: 20, read: false)
         let delivered = await eventually { server.pagesRead(10) == 6 }
         XCTAssertTrue(delivered)
     }
 
     func testNothingIsSentWhenSyncIsOff() async throws {
         app.settings.syncProgress = false
-        await app.sync.pageChanged(try await chapter(10), page: 6, pageCount: 20, read: false)
-        await app.sync.syncSeries(7)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 6, pageCount: 20, read: false)
+        await app.sync.syncSeries(series)
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(StubURLProtocol.requests.count, 0)
     }
@@ -244,9 +235,10 @@ final class KavitaSyncTests: XCTestCase {
 
     func testHandMarksAreSentAsIsInOneRequest() async throws {
         server.set { $0.pagesRead[10] = 20; $0.pagesRead[11] = 20 }
-        let model = SeriesModel(app: app, seriesId: 7)
+        let model = await seriesModel()
 
-        await model.setRead([10, 11], false)
+        let ids = [try await chapter(10).id, try await chapter(11).id]
+        await model.setRead(ids, false)
 
         let marks = requests("/api/Reader/mark-multiple-unread")
         XCTAssertEqual(marks.count, 1)
@@ -262,22 +254,23 @@ final class KavitaSyncTests: XCTestCase {
     func testAHandMarkThatFailsStaysQueuedAndWinsLater() async throws {
         server.set { $0.pagesRead[10] = 20; $0.down = true }
         try await setLocal(10, read: true, page: 0)
-        let model = SeriesModel(app: app, seriesId: 7)
+        let model = await seriesModel()
 
-        await model.setRead([10], false)
+        let id = try await chapter(10).id
+        await model.setRead([id], false)
         try await setLocal(10, read: false, page: 2) // as the reader would
         var queued = try await queue()
         XCTAssertEqual(queued.map(\.markedByUser), [true])
 
         // Reading on keeps the mark's priority; the server still says read (another device).
-        await app.sync.pageChanged(try await chapter(10), page: 2, pageCount: 20, read: false)
+        await app.sync.pageChanged(series, chapter: try await chapter(10), page: 2, pageCount: 20, read: false)
         let merged = try await eventually { try await queue().first?.pageNum == 2 }
         XCTAssertTrue(merged)
         queued = try await queue()
         XCTAssertEqual(queued.map(\.markedByUser), [true])
 
         server.set { $0.down = false }
-        await app.sync.syncSeries(7)
+        await app.sync.syncSeries(series)
 
         XCTAssertEqual(server.pagesRead(10), 2)
         let local = try await chapter(10)
@@ -298,7 +291,7 @@ final class KavitaSyncTests: XCTestCase {
         try await setLocal(13, read: false, page: 9)
         server.set { $0.pagesRead = [10: 5, 11: 20, 12: 8, 13: 4] }
 
-        await app.sync.syncSeries(7)
+        await app.sync.syncSeries(series)
 
         let read = requests("/api/Reader/mark-multiple-read")
         XCTAssertEqual(read.count, 1)
@@ -316,7 +309,7 @@ final class KavitaSyncTests: XCTestCase {
 
     func testAPushedPageNeverMarksTheChapterRead() async throws {
         try await setLocal(10, read: false, page: 25)
-        await app.sync.syncSeries(7)
+        await app.sync.syncSeries(series)
         XCTAssertEqual(server.pagesRead(10), 19, "clamped to the last page index")
     }
 
@@ -326,7 +319,7 @@ final class KavitaSyncTests: XCTestCase {
         _ = try await app.database.enqueue([progress], markedByUser: false)
         server.set { $0.pagesRead[10] = 2 }
 
-        await app.sync.syncSeries(7)
+        await app.sync.syncSeries(series)
 
         XCTAssertEqual(try progressSent().count, 1, "sent once, from the queue")
         XCTAssertTrue(requests("/api/Reader/get-progress").isEmpty, "judged against the volumes just fetched")
@@ -341,7 +334,7 @@ final class KavitaSyncTests: XCTestCase {
             request.path == "/api/Reader/progress" ? .json("", status: 503) : try server.handle(request)
         }
 
-        await app.sync.syncSeries(7)
+        await app.sync.syncSeries(series)
 
         let queued = try await queue()
         XCTAssertEqual(queued.map(\.chapterId), [13])
@@ -350,10 +343,10 @@ final class KavitaSyncTests: XCTestCase {
     }
 
     func testLibrarySyncCoversTheLibrarySeries() async throws {
-        try await app.database.setInLibrary(seriesId: 7, true)
+        try await app.database.setInLibrary(seriesId: series.id, true)
         server.set { $0.pagesRead[12] = 8 }
 
-        let count = await app.sync.syncLibrary()
+        let count = await app.kavitaSync.syncLibrary()
 
         XCTAssertEqual(count, 1)
         let twelve = try await chapter(12)
@@ -362,8 +355,8 @@ final class KavitaSyncTests: XCTestCase {
 
     func testTheReaderOpensAtThePageReachedOnAnotherDevice() async throws {
         server.set { $0.pagesRead[10] = 7 }
-        let chapters = try await app.database.chapterList(seriesId: 7)
-        let reader = ReaderModel(app: app, seriesId: 7, seriesName: "S", readerMode: nil, chapters: chapters, start: chapters[0])
+        let chapters = try await app.database.chapterList(seriesId: series.id)
+        let reader = ReaderModel(app: app, series: series, chapters: chapters, start: chapters[0])
         XCTAssertEqual(reader.page, 0)
 
         await reader.prepare()
@@ -381,13 +374,15 @@ final class KavitaSyncTests: XCTestCase {
             if request.path == "/api/Series/volumes" { Thread.sleep(forTimeInterval: 1) }
             return try server.handle(request)
         }
-        let chapters = try await app.database.chapterList(seriesId: 7)
-        let reader = ReaderModel(app: app, seriesId: 7, seriesName: "S", readerMode: nil, chapters: chapters, start: chapters[0])
+        let chapters = try await app.database.chapterList(seriesId: series.id)
+        let reader = ReaderModel(app: app, series: series, chapters: chapters, start: chapters[0])
 
         let start = ContinuousClock.now
-        await reader.prepare(timeout: .milliseconds(200))
+        let preparing = Task { await reader.prepare(timeout: .milliseconds(200)) }
+        while !reader.isReady, ContinuousClock.now - start < .seconds(2) { await Task.yield() }
 
-        XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(900))
+        XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(900), "ready without waiting for the pull")
         XCTAssertEqual(reader.page, 3)
+        await preparing.value
     }
 }

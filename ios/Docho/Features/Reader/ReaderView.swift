@@ -1,184 +1,240 @@
 import SwiftUI
 
-/// The full-screen reader: pages, plus an overlay toggled by a tap in the middle.
+/// The reader (Mihon's `ReaderActivity`): pages full screen, and a menu toggled by the middle of
+/// the screen with the title, the chapter navigator and quick settings.
 struct ReaderView: View {
-    @State private var model: ReaderModel
     @Environment(\.dismiss) private var dismiss
-
-    init(model: ReaderModel) {
-        _model = State(initialValue: model)
-    }
+    @Environment(\.m3) private var m3
+    @State var model: ReaderModel
+    @State private var sliderPage: Double = 0
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            if let error = model.loadError {
-                ContentUnavailableView {
-                    Label("Couldn't Open Chapter", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Retry") { Task { await model.loadPageCount() } }
-                }
-                .foregroundStyle(.white)
-            } else if model.isReady && model.pageCount > 0 {
-                if model.mode == .webtoon {
-                    ReaderPagesView<WebtoonReaderController>(model: model)
-                        .ignoresSafeArea()
-                } else {
-                    ReaderPagesView<PagedReaderController>(model: model)
-                        .ignoresSafeArea()
-                }
-            } else {
-                ProgressView().tint(.white)
+            model.settings.background.color.swiftUI.ignoresSafeArea()
+            pages.ignoresSafeArea()
+            if !model.overlayVisible, model.settings.showPageNumber, model.pageCount > 0 {
+                pageNumber
             }
-
-            if model.overlayVisible || model.loadError != nil {
-                overlay
-                    .transition(.opacity)
+            if model.overlayVisible {
+                menu.transition(.opacity)
             }
         }
-        .background {
-            // Escape closes the reader, overlay or not.
-            Button("Close") { dismiss() }
-                .keyboardShortcut(.cancelAction)
-                .opacity(0)
-                .accessibilityHidden(true)
-        }
-        .statusBarHidden(!model.overlayVisible)
+        .statusBarHidden(model.settings.fullscreen && !model.overlayVisible)
         .persistentSystemOverlays(model.overlayVisible ? .automatic : .hidden)
         .task { await model.prepare() }
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = model.settings.keepScreenOn }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onChange(of: model.page) { _, page in sliderPage = Double(page) }
+        .onKeyPress(.escape) {
+            dismiss()
+            return .handled
+        }
+        .m3Sheet(isPresented: $showSettings) { ReaderSettingsSheet(model: model) }
     }
 
-    private var overlay: some View {
+    @ViewBuilder
+    private var pages: some View {
+        if let error = model.loadError {
+            VStack(spacing: 16) {
+                Text(error).font(M3Type.bodyMedium).foregroundStyle(.white).multilineTextAlignment(.center)
+                FilledButton(title: String(localized: "Retry")) { Task { await model.loadPages() } }
+                M3TextButton(title: String(localized: "Close"), color: .white) { dismiss() }
+            }
+            .padding(32)
+        } else if !model.isReady || !model.pagesLoaded {
+            ProgressView().tint(.white).controlSize(.large)
+                .onTapGesture { withAnimation { model.overlayVisible.toggle() } }
+        } else if model.mode.isLongStrip {
+            ReaderPagesView<WebtoonReaderController>(model: model)
+        } else {
+            ReaderPagesView<PagedReaderController>(model: model)
+        }
+    }
+
+    /// The page number at the bottom while the menu is hidden, outlined so it reads on any page.
+    private var pageNumber: some View {
+        VStack {
+            Spacer()
+            Text("\(model.page + 1) / \(model.pageCount)")
+                .font(M3Type.labelMedium)
+                .foregroundStyle(.white)
+                .shadow(color: .black, radius: 1)
+                .shadow(color: .black, radius: 1)
+                .padding(.bottom, 4)
+                .accessibilityHidden(true)
+        }
+        .allowsHitTesting(false)
+    }
+
+    // MARK: Menu
+
+    private var menu: some View {
         VStack(spacing: 0) {
             topBar
             Spacer()
-            if model.isReady && model.pageCount > 0 {
+            VStack(spacing: 8) {
+                chapterNavigator
                 bottomBar
             }
         }
     }
 
     private var topBar: some View {
-        HStack(spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.backward")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+        HStack(spacing: 0) {
+            AppBarIcon("arrow_back", label: String(localized: "Close")) { dismiss() }
+                .foregroundStyle(m3.onSurface)
+                .padding(.leading, 4)
+                .accessibilityIdentifier("reader.close")
+            VStack(alignment: .leading, spacing: 0) {
+                Text(model.seriesName).font(M3Type.titleMedium).foregroundStyle(m3.onSurface).lineLimit(1)
+                Text(model.chapter.name).font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant).lineLimit(1)
+                    .accessibilityIdentifier("reader.chapter")
             }
-            .accessibilityLabel("Close")
-            .accessibilityIdentifier("reader.close")
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.seriesName).font(.headline).lineLimit(1)
-                Text(model.chapter.name).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            .padding(.leading, 4)
+            Spacer(minLength: 8)
+            AppBarIcon(model.chapter.bookmark ? "bookmark.fill" : "bookmark", label: model.chapter.bookmark
+                ? String(localized: "Remove bookmark") : String(localized: "Bookmark")) {
+                Task { await model.toggleBookmark() }
             }
-            Spacer()
-            ReaderSettingsMenu(model: model)
+            .foregroundStyle(model.chapter.bookmark ? m3.primary : m3.onSurfaceVariant)
+            .padding(.trailing, 4)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
-        .background(.bar)
+        .frame(height: 64)
+        .background(m3.surfaceContainer.opacity(0.95).ignoresSafeArea(edges: .top))
     }
 
-    /// Laid out in reading direction: in right to left, the next chapter and the slider's end
-    /// are on the left.
-    private var bottomBar: some View {
-        HStack(spacing: 12) {
-            chapterButton(previous: true)
-            PageSlider(model: model)
-            chapterButton(previous: false)
+    /// Mihon's chapter navigator: previous and next chapter around a pill with the page slider.
+    private var chapterNavigator: some View {
+        let rightToLeft = model.mode.isRightToLeft
+        return HStack(spacing: 8) {
+            chapterButton(rightToLeft ? .next : .previous)
+            HStack(spacing: 8) {
+                Text("\(Int(sliderPage) + 1)")
+                    .font(M3Type.labelLarge)
+                    .monospacedDigit()
+                    .frame(minWidth: 32)
+                if model.pageCount > 1 {
+                    Slider(value: $sliderPage, in: 0...Double(model.pageCount - 1), step: 1) { editing in
+                        if !editing { model.jump(to: Int(sliderPage)) }
+                    }
+                    .tint(m3.primary)
+                    .environment(\.layoutDirection, rightToLeft ? .rightToLeft : .leftToRight)
+                    .accessibilityLabel(String(localized: "Page"))
+                    .accessibilityValue(String(localized: "\(Int(sliderPage) + 1) of \(model.pageCount)"))
+                    .accessibilityIdentifier("reader.slider")
+                } else {
+                    Spacer()
+                }
+                Text("\(model.pageCount)")
+                    .font(M3Type.labelLarge)
+                    .monospacedDigit()
+                    .frame(minWidth: 32)
+            }
+            .foregroundStyle(m3.onSurface)
+            .padding(.horizontal, 12)
+            .frame(height: 48)
+            .background(Capsule().fill(m3.surfaceContainerHigh.opacity(0.95)))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("reader.position")
+            chapterButton(rightToLeft ? .previous : .next)
         }
-        .environment(\.layoutDirection, model.mode.isRightToLeft ? .rightToLeft : .leftToRight)
-        .padding(.horizontal)
-        .padding(.vertical, 10)
-        .background(.bar)
+        .padding(.horizontal, 16)
     }
 
-    /// The arrows point the way reading goes: in right to left, "next" points left.
-    private func chapterButton(previous: Bool) -> some View {
-        let target = previous ? model.previousChapter : model.nextChapter
-        let leftPointing = previous != model.mode.isRightToLeft
+    private func chapterButton(_ direction: ReaderLeave) -> some View {
+        let target = direction == .previous ? model.previousChapter : model.nextChapter
         return Button {
             guard let target else { return }
             Task { await model.open(target, atEnd: false) }
         } label: {
-            Image(systemName: leftPointing ? "backward.end.fill" : "forward.end.fill")
-                .frame(width: 44, height: 44)
+            MIcon(direction == .previous ? "skip_previous" : "skip_next")
+                .foregroundStyle(target == nil ? m3.onSurface.opacity(0.38) : m3.onSurface)
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(m3.surfaceContainerHigh.opacity(0.95)))
         }
+        .buttonStyle(.plain)
         .disabled(target == nil)
-        .accessibilityLabel(previous ? "Previous chapter" : "Next chapter")
+        .accessibilityLabel(direction == .previous ? String(localized: "Previous chapter") : String(localized: "Next chapter"))
+    }
+
+    /// Mihon's bottom reader bar: reading mode and settings.
+    private var bottomBar: some View {
+        HStack {
+            Menu {
+                ForEach(ReaderMode.allCases) { mode in
+                    Button {
+                        Task { await model.setMode(mode) }
+                    } label: {
+                        if model.mode == mode { Label(mode.title, systemImage: "checkmark") } else { Text(mode.title) }
+                    }
+                }
+            } label: {
+                MIcon(model.mode.icon).frame(width: 48, height: 48).contentShape(Rectangle())
+            }
+            .accessibilityLabel(String(localized: "Reading mode"))
+            .accessibilityIdentifier("reader.mode")
+            Spacer()
+            if UIDevice.current.userInterfaceIdiom == .pad, model.mode.isPaged, model.mode != .vertical {
+                AppBarIcon("flip_to_back", label: String(localized: "Dual page view")) { model.settings.spreads.toggle() }
+                    .foregroundStyle(model.settings.spreads ? m3.primary : m3.onSurface)
+                    .accessibilityValue(model.settings.spreads ? String(localized: "On") : String(localized: "Off"))
+                Spacer()
+            }
+            AppBarIcon("settings", label: String(localized: "Settings")) { showSettings = true }
+        }
+        .foregroundStyle(m3.onSurface)
+        .padding(.horizontal, 24)
+        .frame(height: 56)
+        .background(m3.surfaceContainer.opacity(0.95).ignoresSafeArea(edges: .bottom))
     }
 }
 
-/// The mode for this series, and on iPad, two-page spreads (for every series).
-private struct ReaderSettingsMenu: View {
+/// Mihon's reader settings sheet: the mode for this series, then general reader settings.
+private struct ReaderSettingsSheet: View {
+    @Environment(\.m3) private var m3
     let model: ReaderModel
+    @State private var tab = 0
 
     var body: some View {
         @Bindable var settings = model.settings
-        Menu {
-            Picker("Reading mode", selection: Binding(
-                get: { model.mode },
-                set: { mode in Task { await model.setMode(mode) } }
-            )) {
-                ForEach(ReaderMode.allCases) { mode in
-                    Label(mode.title, systemImage: mode.systemImage).tag(mode)
+        VStack(spacing: 0) {
+            M3Tabs(tabs: [0, 1], selection: $tab, title: { [String(localized: "Reading mode"), String(localized: "General")][$0] })
+            ScrollView {
+                VStack(spacing: 0) {
+                    if tab == 0 {
+                        PreferenceHeader(title: String(localized: "Reading mode"))
+                        ForEach(ReaderMode.allCases) { mode in
+                            RadioRow(title: mode.title, selected: model.mode == mode) { Task { await model.setMode(mode) } }
+                        }
+                        PreferenceHeader(title: model.mode.isLongStrip ? String(localized: "Long strip") : String(localized: "Paged"))
+                        if model.mode.isLongStrip {
+                            ListPreference(title: String(localized: "Tap zones"), selection: $settings.stripTapZones, options: TapZones.allCases.map { ($0, $0.title) })
+                            ListPreference(title: String(localized: "Invert tap zones"), selection: $settings.stripInvert, options: InvertTaps.allCases.map { ($0, $0.title) })
+                        } else {
+                            ListPreference(title: String(localized: "Tap zones"), selection: $settings.pagedTapZones, options: TapZones.allCases.map { ($0, $0.title) })
+                            ListPreference(title: String(localized: "Invert tap zones"), selection: $settings.pagedInvert, options: InvertTaps.allCases.map { ($0, $0.title) })
+                            CheckboxRow(title: String(localized: "Dual page view"), isOn: $settings.spreads)
+                            CheckboxRow(title: String(localized: "First page alone"), isOn: $settings.coverAlone)
+                            CheckboxRow(title: String(localized: "Double tap to zoom"), isOn: $settings.doubleTapZoom)
+                        }
+                    } else {
+                        ListPreference(title: String(localized: "Background color"), selection: $settings.background, options: ReaderBackground.allCases.map { ($0, $0.title) })
+                        CheckboxRow(title: String(localized: "Show page number"), isOn: $settings.showPageNumber)
+                        CheckboxRow(title: String(localized: "Fullscreen"), isOn: $settings.fullscreen)
+                        CheckboxRow(title: String(localized: "Keep screen on"), isOn: $settings.keepScreenOn)
+                        CheckboxRow(title: String(localized: "Skip chapters marked read"), isOn: $settings.skipRead)
+                        CheckboxRow(title: String(localized: "Animate page transitions"), isOn: $settings.animatePageTransitions)
+                    }
                 }
+                .padding(.vertical, 8)
             }
-            if UIDevice.current.userInterfaceIdiom == .pad && model.mode != .webtoon {
-                Section("In landscape") {
-                    Toggle("Two-page spreads", isOn: $settings.spreads)
-                    Toggle("First page alone", isOn: $settings.coverAlone)
-                        .disabled(!settings.spreads)
-                }
-            }
-        } label: {
-            Image(systemName: model.mode.systemImage)
-                .font(.title3)
-                .frame(width: 44, height: 44)
         }
-        .accessibilityLabel("Reader settings")
-        .accessibilityIdentifier("reader.settings")
+        .padding(.top, 16)
+        .background(m3.surfaceContainerLow)
     }
 }
 
-/// Page slider; it inherits the reading direction from the bottom bar, so dragging matches the page order.
-private struct PageSlider: View {
-    let model: ReaderModel
-    @State private var dragging: Double?
-
-    var body: some View {
-        let shown = Int(dragging ?? Double(model.page))
-        HStack(spacing: 10) {
-            Text("\(shown + 1)").monospacedDigit().frame(minWidth: 28)
-            if model.pageCount > 1 {
-                Slider(
-                    value: Binding(get: { dragging ?? Double(model.page) }, set: { dragging = $0.rounded() }),
-                    in: 0...Double(model.pageCount - 1),
-                    step: 1
-                ) { editing in
-                    if !editing, let dragging {
-                        model.jump(to: Int(dragging))
-                        self.dragging = nil
-                    }
-                }
-            }
-            Text("\(model.pageCount)").monospacedDigit().frame(minWidth: 28)
-        }
-        .font(.footnote)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Page")
-        .accessibilityValue("\(shown + 1) of \(model.pageCount)")
-        .accessibilityIdentifier("reader.page")
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: model.jump(to: model.page + 1)
-            case .decrement: model.jump(to: model.page - 1)
-            @unknown default: break
-            }
-        }
-    }
+extension UIColor {
+    var swiftUI: Color { Color(uiColor: self) }
 }

@@ -173,6 +173,20 @@ struct KavitaChapter: Decodable, Sendable, Equatable, Identifiable {
             ?? KavitaConstants.defaultChapterNumber
     }
 
+    /// KOReader's hash of the chapter's file. Only a chapter of a single file has one, since
+    /// KOReader would see each file as a separate document.
+    var koreaderHash: String? {
+        guard files.count == 1, let hash = files[0].koreaderHash, !hash.isBlank else { return nil }
+        return hash.lowercased()
+    }
+
+    /// Name of the chapter's first file, without its folder.
+    var fileName: String? {
+        files.compactMap { $0.filePath?.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) }
+            .filter { !$0.isBlank }
+            .min { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(Int.self, forKey: .id)
@@ -202,14 +216,25 @@ struct KavitaChapter: Decodable, Sendable, Equatable, Identifiable {
 
 struct KavitaFile: Decodable, Sendable, Equatable {
     var format: Int
+    var filePath: String?
+    /// KOReader's partial MD5 of the file. Kavita only computes it when it (re)scans a file.
+    var koreaderHash: String?
+
+    init(format: Int = KavitaConstants.formatUnknown, filePath: String? = nil, koreaderHash: String? = nil) {
+        self.format = format
+        self.filePath = filePath
+        self.koreaderHash = koreaderHash
+    }
 
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         format = values.lenient(.format, default: KavitaConstants.formatUnknown)
+        filePath = values.lenient(.filePath, default: nil)
+        koreaderHash = values.lenient(.koreaderHash, default: nil)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case format
+        case format, filePath, koreaderHash
     }
 }
 
@@ -291,6 +316,7 @@ enum KavitaConstants {
     static let defaultChapterNumber: Double = -100_000
 
     // MangaFormat
+    static let formatImage = 0
     static let formatUnknown = 2
     static let formatEpub = 3
 
@@ -298,10 +324,12 @@ enum KavitaConstants {
     static let comparisonContains = 5
     static let comparisonMatches = 7
     static let comparisonNotContains = 8
+    static let comparisonNotEqual = 9
 
     // SeriesFilterField
     static let fieldSeriesName = 1
     static let fieldLibraries = 19
+    static let fieldReadProgress = 20
     static let fieldFormats = 21
 
     // SeriesSortField

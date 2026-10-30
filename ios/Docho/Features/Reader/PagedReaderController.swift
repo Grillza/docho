@@ -12,6 +12,27 @@ struct ReaderContent: Equatable {
     var previousTitle: String?
     var nextTitle: String?
     var currentTitle: String
+    /// Paged top to bottom instead of across.
+    var vertical = false
+    var tapZones = TapZones.default
+    var invertTaps = InvertTaps.none
+    var background = ReaderBackground.black
+    var doubleTapZoom = true
+    var animate = true
+    /// Long strip only: space between pages, in points.
+    var gap: CGFloat = 0
+}
+
+extension ReaderBackground {
+    /// The colour behind pages. Automatic follows the system appearance, as Mihon does.
+    var color: UIColor {
+        switch self {
+        case .black: .black
+        case .gray: UIColor(red: 0.125, green: 0.129, blue: 0.137, alpha: 1)
+        case .white: .white
+        case .automatic: .systemBackground
+        }
+    }
 }
 
 /// Horizontal paging over a chapter. Each page zooms on its own (pinch or double-tap) and the
@@ -31,7 +52,7 @@ final class PagedReaderController: UIViewController, ReaderController {
     var onPageShown: (Int) -> Void = { _ in }
     var onToggleOverlay: () -> Void = {}
     var onLeave: (ReaderLeave) -> Void = { _ in }
-    var pageURL: (Int) -> URL? = { _ in nil }
+    var pageRequest: (Int) -> URLRequest? = { _ in nil }
 
     private(set) var content: ReaderContent?
     private var items: [Item] = []
@@ -89,9 +110,13 @@ final class PagedReaderController: UIViewController, ReaderController {
         }
         if let index = pendingIndex, items.indices.contains(index), size.width > 0 {
             pendingIndex = nil
-            collectionView.scrollToItem(at: IndexPath(item: index, section: 0), at: .centeredHorizontally, animated: false)
+            collectionView.scrollToItem(at: IndexPath(item: index, section: 0), at: scrollPosition, animated: false)
             settle(on: index)
         }
+    }
+
+    private var scrollPosition: UICollectionView.ScrollPosition {
+        content?.vertical == true ? .centeredVertically : .centeredHorizontally
     }
 
     /// Shows `content`, starting at `page`. A new chapter, direction or spread setting reloads everything.
@@ -101,19 +126,24 @@ final class PagedReaderController: UIViewController, ReaderController {
             || content.rightToLeft != self.content?.rightToLeft
             || content.spreads != self.content?.spreads
             || content.coverAlone != self.content?.coverAlone
+            || content.vertical != self.content?.vertical
         self.content = content
+        view.backgroundColor = content.background.color
+        collectionView.backgroundColor = content.background.color
         guard reload else {
             reconfigureTransitions()
             return
         }
         if newChapter { widePages = [] }
         collectionView.semanticContentAttribute = content.rightToLeft ? .forceRightToLeft : .forceLeftToRight
+        layout.scrollDirection = content.vertical ? .vertical : .horizontal
+        collectionView.showsVerticalScrollIndicator = false
         rebuildItems(keeping: page)
         view.setNeedsLayout()
     }
 
     private var shouldShowSpreads: Bool {
-        guard let content, content.spreads else { return false }
+        guard let content, content.spreads, !content.vertical else { return false }
         return view.bounds.width > view.bounds.height
     }
 
@@ -157,7 +187,8 @@ final class PagedReaderController: UIViewController, ReaderController {
 
     private func scroll(to index: Int, animated: Bool) {
         guard items.indices.contains(index) else { return }
-        collectionView.scrollToItem(at: IndexPath(item: index, section: 0), at: .centeredHorizontally, animated: animated)
+        let animated = animated && content?.animate != false
+        collectionView.scrollToItem(at: IndexPath(item: index, section: 0), at: scrollPosition, animated: animated)
         if !animated { settle(on: index) }
     }
 
@@ -208,15 +239,16 @@ final class PagedReaderController: UIViewController, ReaderController {
     /// Pages are downsampled to twice their share of the view, enough for zooming without
     /// holding full-resolution scans in memory.
     private func request(for page: Int, share: Int = 1) -> ImageRequest? {
-        guard let url = pageURL(page) else { return nil }
+        guard let urlRequest = pageRequest(page) else { return nil }
         let scale = view.window?.windowScene?.screen.scale ?? 2
         let width = view.bounds.width / CGFloat(max(share, 1))
         let size = CGSize(width: width * scale * 2, height: view.bounds.height * scale * 2)
+        let isFile = urlRequest.url?.isFileURL == true
         return ImageRequest(
-            url: url,
+            urlRequest: urlRequest,
             processors: [.resize(size: size, unit: .pixels, contentMode: .aspectFit, upscale: false)],
             // Downloaded pages are already on disk.
-            options: url.isFileURL ? [.disableDiskCacheWrites] : []
+            options: isFile ? [.disableDiskCacheWrites] : []
         )
     }
 
@@ -260,17 +292,22 @@ final class PagedReaderController: UIViewController, ReaderController {
 
     // MARK: Gestures
 
+    /// Taps turn pages by the tap zones chosen in Settings → Reader (Mihon's navigation layouts).
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
-        let position = gesture.location(in: view).x / max(view.bounds.width, 1)
-        let rightToLeft = content?.rightToLeft == true
-        switch position {
-        case ..<(1 / 3): step(rightToLeft ? 1 : -1)
-        case (2 / 3)...: step(rightToLeft ? -1 : 1)
-        default: onToggleOverlay()
+        guard let content else { return }
+        let location = gesture.location(in: view)
+        let point = CGPoint(x: location.x / max(view.bounds.width, 1), y: location.y / max(view.bounds.height, 1))
+        switch content.tapZones.action(at: point, invert: content.invertTaps) {
+        case .previous: step(-1)
+        case .next: step(1)
+        case .left: step(content.rightToLeft ? 1 : -1)
+        case .right: step(content.rightToLeft ? -1 : 1)
+        case .menu: onToggleOverlay()
         }
     }
 
     @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
+        guard content?.doubleTapZoom != false else { return }
         let cell = collectionView.cellForItem(at: IndexPath(item: currentIndex, section: 0)) as? PageCell
         cell?.toggleZoom(at: gesture.location(in: cell))
     }
@@ -335,8 +372,9 @@ extension PagedReaderController: UICollectionViewDataSource, UICollectionViewDel
         withVelocity velocity: CGPoint,
         targetContentOffset: UnsafeMutablePointer<CGPoint>
     ) {
-        let translation = scrollView.panGestureRecognizer.translation(in: view).x
-        let forward = content?.rightToLeft == true ? translation > 0 : translation < 0
+        let pan = scrollView.panGestureRecognizer.translation(in: view)
+        let translation = content?.vertical == true ? pan.y : pan.x
+        let forward = content?.rightToLeft == true && content?.vertical != true ? translation > 0 : translation < 0
         guard abs(translation) > 60 else { return }
         if dragStartIndex == items.count - 1, forward {
             onLeave(.next)

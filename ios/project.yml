@@ -67,12 +67,16 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
           NSAllowsArbitraryLoads: true
-        NSLocalNetworkUsageDescription: Dōchō connects to your Kavita server on your local network.
-        # "fetch" enables BGAppRefreshTask for opportunistic delivery of queued reading progress.
+        NSLocalNetworkUsageDescription: Dōchō connects to your Kavita, Komga, BookOrbit or KOReader sync server on your local network.
+        # "fetch" enables BGAppRefreshTask: opportunistic delivery of queued reading progress, and
+        # automatic library updates (Settings → Library), which iOS runs when it decides.
         UIBackgroundModes:
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
           - io.github.grillza.docho.progress-sync
+          - io.github.grillza.docho.library-update
+          # Downloads the user starts, shown by iOS 26 as a progress Live Activity (BGContinuedProcessingTask).
+          - io.github.grillza.docho.downloads.*
     scheme:
       testTargets:
         - DochoTests

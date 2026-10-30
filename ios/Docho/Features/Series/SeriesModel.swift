@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// One series and its chapters: shown from the database, refreshed from Kavita.
+/// One series and its chapters: shown from the database, refreshed from its source.
 @MainActor
 @Observable
 final class SeriesModel {
@@ -19,6 +19,25 @@ final class SeriesModel {
         self.app = app
         self.seriesId = seriesId
     }
+
+    var source: any MangaSource { series.map(app.source(for:)) ?? StubSource(id: 0) }
+
+    var display: ChapterDisplay { series?.chapterDisplay ?? ChapterDisplay() }
+
+    /// The chapter list as shown: filtered and sorted per the series' chapter settings.
+    var displayedChapters: [ChapterRecord] {
+        chapters.displayed(display, downloaded: app.preferences.downloadedOnly)
+    }
+
+    /// The chapter the Start/Resume button opens.
+    var nextChapter: ChapterRecord? {
+        if let started = chapters.first(where: \.inProgress) { return started }
+        let lastRead = chapters.lastIndex(where: \.read)
+        let after = lastRead.map { chapters[($0 + 1)...] } ?? chapters[...]
+        return after.first { !$0.read } ?? chapters.first { !$0.read }
+    }
+
+    var hasStarted: Bool { chapters.contains { $0.read || $0.inProgress } }
 
     /// Follows the stored series until cancelled.
     func observeSeries() async {
@@ -43,11 +62,17 @@ final class SeriesModel {
 
     func download(_ chapterIds: some Collection<Int>) async {
         let ids = Set(chapterIds)
-        await app.downloads.download(chapters.filter { ids.contains($0.id) })
+        await app.userDownload(chapters.filter { ids.contains($0.id) })
     }
 
-    func downloadUnread() async {
-        await app.downloads.download(chapters.filter { !$0.read })
+    /// Mihon's download menu: the next n unread chapters, or all unread, or all.
+    func downloadNext(_ count: Int?) async {
+        let unread = chapters.filter { !$0.read && !$0.isDownloaded }
+        await app.userDownload(count.map { Array(unread.prefix($0)) } ?? unread)
+    }
+
+    func downloadAll() async {
+        await app.userDownload(chapters.filter { !$0.isDownloaded })
     }
 
     func cancelDownload(_ chapterId: Int) async {
@@ -66,54 +91,64 @@ final class SeriesModel {
         await app.downloads.retryFailed()
     }
 
-    /// Fetches the series, its metadata and its chapters from Kavita and stores them.
+    /// Fetches the series and its chapters from its source, stores them, and syncs progress.
     func refresh() async {
+        guard let series else { return }
         isRefreshing = true
         defer { isRefreshing = false }
         do {
-            async let series = app.kavita.series(id: seriesId)
-            async let metadata = app.kavita.seriesMetadata(seriesId: seriesId)
-            async let volumes = app.kavita.volumes(seriesId: seriesId)
-            let (fetched, details, remote) = try await (series, KavitaSeriesDetails(metadata), volumes)
-            try await app.database.saveSeries(
-                fetched, details: details, chapters: KavitaChapterList.build(remote), seedProgress: app.settings.syncProgress
-            )
+            try await app.library.refresh(series, details: true)
             refreshError = nil
-            await app.sync.syncSeries(seriesId, volumes: remote)
         } catch {
             guard !(error is CancellationError), (error as? URLError)?.code != .cancelled else { return }
             refreshError = error.localizedDescription
         }
     }
 
-    func setInLibrary(_ inLibrary: Bool) async {
-        try? await app.database.setInLibrary(seriesId: seriesId, inLibrary)
+    /// Opening a series refreshes it if it's never been fetched, else just syncs progress.
+    func load() async {
+        while series == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+        }
+        guard let series else { return }
+        if !series.initialized || chapters.isEmpty {
+            await refresh()
+        } else {
+            await app.sync.syncSeries(series)
+        }
     }
 
-    /// Marks chapters by hand: saved locally, then sent to Kavita as is (see `KavitaSync`).
+    /// Adds to the library (into `categories`, or the default category) or removes it.
+    func setInLibrary(_ inLibrary: Bool, categories: [Int]? = nil) async {
+        try? await app.database.setInLibrary(seriesId: seriesId, inLibrary, categories: categories)
+    }
+
+    /// Marks chapters by hand: saved locally, then sent to the series' server as is.
     func setRead(_ chapterIds: some Collection<Int>, _ read: Bool) async {
         let ids = Array(chapterIds)
+        guard let series else { return }
         do {
             try await app.database.setChaptersRead(ids, read: read)
-            await app.sync.readStatusChanged(try await app.database.chapters(ids: ids), read: read)
+            let changed = try await app.database.chapters(ids: ids)
+            await app.sync.readStatusChanged(series, chapters: changed, read: read)
+            if read, app.preferences.deleteAfterMarkedRead {
+                let downloaded = changed.filter(\.isDownloaded).map(\.id)
+                if !downloaded.isEmpty { await deleteDownloads(downloaded) }
+            }
         } catch {}
+    }
+
+    func setBookmarked(_ chapterIds: some Collection<Int>, _ bookmarked: Bool) async {
+        try? await app.database.setBookmarked(Array(chapterIds), bookmarked)
     }
 
     func markPreviousRead(_ chapter: ChapterRecord) async {
         guard let ids = try? await app.database.unreadChapterIds(before: chapter) else { return }
         await setRead(ids, true)
     }
-}
 
-enum PublicationStatus {
-    /// Display name of Kavita's `publicationStatus`, mapped as Android does; nil when unknown.
-    static func title(_ status: Int?) -> String? {
-        switch status {
-        case KavitaConstants.statusOngoing: String(localized: "Ongoing")
-        case KavitaConstants.statusHiatus: String(localized: "On hiatus")
-        case KavitaConstants.statusCompleted, KavitaConstants.statusEnded: String(localized: "Completed")
-        case KavitaConstants.statusCancelled: String(localized: "Cancelled")
-        default: nil
-        }
+    func setDisplay(_ display: ChapterDisplay) async {
+        try? await app.database.setChapterDisplay(seriesId: seriesId, display)
     }
 }

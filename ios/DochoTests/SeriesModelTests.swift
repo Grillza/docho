@@ -5,24 +5,18 @@ import XCTest
 final class SeriesModelTests: XCTestCase {
     private var app: AppModel!
     private var model: SeriesModel!
-    private var defaultsSuite = ""
 
     override func setUp() async throws {
-        defaultsSuite = "io.github.grillza.docho.tests.series.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "io.github.grillza.docho.tests.series")
-        settings.serverURL = "https://kavita.test"
-        settings.apiKey = "key-1"
-        app = AppModel(settings: settings, session: StubURLProtocol.session(), database: try .inMemory())
-        model = SeriesModel(app: app, seriesId: 7)
+        app = try TestApp.make("series").app
+        let series = try await app.database.localSeries(
+            source: KavitaSource.id, manga: SManga(url: "/library/2/series/7", title: "Berserk")
+        )
+        model = SeriesModel(app: app, seriesId: series.id)
+        Task { await model.observeSeries() }
+        while model.series == nil { await Task.yield() }
     }
 
-    override func tearDown() async throws {
-        app.settings.apiKey = ""
-        UserDefaults().removePersistentDomain(forName: defaultsSuite)
-    }
-
-    func testRefreshStoresTheSeriesAndItsChapters() async throws {
+    func testRefreshStoresTheSeriesAndItsChaptersAndPullsProgress() async throws {
         StubURLProtocol.reset { request in
             switch request.path {
             case let path where path.hasSuffix("/Plugin/authenticate"):
@@ -34,7 +28,8 @@ final class SeriesModelTests: XCTestCase {
             case "/api/Series/volumes":
                 .json(#"""
                 [{"id": 1, "minNumber": 1, "name": "1", "chapters": [
-                  {"id": 10, "minNumber": 1, "number": "1", "range": "1", "pages": 20, "pagesRead": 20, "volumeId": 1}
+                  {"id": 10, "minNumber": 1, "number": "1", "range": "1", "pages": 20, "pagesRead": 20, "volumeId": 1,
+                   "files": [{"filePath": "/manga/Berserk/Berserk v01.cbz", "koreaderHash": "ABC"}]}
                 ]}]
                 """#)
             default:
@@ -45,13 +40,16 @@ final class SeriesModelTests: XCTestCase {
         await model.refresh()
 
         XCTAssertNil(model.refreshError)
-        let series = try await app.database.writer.read { try SeriesRecord.fetchOne($0, key: 7) }
+        let series = try await app.database.seriesRecord(id: model.seriesId)
         XCTAssertEqual(series?.name, "Berserk")
         XCTAssertEqual(series?.authors, "Miura")
-        XCTAssertEqual(PublicationStatus.title(series?.status), "On hiatus")
-        let chapters = try await app.database.writer.read { try ChapterRecord.fetchAll($0) }
+        XCTAssertEqual(series?.mangaStatus, .onHiatus)
+        let chapters = try await app.database.chapterList(seriesId: model.seriesId)
         XCTAssertEqual(chapters.map(\.name), ["Vol. 1 Ch. 1"])
-        XCTAssertEqual(chapters.first?.read, true, "seeded from the server; sync is on by default")
+        XCTAssertEqual(chapters.first?.url, "/chapter/10")
+        XCTAssertEqual(chapters.first?.chapterMemo.string(ChapterMemo.fileName), "Berserk v01.cbz")
+        XCTAssertEqual(chapters.first?.chapterMemo.string(KavitaSource.memoKoreaderHash), "abc")
+        XCTAssertEqual(chapters.first?.read, true, "pulled from the server; sync is on by default")
     }
 
     func testRefreshReportsErrors() async {
@@ -61,5 +59,20 @@ final class SeriesModelTests: XCTestCase {
         await model.refresh()
         XCTAssertEqual(model.refreshError, "HTTP 500")
         XCTAssertFalse(model.isRefreshing)
+    }
+
+    func testNextChapterIsTheFirstUnreadAfterTheLastRead() async throws {
+        let series = try await app.seedKavitaSeries(chapters: [(1, 5), (2, 5), (3, 5)])
+        let model = SeriesModel(app: app, seriesId: series.id)
+        Task { await model.observeSeries() }
+        Task { await model.observeChapters() }
+        while model.chapters.count < 3 || model.series == nil { await Task.yield() }
+        XCTAssertEqual(model.nextChapter?.url, "/chapter/1")
+        XCTAssertFalse(model.hasStarted)
+
+        await model.setRead([model.chapters[1].id], true)
+        while !model.chapters[1].read { await Task.yield() }
+        XCTAssertEqual(model.nextChapter?.url, "/chapter/3")
+        XCTAssertTrue(model.hasStarted)
     }
 }

@@ -13,7 +13,7 @@ protocol ReaderController: UIViewController {
     var onPageShown: (Int) -> Void { get set }
     var onToggleOverlay: () -> Void { get set }
     var onLeave: (ReaderLeave) -> Void { get set }
-    var pageURL: (Int) -> URL? { get set }
+    var pageRequest: (Int) -> URLRequest? { get set }
     var content: ReaderContent? { get }
 
     init()
@@ -40,7 +40,14 @@ struct ReaderPagesView<Controller: ReaderController>: UIViewControllerRepresenta
             coverAlone: model.settings.coverAlone,
             previousTitle: model.previousChapter?.name,
             nextTitle: model.nextChapter?.name,
-            currentTitle: model.chapter.name
+            currentTitle: model.chapter.name,
+            vertical: model.mode == .vertical,
+            tapZones: model.mode.isLongStrip ? model.settings.stripTapZones : model.settings.pagedTapZones,
+            invertTaps: model.mode.isLongStrip ? model.settings.stripInvert : model.settings.pagedInvert,
+            background: model.settings.background,
+            doubleTapZoom: model.settings.doubleTapZoom,
+            animate: model.settings.animatePageTransitions,
+            gap: model.mode == .webtoonGaps ? 16 : 0
         )
         if controller.content != content {
             controller.show(content, page: model.page)
@@ -58,7 +65,7 @@ struct ReaderPagesView<Controller: ReaderController>: UIViewControllerRepresenta
         var lastJump: ReaderModel.PageJump?
 
         func attach(_ controller: Controller, to model: ReaderModel) {
-            controller.pageURL = { [weak model] in model?.pageURL($0) }
+            controller.pageRequest = { [weak model] in model?.pageRequest($0) }
             controller.onPageShown = { [weak model] page in
                 Task { await model?.pageShown(page) }
             }

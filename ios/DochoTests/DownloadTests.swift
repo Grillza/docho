@@ -6,39 +6,28 @@ import XCTest
 @MainActor
 final class DownloadTests: XCTestCase {
     private var app: AppModel!
+    private var defaults: UserDefaults!
     private var root: URL!
-    private var defaultsSuite = ""
+    private var series: SeriesRecord!
+    /// Local chapter ids of Kavita chapters 10, 11 and 12.
+    private var ids: [Int] = []
 
     override func setUp() async throws {
-        defaultsSuite = "io.github.grillza.docho.tests.downloads.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "io.github.grillza.docho.tests.downloads")
-        settings.serverURL = "https://kavita.test"
-        settings.apiKey = "key-1"
-        settings.syncProgress = false
         root = FileManager.default.temporaryDirectory.appending(path: "downloads-\(UUID())")
-        app = AppModel(
-            settings: settings, session: StubURLProtocol.session(), database: try .inMemory(),
-            readerSettings: ReaderSettings(defaults: defaults), downloadStore: DownloadStore(root: root),
-            pageFetcher: SessionPageFetcher(session: StubURLProtocol.session())
-        )
+        let parts = try TestApp.make("downloads", downloadStore: DownloadStore(root: root))
+        app = parts.app
+        defaults = parts.defaults
+        app.settings.syncProgress = false
         StubURLProtocol.reset(Self.server())
-
-        let series = try JSONDecoder().decode(KavitaSeries.self, from: Data(#"{"id": 7, "name": "S", "libraryId": 2}"#.utf8))
-        let details = KavitaSeriesDetails(try JSONDecoder().decode(KavitaSeriesMetadata.self, from: Data("{}".utf8)))
-        let entries = [(10, 4), (11, 3), (12, 0)].map { id, pages in
-            KavitaChapterEntry(
-                chapterId: id, volumeId: 1, name: "Ch. \(id)", number: Double(id), pages: pages, pagesRead: 0, dateUpload: nil
-            )
-        }
-        try await app.database.saveSeries(series, details: details, chapters: entries, seedProgress: false)
+        series = try await app.seedKavitaSeries(chapters: [(10, 4), (11, 3), (12, 0)])
+        ids = try await chapters().map(\.id)
     }
 
     override func tearDown() async throws {
-        app.settings.apiKey = ""
-        UserDefaults().removePersistentDomain(forName: defaultsSuite)
         try? FileManager.default.removeItem(at: root)
     }
+
+    nonisolated private static let pageCounts = ["10": 4, "11": 3, "12": 2]
 
     /// Pages are "c<chapter>p<page>"; even pages are webp, odd ones jpeg. `failing` pages answer 500.
     private nonisolated static func server(failing: Set<String> = []) -> StubURLProtocol.Handler {
@@ -53,7 +42,8 @@ final class DownloadTests: XCTestCase {
                 let type = page.isMultiple(of: 2) ? "image/webp" : "image/jpeg"
                 return StubURLProtocol.Response(headers: ["Content-Type": type], body: Data("c\(chapter)p\(page)".utf8))
             case "/api/Chapter":
-                return .json(#"{"id": 12, "pages": 2, "volumeId": 1}"#)
+                let id = request.query("chapterId") ?? "0"
+                return .json(#"{"id": \#(id), "pages": \#(pageCounts[id] ?? 0), "volumeId": 1}"#)
             default:
                 return .json("", status: 404)
             }
@@ -61,11 +51,15 @@ final class DownloadTests: XCTestCase {
     }
 
     private func chapters() async throws -> [ChapterRecord] {
-        try await app.database.chapterList(seriesId: 7)
+        try await app.database.chapterList(seriesId: series.id)
     }
 
     private func queue() async throws -> [DownloadRecord] {
         try await app.database.writer.read { try DownloadRecord.fetchAll($0) }
+    }
+
+    private func files(_ index: Int) -> [URL] {
+        app.downloads.store.pageFiles(seriesId: series.id, chapterId: ids[index])
     }
 
     private func exists(_ url: URL) -> Bool {
@@ -77,11 +71,10 @@ final class DownloadTests: XCTestCase {
     }
 
     func testDownloadsEveryPageIntoTheChapterFolder() async throws {
-        let chapter = try await chapters()[0]
-        await app.downloads.download([chapter])
+        await app.downloads.download([try await chapters()[0]])
         await app.downloads.waitUntilIdle()
 
-        let files = app.downloads.store.pageFiles(seriesId: 7, chapterId: 10)
+        let files = files(0)
         XCTAssertEqual(files.map(\.lastPathComponent), ["000.webp", "001.jpg", "002.webp", "003.jpg"])
         XCTAssertEqual(try String(contentsOf: files[2], encoding: .utf8), "c10p2")
         XCTAssertTrue(imageRequests().allSatisfy { $0.query("apiKey") == "key-1" })
@@ -89,19 +82,20 @@ final class DownloadTests: XCTestCase {
         XCTAssertTrue(stored.isDownloaded)
         let queued = try await queue()
         XCTAssertEqual(queued, [])
-        XCTAssertFalse(exists(app.downloads.store.partialDirectory(seriesId: 7, chapterId: 10)))
+        XCTAssertFalse(exists(app.downloads.store.partialDirectory(seriesId: series.id, chapterId: ids[0])))
         let backup = try root.resourceValues(forKeys: [.isExcludedFromBackupKey])
         XCTAssertEqual(backup.isExcludedFromBackup, true)
     }
 
-    func testChaptersDownloadOneAfterAnotherAndUnknownPageCountsAreFetched() async throws {
+    func testChaptersDownloadOneAfterAnotherWithPageListsFromTheSource() async throws {
         await app.downloads.download(try await chapters())
         await app.downloads.waitUntilIdle()
 
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 11).count, 3)
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 12).count, 2, "page count from GET /Chapter")
-        let downloaded = try await chapters().map(\.isDownloaded)
-        XCTAssertEqual(downloaded, [true, true, true])
+        XCTAssertEqual(files(1).count, 3)
+        XCTAssertEqual(files(2).count, 2, "page count from the source's page list")
+        let stored = try await chapters()
+        XCTAssertEqual(stored.map(\.isDownloaded), [true, true, true])
+        XCTAssertEqual(stored[2].pages, 2, "the page count learned is stored")
     }
 
     func testAFailedPageFailsTheChapterUntilRetried() async throws {
@@ -112,20 +106,22 @@ final class DownloadTests: XCTestCase {
         var queued = try await queue()
         XCTAssertEqual(queued.map(\.state), [.failed])
         XCTAssertEqual(queued.first?.error, "HTTP 500")
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 10), [], "never looks complete")
+        XCTAssertEqual(files(0), [], "never looks complete")
         let notYet = try await chapters()[0].isDownloaded
         XCTAssertFalse(notYet)
 
         // A retry fetches only the pages that are missing.
+        let partial = app.downloads.store.partialDirectory(seriesId: series.id, chapterId: ids[0])
+        let kept = Set(app.downloads.store.pages(in: partial).keys.map(String.init))
         StubURLProtocol.reset(Self.server())
         await app.downloads.retryFailed()
         await app.downloads.waitUntilIdle()
 
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 10).count, 4)
-        // Page 3 may have been in flight when page 2 failed; pages 0 and 1 were kept.
+        XCTAssertEqual(files(0).count, 4)
+        // Pages stored before the failure are kept; only the rest are fetched again.
         let refetched = Set(imageRequests().compactMap { $0.query("page") })
         XCTAssertTrue(refetched.contains("2"))
-        XCTAssertTrue(refetched.isSubset(of: ["2", "3"]), "\(refetched)")
+        XCTAssertTrue(refetched.isDisjoint(with: kept), "refetched \(refetched), kept \(kept)")
         queued = try await queue()
         XCTAssertEqual(queued, [])
     }
@@ -137,31 +133,62 @@ final class DownloadTests: XCTestCase {
             return try Self.server()(request)
         }
         await app.downloads.download([try await chapters()[0]])
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(150))
 
-        await app.downloads.cancel([(7, 10)])
+        await app.downloads.cancel([(series.id, ids[0])])
         await app.downloads.waitUntilIdle()
 
         let queued = try await queue()
         XCTAssertEqual(queued, [])
-        XCTAssertFalse(exists(app.downloads.store.partialDirectory(seriesId: 7, chapterId: 10)))
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 10), [])
+        XCTAssertFalse(exists(app.downloads.store.partialDirectory(seriesId: series.id, chapterId: ids[0])))
+        XCTAssertEqual(files(0), [])
+    }
+
+    /// Part A: pausing finishes the pages in flight, starts no more, and survives a relaunch.
+    func testPausingKeepsTheQueueAndResumingFinishesIt() async throws {
+        StubURLProtocol.reset { request in
+            if request.path == "/api/Reader/image" { Thread.sleep(forTimeInterval: 0.1) }
+            return try Self.server()(request)
+        }
+        await app.downloads.download(try await chapters())
+        try await Task.sleep(for: .milliseconds(60))
+        await app.downloads.setPaused(true)
+
+        var queued = try await queue()
+        XCTAssertEqual(queued.count, 3, "nothing is dropped")
+        XCTAssertTrue(queued.allSatisfy { $0.state == .queued }, "\(queued.map(\.state))")
+        XCTAssertTrue(DownloadPreferences.current(defaults).paused, "kept across launches")
+        let requestsWhilePaused = imageRequests().count
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(imageRequests().count, requestsWhilePaused, "no new pages while paused")
+
+        // A relaunch doesn't start a paused queue.
+        await app.downloads.resume()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(imageRequests().count, requestsWhilePaused)
+
+        await app.downloads.setPaused(false)
+        await app.downloads.waitUntilIdle()
+        queued = try await queue()
+        XCTAssertEqual(queued, [])
+        XCTAssertEqual(files(0).count, 4)
+        XCTAssertEqual(imageRequests().filter { $0.query("chapterId") == "10" }.count, 4, "pages kept from before the pause")
     }
 
     func testDeletingAllOrOnlyReadChapters() async throws {
         await app.downloads.download(try await chapters())
         await app.downloads.waitUntilIdle()
-        try await app.database.setChaptersRead([11], read: true)
+        try await app.database.setChaptersRead([ids[1]], read: true)
 
-        await app.downloads.deleteSeries(7, readOnly: true)
+        await app.downloads.deleteSeries(series.id, readOnly: true)
         var downloaded = try await chapters().map(\.isDownloaded)
         XCTAssertEqual(downloaded, [true, false, true])
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 11), [])
+        XCTAssertEqual(files(1), [])
 
-        await app.downloads.deleteSeries(7)
+        await app.downloads.deleteSeries(series.id)
         downloaded = try await chapters().map(\.isDownloaded)
         XCTAssertEqual(downloaded, [false, false, false])
-        XCTAssertFalse(exists(app.downloads.store.seriesDirectory(7)))
+        XCTAssertFalse(exists(app.downloads.store.seriesDirectory(series.id)))
     }
 
     func testQueueingSkipsChaptersAlreadyDownloadedOrQueued() async throws {
@@ -175,29 +202,58 @@ final class DownloadTests: XCTestCase {
 
     func testAnInterruptedDownloadIsResumedOnLaunch() async throws {
         try await app.database.queueDownloads([try await chapters()[1]])
-        try await app.database.updateDownload(11) { $0.state = .downloading }
+        try await app.database.updateDownload(ids[1]) { $0.state = .downloading }
 
         await app.downloads.resume()
         await app.downloads.waitUntilIdle()
 
-        XCTAssertEqual(app.downloads.store.pageFiles(seriesId: 7, chapterId: 11).count, 3)
+        XCTAssertEqual(files(1).count, 3)
     }
 
     func testTheReaderUsesDownloadedPagesWithoutTheServer() async throws {
         await app.downloads.download([try await chapters()[0]])
         await app.downloads.waitUntilIdle()
         StubURLProtocol.reset { _ in throw URLError(.notConnectedToInternet) }
-        try await app.database.writer.write { try $0.execute(sql: "UPDATE chapter SET pages = 0 WHERE id = 10") }
+        try await app.database.writer.write { try $0.execute(sql: "UPDATE chapter SET pages = 0") }
 
         let chapters = try await chapters()
-        let reader = ReaderModel(app: app, seriesId: 7, seriesName: "S", readerMode: nil, chapters: chapters, start: chapters[0])
+        let reader = ReaderModel(app: app, series: series, chapters: chapters, start: chapters[0])
         await reader.prepare()
 
         XCTAssertNil(reader.loadError)
         XCTAssertEqual(reader.pageCount, 4, "counted from the files")
-        XCTAssertEqual(reader.pageURL(1)?.isFileURL, true)
-        XCTAssertEqual(reader.pageURL(1)?.lastPathComponent, "001.jpg")
+        XCTAssertEqual(reader.pageRequest(1)?.url?.isFileURL, true)
+        XCTAssertEqual(reader.pageRequest(1)?.url?.lastPathComponent, "001.jpg")
         XCTAssertTrue(reader.isDownloaded)
+    }
+
+    /// Part A: what the download bar shows for the queue.
+    func testDownloadBarState() async throws {
+        XCTAssertNil(DownloadBarState(queue: [], paused: false))
+
+        try await app.database.queueDownloads(try await chapters())
+        try await app.database.updateDownload(ids[0]) { $0.state = .downloading; $0.pagesDone = 1; $0.pagesTotal = 4 }
+        var queue: [DownloadQueueItem] = []
+        for try await items in app.database.downloadQueue() {
+            queue = items
+            break
+        }
+
+        let downloading = try XCTUnwrap(DownloadBarState(queue: queue, paused: false))
+        XCTAssertEqual(downloading.title, "S - Ch. 10")
+        XCTAssertEqual(downloading.subtitle, "Page 1 of 4 • +2 queued")
+        XCTAssertEqual(downloading.progress, 0.25)
+
+        let paused = try XCTUnwrap(DownloadBarState(queue: queue, paused: true))
+        XCTAssertEqual(paused.subtitle, "Paused • +2 queued")
+        XCTAssertTrue(paused.paused)
+
+        try await app.database.updateDownload(ids[0]) { $0.state = .failed }
+        for try await items in app.database.downloadQueue() {
+            queue = items
+            break
+        }
+        XCTAssertEqual(DownloadBarState(queue: queue, paused: false)?.subtitle, "Waiting • +2 queued", "the next chapter waiting is shown")
     }
 
     func testFileExtensionsFollowTheContentType() {

@@ -1,190 +1,344 @@
+import Nuke
 import SwiftUI
 
+enum SettingsPage: String, Hashable, CaseIterable {
+    case appearance, library, reader, downloads, sync, browse, advanced
+
+    var title: String {
+        switch self {
+        case .appearance: String(localized: "Appearance")
+        case .library: String(localized: "Library")
+        case .reader: String(localized: "Reader")
+        case .downloads: String(localized: "Downloads")
+        case .sync: String(localized: "Sync / Self-hosted sources")
+        case .browse: String(localized: "Browse")
+        case .advanced: String(localized: "Advanced")
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .appearance: String(localized: "Theme, date & time format")
+        case .library: String(localized: "Categories, global update, chapter swipe")
+        case .reader: String(localized: "Reading mode, display, navigation")
+        case .downloads: String(localized: "Automatic download, download ahead")
+        case .sync: String(localized: "Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes")
+        case .browse: String(localized: "Sources, global search")
+        case .advanced: String(localized: "Clear caches, reset settings")
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .appearance: "palette"
+        case .library: "collections_bookmark"
+        case .reader: "chrome_reader_mode"
+        case .downloads: "download"
+        case .sync: "dns"
+        case .browse: "explore"
+        case .advanced: "code"
+        }
+    }
+}
+
+/// Mihon's settings list, in Docho's order.
 struct SettingsView: View {
-    @Environment(AppModel.self) private var model
-
-    @State private var serverURL = ""
-    @State private var apiKey = ""
-    @State private var syncProgress = true
-    @State private var loaded = false
-    @State private var pendingCount = 0
-
-    private var draft: KavitaCredentials {
-        KavitaCredentials(serverURL: serverURL, apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    private var serverURLIsValid: Bool {
-        serverURL.isBlank || KavitaClient.normalizeApiURL(serverURL) != nil
-    }
+    @Environment(\.m3) private var m3
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Server address", text: $serverURL, prompt: Text("e.g. https://kavita.example.com"))
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("kavita.serverURL")
-                SecureField("API key", text: $apiKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("kavita.apiKey")
-                Button {
-                    Task { await model.kavita.checkConnection() }
-                } label: {
-                    ConnectionRow(connection: model.connection, configured: draft.isConfigured)
-                }
-                .buttonStyle(.plain)
-                .disabled(!draft.isConfigured || model.connection == .checking)
-            } header: {
-                Text("Kavita server")
-            } footer: {
-                if serverURLIsValid {
-                    Text(
-                        "Copy the API key from Kavita: your user settings, under API Key / OPDS. "
-                            + "HTTPS is recommended, for example through Tailscale or a reverse proxy."
-                    )
-                } else {
-                    Text("That isn't a valid server address.").foregroundStyle(.red)
-                }
-            }
-
-            Section {
-                Toggle("Sync reading progress", isOn: $syncProgress)
-                    .onChange(of: syncProgress) {
-                        model.settings.syncProgress = syncProgress
-                        if syncProgress { Task { await model.sync.syncQueued() } }
+        VStack(spacing: 0) {
+            TopAppBar(title: String(localized: "Settings"), showsBack: true)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach([SettingsPage.appearance, .library, .reader, .downloads, .sync, .browse], id: \.self) { page in
+                        item(page)
                     }
-                if pendingCount > 0 {
-                    LabeledContent("Waiting to be sent", value: "\(pendingCount)")
-                        .accessibilityIdentifier("sync.pending")
-                    Button("Send Now") {
-                        Task { await model.sync.syncQueued() }
+                    NavigationLink(value: Route.dataStorage) {
+                        PreferenceRow(
+                            title: String(localized: "Data and storage"), subtitle: String(localized: "Storage space, downloads"),
+                            icon: "storage"
+                        )
                     }
-                    .disabled(!syncProgress)
-                }
-            } header: {
-                Text("Reading progress")
-            } footer: {
-                Text(
-                    "Sends every page you read to Kavita and picks up the page reached on other devices. "
-                        + "The side that has read further wins."
-                )
-            }
-
-            ReaderSettingsSection(settings: model.readerSettings)
-
-            Section("About") {
-                LabeledContent("Version", value: Bundle.main.appVersion)
-            }
-        }
-        .navigationTitle("Settings")
-        .task {
-            do {
-                for try await count in model.database.pendingCount() { pendingCount = count }
-            } catch {}
-        }
-        .onAppear {
-            guard !loaded else { return }
-            serverURL = model.settings.serverURL
-            apiKey = model.settings.apiKey
-            syncProgress = model.settings.syncProgress
-            loaded = true
-        }
-        // Save and check on opening, and again shortly after the address or key is edited.
-        .task(id: loaded ? draft : nil) {
-            guard loaded, serverURLIsValid else { return }
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            model.settings.serverURL = draft.serverURL
-            model.settings.apiKey = draft.apiKey
-            await model.kavita.checkConnection()
-        }
-    }
-}
-
-private struct ConnectionRow: View {
-    let connection: KavitaConnection
-    let configured: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Connection").foregroundStyle(.primary)
-                Text(status).font(.footnote).foregroundStyle(.secondary)
-            }
-            Spacer()
-            if connection == .checking {
-                ProgressView()
-            }
-        }
-        .contentShape(.rect)
-    }
-
-    private var color: Color {
-        switch connection {
-        case .connected: .green
-        case .failed: .red
-        case .checking, .unknown: .secondary
-        }
-    }
-
-    private var status: String {
-        switch connection {
-        case .unknown where configured:
-            String(localized: "Tap to check the connection")
-        case .unknown:
-            String(localized: "Enter the server address and API key first")
-        case .checking:
-            String(localized: "Connecting…")
-        case .connected(let username, let version?):
-            String(localized: "Connected to Kavita \(version) as \(username)")
-        case .connected(let username, nil):
-            String(localized: "Connected to Kavita as \(username)")
-        case .failed(let reason):
-            String(localized: "Couldn't connect: \(reason)")
-        }
-    }
-}
-
-private extension Bundle {
-    var appVersion: String {
-        let version = infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = infoDictionary?["CFBundleVersion"] as? String ?? "?"
-        return "\(version) (\(build))"
-    }
-}
-
-#Preview {
-    NavigationStack { SettingsView() }
-        .environment(AppModel())
-}
-
-/// The default mode for series without their own, and two-page spreads on iPad.
-private struct ReaderSettingsSection: View {
-    @Bindable var settings: ReaderSettings
-
-    var body: some View {
-        Section {
-            Picker("Default reading mode", selection: $settings.defaultMode) {
-                ForEach(ReaderMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
+                    .buttonStyle(.ripple)
+                    item(.advanced)
+                    NavigationLink(value: Route.about) {
+                        PreferenceRow(title: String(localized: "About"), subtitle: "Dōchō \(AboutView.version)", icon: "info")
+                    }
+                    .buttonStyle(.ripple)
                 }
             }
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                Toggle("Two-page spreads in landscape", isOn: $settings.spreads)
-                Toggle("First page alone", isOn: $settings.coverAlone)
-                    .disabled(!settings.spreads)
-            }
-        } header: {
-            Text("Reader")
-        } footer: {
-            Text("Each series remembers the mode you pick for it in the reader.")
         }
+        .background(m3.surface)
+    }
+
+    private func item(_ page: SettingsPage) -> some View {
+        NavigationLink(value: Route.settingsPage(page)) {
+            PreferenceRow(title: page.title, subtitle: page.summary, icon: page.icon)
+        }
+        .buttonStyle(.ripple)
+        .accessibilityIdentifier("settings.\(page.rawValue)")
+    }
+}
+
+struct SettingsPageView: View {
+    @Environment(\.m3) private var m3
+    let page: SettingsPage
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TopAppBar(title: page.title, showsBack: true)
+            ScrollView {
+                VStack(spacing: 0) {
+                    switch page {
+                    case .appearance: AppearanceSettings()
+                    case .library: LibrarySettings()
+                    case .reader: ReaderSettingsPage()
+                    case .downloads: DownloadSettings()
+                    case .sync: SyncSettingsPage()
+                    case .browse: BrowseSettings()
+                    case .advanced: AdvancedSettings()
+                    }
+                }
+                .padding(.bottom, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .background(m3.surface)
+    }
+}
+
+// MARK: - Appearance
+
+private struct AppearanceSettings: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.m3) private var m3
+
+    var body: some View {
+        @Bindable var preferences = app.preferences
+        PreferenceHeader(title: String(localized: "Theme"))
+        Picker(String(localized: "Theme mode"), selection: $preferences.themeMode) {
+            Text("System").tag(AppPreferences.ThemeMode.system)
+            Text("Light").tag(AppPreferences.ThemeMode.light)
+            Text("Dark").tag(AppPreferences.ThemeMode.dark)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(AppTheme.allCases) { theme in
+                    ThemePreview(theme: theme, selected: preferences.appTheme == theme, dark: m3.isDark) {
+                        preferences.appTheme = theme
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+        SwitchPreference(title: String(localized: "Pure black dark mode"), isOn: $preferences.pureBlack)
+        PreferenceHeader(title: String(localized: "Navigation"))
+        SwitchPreference(title: String(localized: "Show Updates"), isOn: $preferences.showUpdatesTab)
+        SwitchPreference(title: String(localized: "Show History"), isOn: $preferences.showHistoryTab)
+        SwitchPreference(title: String(localized: "Show Browse"), isOn: $preferences.showBrowseTab)
+        PreferenceHeader(title: String(localized: "Display"))
+        ListPreference(
+            title: String(localized: "Date format"), selection: $preferences.dateFormat,
+            options: [("", String(localized: "Default"))] + ["MM/dd/yy", "dd/MM/yy", "yyyy-MM-dd", "dd MMM yyyy", "MMM dd, yyyy"].map { format in
+                (format, "\(format) (\(Self.example(format)))")
+            }
+        )
+        SwitchPreference(
+            title: String(localized: "Relative timestamps"),
+            subtitle: String(localized: "\"Today\" instead of the date"),
+            isOn: $preferences.relativeTimestamps
+        )
+    }
+
+    private static func example(_ format: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = format
+        return formatter.string(from: Date())
+    }
+}
+
+/// Mihon's theme picker tile: a miniature app in the theme's colours.
+private struct ThemePreview: View {
+    let theme: AppTheme
+    let selected: Bool
+    let dark: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let scheme = dark ? theme.dark : theme.light
+        Button(action: action) {
+            VStack(spacing: 8) {
+                VStack(spacing: 6) {
+                    HStack {
+                        RoundedRectangle(cornerRadius: 4).fill(scheme.onSurface.opacity(0.6)).frame(width: 40, height: 10)
+                        Spacer()
+                        if selected { MIcon("check_circle.fill", size: 16).foregroundStyle(scheme.primary) }
+                    }
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 4).fill(scheme.primary).frame(height: 40)
+                        RoundedRectangle(cornerRadius: 4).fill(scheme.secondary.opacity(0.5)).frame(height: 40)
+                    }
+                    RoundedRectangle(cornerRadius: 4).fill(scheme.onSurface.opacity(0.2)).frame(height: 8)
+                    RoundedRectangle(cornerRadius: 4).fill(scheme.onSurface.opacity(0.2)).frame(height: 8)
+                    Spacer()
+                    HStack {
+                        RoundedRectangle(cornerRadius: 4).fill(scheme.tertiary).frame(width: 16, height: 12)
+                        Spacer()
+                        Capsule().fill(scheme.secondaryContainer).frame(width: 28, height: 12)
+                    }
+                    .padding(6)
+                    .background(scheme.surfaceContainer)
+                }
+                .padding(8)
+                .frame(width: 114, height: 170)
+                .background(scheme.background)
+                .clipShape(RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(selected ? scheme.primary : scheme.outlineVariant, lineWidth: selected ? 4 : 1))
+                Text(theme.title).font(M3Type.bodySmall).lineLimit(1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(theme.title)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+// MARK: - Library
+
+private struct LibrarySettings: View {
+    @Environment(AppModel.self) private var app
+    @State private var categories: [CategoryRecord] = []
+
+    var body: some View {
+        @Bindable var preferences = app.preferences
+        PreferenceHeader(title: String(localized: "Categories"))
+        NavigationLink(value: Route.categories) {
+            PreferenceRow(title: String(localized: "Edit categories"), subtitle: categories.isEmpty ? nil : String(localized: "\(categories.count) categories"))
+        }
+        .buttonStyle(.ripple)
+        ListPreference(
+            title: String(localized: "Default category"), selection: $preferences.defaultCategory,
+            options: [(-1, String(localized: "Always ask")), (CategoryRecord.defaultId, String(localized: "Default"))] + categories.map { ($0.id, $0.name) }
+        )
+        PreferenceHeader(title: String(localized: "Global update"))
+        SwitchPreference(title: String(localized: "Update library on app launch"), isOn: $preferences.updateOnLaunch)
+        SwitchPreference(
+            title: String(localized: "Automatic updates"),
+            subtitle: String(localized: "Checks for new chapters in the background. iOS decides when that happens, usually overnight while charging."),
+            isOn: $preferences.autoUpdate
+        )
+        PreferenceRow(title: String(localized: "Skip updating entries"))
+        CheckboxRow(title: String(localized: "With \"Completed\" status"), isOn: $preferences.smartUpdateSkipCompleted)
+        CheckboxRow(title: String(localized: "With unread chapter(s)"), isOn: $preferences.smartUpdateSkipUnread)
+        CheckboxRow(title: String(localized: "That haven't been started"), isOn: $preferences.smartUpdateSkipNotStarted)
+        PreferenceHeader(title: String(localized: "Chapter swipe"))
+        ListPreference(title: String(localized: "Swipe to right action"), selection: $preferences.swipeStartAction, options: AppPreferences.SwipeAction.allCases.map { ($0, $0.title) })
+        ListPreference(title: String(localized: "Swipe to left action"), selection: $preferences.swipeEndAction, options: AppPreferences.SwipeAction.allCases.map { ($0, $0.title) })
+        Color.clear.frame(height: 0)
+            .task { categories = (try? await app.database.categoryList()) ?? [] }
+    }
+}
+
+// MARK: - Reader
+
+private struct ReaderSettingsPage: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        @Bindable var reader = app.readerSettings
+        ListPreference(title: String(localized: "Default reading mode"), selection: $reader.defaultMode, options: ReaderMode.allCases.map { ($0, $0.title) })
+        SwitchPreference(title: String(localized: "Animate page transitions"), isOn: $reader.animatePageTransitions)
+        PreferenceHeader(title: String(localized: "Display"))
+        ListPreference(title: String(localized: "Background color"), selection: $reader.background, options: ReaderBackground.allCases.map { ($0, $0.title) })
+        SwitchPreference(title: String(localized: "Fullscreen"), isOn: $reader.fullscreen)
+        SwitchPreference(title: String(localized: "Keep screen on"), isOn: $reader.keepScreenOn)
+        SwitchPreference(title: String(localized: "Show page number"), isOn: $reader.showPageNumber)
+        PreferenceHeader(title: String(localized: "Reading"))
+        SwitchPreference(title: String(localized: "Skip chapters marked read"), isOn: $reader.skipRead)
+        SwitchPreference(title: String(localized: "Always show chapter transition"), isOn: $reader.alwaysShowTransition)
+        PreferenceHeader(title: String(localized: "Paged"))
+        ListPreference(title: String(localized: "Tap zones"), selection: $reader.pagedTapZones, options: TapZones.allCases.map { ($0, $0.title) })
+        ListPreference(title: String(localized: "Invert tap zones"), selection: $reader.pagedInvert, options: InvertTaps.allCases.map { ($0, $0.title) })
+        SwitchPreference(title: String(localized: "Double tap to zoom"), isOn: $reader.doubleTapZoom)
+        SwitchPreference(
+            title: String(localized: "Dual page view"),
+            subtitle: String(localized: "Two pages side by side when the screen is wider than it is tall"),
+            isOn: $reader.spreads
+        )
+        SwitchPreference(title: String(localized: "First page alone"), subtitle: String(localized: "In dual page view, the cover stands on its own"), isOn: $reader.coverAlone)
+        PreferenceHeader(title: String(localized: "Long strip"))
+        ListPreference(title: String(localized: "Tap zones"), selection: $reader.stripTapZones, options: TapZones.allCases.map { ($0, $0.title) })
+        ListPreference(title: String(localized: "Invert tap zones"), selection: $reader.stripInvert, options: InvertTaps.allCases.map { ($0, $0.title) })
+    }
+}
+
+// MARK: - Downloads
+
+private struct DownloadSettings: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        @Bindable var preferences = app.preferences
+        SwitchPreference(title: String(localized: "Only download over Wi-Fi"), isOn: $preferences.downloadOnlyOnWifi)
+        ListPreference(
+            title: String(localized: "Concurrent page downloads"), selection: $preferences.concurrentPages,
+            options: (1...10).map { ($0, String($0)) }
+        )
+        PreferenceHeader(title: String(localized: "Delete chapters"))
+        SwitchPreference(title: String(localized: "After manually marked as read"), isOn: $preferences.deleteAfterMarkedRead)
+        SwitchPreference(title: String(localized: "After reading automatically"), isOn: $preferences.deleteAfterReading)
+        PreferenceHeader(title: String(localized: "Auto-download"))
+        SwitchPreference(title: String(localized: "Download new chapters"), isOn: $preferences.downloadNewChapters)
+        ListPreference(
+            title: String(localized: "Download ahead"), selection: $preferences.downloadAhead,
+            options: [(0, String(localized: "Disabled")), (2, "2"), (3, "3"), (5, "5"), (10, "10")]
+        )
+        InfoPreference(text: String(localized: "Download ahead only works for entries in the library, when the chapter being read is downloaded too."))
+    }
+}
+
+// MARK: - Browse
+
+private struct BrowseSettings: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        @Bindable var preferences = app.preferences
+        PreferenceHeader(title: String(localized: "Sources"))
+        SwitchPreference(title: String(localized: "Hide entries already in library"), isOn: $preferences.hideInLibraryItems)
+        InfoPreference(text: String(localized: "Kavita, Komga and BookOrbit are built in. Set them up under Settings → Sync / Self-hosted sources."))
+    }
+}
+
+// MARK: - Advanced
+
+private struct AdvancedSettings: View {
+    @Environment(AppModel.self) private var app
+    @State private var cleared: String?
+
+    var body: some View {
+        PreferenceHeader(title: String(localized: "Data"))
+        PreferenceRow(
+            title: String(localized: "Clear chapter cache"),
+            subtitle: cleared ?? String(localized: "Covers and pages kept for faster loading"),
+            action: {
+                ImagePipeline.shared.cache.removeAll()
+                cleared = String(localized: "Cache cleared")
+            }
+        )
+        PreferenceRow(
+            title: String(localized: "Reset viewer settings"),
+            subtitle: String(localized: "Every series goes back to the default reading mode"),
+            action: {
+                Task {
+                    try? await app.database.writer.write { db in try db.execute(sql: "UPDATE series SET readerMode = NULL") }
+                    cleared = String(localized: "Viewer settings reset")
+                }
+            }
+        )
     }
 }

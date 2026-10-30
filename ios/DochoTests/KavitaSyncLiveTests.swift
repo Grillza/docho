@@ -23,7 +23,7 @@ final class KavitaSyncLiveTests: XCTestCase {
         )
         settings.serverURL = url
         settings.apiKey = key
-        app = AppModel(settings: settings, database: try .inMemory(), pageDebounce: .milliseconds(50))
+        app = try TestApp.make("synclive", kavita: KavitaCredentials(serverURL: url, apiKey: key), session: .shared).app
         let credentials = TestCredentials(serverURL: url, apiKey: key)
         other = KavitaClient { credentials.current }
     }
@@ -62,14 +62,19 @@ final class KavitaSyncLiveTests: XCTestCase {
         // 1. Read on another device, open the series here → this device shows that page.
         try await other.setChaptersRead(seriesId: series.id, chapterIds: [chapter.id], read: false)
         try await other.saveProgress(progress(3))
-        await SeriesModel(app: app, seriesId: series.id).refresh()
-        var local = try await stored(chapter.id)
+        let record = try await app.database.localSeries(
+            source: KavitaSource.id, manga: SManga(url: KavitaSource.seriesURL(libraryId: series.libraryId, seriesId: series.id), title: series.title)
+        )
+        try await app.library.refresh(record)
+        let stored = try await app.database.seriesRecord(id: record.id)
+        let local0 = try await self.stored(chapter.id)
+        var local = local0
         XCTAssertEqual(local.lastPageRead, 3)
 
         // 2. Read further here while offline; back online → the server gets this page.
         app.settings.serverURL = "http://127.0.0.1:9"
-        try await app.database.saveProgress(chapterId: chapter.id, lastPageRead: 6, read: false)
-        await app.sync.pageChanged(local, page: 6, pageCount: chapter.pages, read: false)
+        try await app.database.saveProgress(chapterId: local.id, lastPageRead: 6, read: false)
+        await app.sync.pageChanged(try XCTUnwrap(stored), chapter: local, page: 6, pageCount: chapter.pages, read: false)
         let queued = await eventually { (try? await self.app.database.pendingProgress().first?.pageNum) == 6 }
         XCTAssertTrue(queued, "not queued while offline")
         try await Task.sleep(for: .milliseconds(300)) // let the failed delivery finish
@@ -85,9 +90,9 @@ final class KavitaSyncLiveTests: XCTestCase {
         // 3. Meanwhile the other device reads further; a smaller page queued here never undoes it.
         try await other.saveProgress(progress(10))
         app.settings.serverURL = "http://127.0.0.1:9"
-        local = try await stored(chapter.id)
-        await app.sync.pageChanged(local, page: 7, pageCount: chapter.pages, read: false)
-        try await app.database.saveProgress(chapterId: chapter.id, lastPageRead: 7, read: false)
+        local = try await self.stored(chapter.id)
+        await app.sync.pageChanged(try XCTUnwrap(stored), chapter: local, page: 7, pageCount: chapter.pages, read: false)
+        try await app.database.saveProgress(chapterId: local.id, lastPageRead: 7, read: false)
         _ = await eventually { (try? await self.app.database.pendingProgress().first?.pageNum) == 7 }
         try await Task.sleep(for: .milliseconds(300))
         app.settings.serverURL = serverURL
@@ -95,16 +100,17 @@ final class KavitaSyncLiveTests: XCTestCase {
 
         let kept = try await other.pagesRead(seriesId: series.id, chapterId: chapter.id)
         XCTAssertEqual(kept, 10, "the other device's progress was undone")
-        await app.sync.syncSeries(series.id)
-        local = try await stored(chapter.id)
+        await app.sync.syncSeries(try XCTUnwrap(stored))
+        local = try await self.stored(chapter.id)
         XCTAssertEqual(local.lastPageRead, 10, "the further page wasn't pulled")
         stillQueued = try await app.database.pendingProgress()
         XCTAssertEqual(stillQueued, [])
     }
 
+    /// The local chapter for a Kavita chapter id.
     private func stored(_ chapterId: Int) async throws -> ChapterRecord {
-        let chapters = try await app.database.chapters(ids: [chapterId])
-        return try XCTUnwrap(chapters.first)
+        let chapter = try await app.kavitaChapter(chapterId)
+        return try XCTUnwrap(chapter)
     }
 
     private func eventually(timeout: Duration = .seconds(5), _ condition: () async -> Bool) async -> Bool {

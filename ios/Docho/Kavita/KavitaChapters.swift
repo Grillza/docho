@@ -10,6 +10,8 @@ struct KavitaChapterEntry: Sendable, Equatable {
     var pages: Int
     var pagesRead: Int
     var dateUpload: Date?
+    var koreaderHash: String?
+    var fileName: String?
 }
 
 /// Port of `KavitaSource.chapterList`: names, numbers and order of a series' chapters.
@@ -31,7 +33,9 @@ enum KavitaChapterList {
                     number: chapter.chapterNumber,
                     pages: chapter.pages,
                     pagesRead: chapter.pagesRead,
-                    dateUpload: parseDate(chapter.releaseDate, timeZone: timeZone) ?? parseDate(chapter.created, timeZone: timeZone)
+                    dateUpload: parseDate(chapter.releaseDate, timeZone: timeZone) ?? parseDate(chapter.created, timeZone: timeZone),
+                    koreaderHash: chapter.koreaderHash,
+                    fileName: chapter.fileName
                 )
                 if chapter.isSpecial || volume.volumeNumber == KavitaConstants.specialVolumeNumber {
                     entry.name = chapter.displayTitle ?? "Special"

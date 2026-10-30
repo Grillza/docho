@@ -125,7 +125,7 @@ final class KavitaChapterListTests: XCTestCase {
         XCTAssertEqual(details.authors, "Miura")
         XCTAssertEqual(details.artists, "Studio")
         XCTAssertEqual(details.genres, "Action, Dark")
-        XCTAssertEqual(PublicationStatus.title(details.status), "Completed")
-        XCTAssertNil(PublicationStatus.title(-1))
+        XCTAssertEqual(KavitaSource.status(details.status), .completed)
+        XCTAssertEqual(KavitaSource.status(-1), .unknown)
     }
 }

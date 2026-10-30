@@ -33,6 +33,7 @@ struct DownloadQueueItem: FetchableRecord, Sendable, Equatable, Identifiable {
     var download: DownloadRecord
     var chapterName: String
     var seriesName: String
+    var source: Int64
 
     var id: Int { download.chapterId }
 
@@ -40,6 +41,7 @@ struct DownloadQueueItem: FetchableRecord, Sendable, Equatable, Identifiable {
         download = try DownloadRecord(row: row)
         chapterName = row["chapterName"] ?? ""
         seriesName = row["seriesName"] ?? ""
+        source = row["source"] ?? 0
     }
 }
 
@@ -64,6 +66,11 @@ extension AppDatabase {
             }
             return added
         }
+    }
+
+    /// Every chapter in the queue, oldest first.
+    func queuedDownloads() async throws -> [DownloadRecord] {
+        try await writer.read { db in try DownloadRecord.order(DownloadRecord.Columns.queuedAt).fetchAll(db) }
     }
 
     /// The oldest queued chapter, if any.
@@ -120,7 +127,7 @@ extension AppDatabase {
         ValueObservation
             .tracking { db in
                 try DownloadQueueItem.fetchAll(db, sql: """
-                    SELECT download.*, chapter.name AS chapterName, series.name AS seriesName
+                    SELECT download.*, chapter.name AS chapterName, series.name AS seriesName, series.source AS source
                     FROM download
                     LEFT JOIN chapter ON chapter.id = download.chapterId
                     LEFT JOIN series ON series.id = download.seriesId

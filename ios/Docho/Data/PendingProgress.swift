@@ -39,15 +39,6 @@ struct PendingProgress: Codable, FetchableRecord, PersistableRecord, Sendable, E
     }
 }
 
-/// A pulled change to one chapter's local progress.
-struct PulledProgress: Sendable, Equatable {
-    var chapterId: Int
-    /// Set the chapter read.
-    var read = false
-    /// Raise `lastPageRead` to this page.
-    var lastPageRead: Int?
-}
-
 extension AppDatabase {
     /// Queues changes, replacing older ones for the same chapter (see `KavitaSync.mergePending`).
     /// Returns the entries as stored.
@@ -85,40 +76,5 @@ extension AppDatabase {
     /// How many chapters have progress waiting to be sent, updated as it changes.
     func pendingCount() -> AsyncValueObservation<Int> {
         ValueObservation.tracking { db in try PendingProgress.fetchCount(db) }.values(in: writer)
-    }
-
-    /// Applies pulled progress in one transaction. Pages only ever move forward here, in case the
-    /// reader saved a later page while the server was being asked.
-    func applyPulled(_ changes: [PulledProgress]) async throws {
-        guard !changes.isEmpty else { return }
-        try await writer.write { db in
-            for change in changes {
-                guard var chapter = try ChapterRecord.fetchOne(db, key: change.chapterId) else { continue }
-                if change.read { chapter.read = true }
-                if let page = change.lastPageRead { chapter.lastPageRead = max(chapter.lastPageRead, page) }
-                try chapter.update(db)
-            }
-        }
-    }
-
-    /// A series' chapters in reading order, once.
-    func chapterList(seriesId: Int) async throws -> [ChapterRecord] {
-        try await writer.read { db in
-            try ChapterRecord
-                .filter(ChapterRecord.Columns.seriesId == seriesId)
-                .order(ChapterRecord.Columns.readingOrder)
-                .fetchAll(db)
-        }
-    }
-
-    func chapters(ids: [Int]) async throws -> [ChapterRecord] {
-        try await writer.read { db in try ChapterRecord.fetchAll(db, keys: ids) }
-    }
-
-    /// Ids of the series added to the library.
-    func librarySeriesIds() async throws -> [Int] {
-        try await writer.read { db in
-            try Int.fetchAll(db, SeriesRecord.select(Column("id")).filter(Column("inLibrary") == true))
-        }
     }
 }

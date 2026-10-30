@@ -12,9 +12,14 @@ struct DochoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            ThemeRoot { HomeView() }
                 .environment(model)
-                .task { await model.start() }
+                .task {
+                    #if DEBUG
+                    model.applyLaunchSettings(ProcessInfo.processInfo.environment)
+                    #endif
+                    await model.start()
+                }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -25,6 +30,9 @@ struct DochoApp: App {
         }
         .backgroundTask(.appRefresh(SyncTriggers.refreshTaskIdentifier)) { [model] in
             await model.backgroundRefresh()
+        }
+        .backgroundTask(.appRefresh(LibraryUpdater.taskIdentifier)) { [model] in
+            await model.backgroundLibraryUpdate()
         }
     }
 }

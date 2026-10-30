@@ -1,25 +1,38 @@
 import Foundation
 import os
 
-/// Downloads chapters for offline reading, one chapter at a time and a few pages at once.
-/// The queue is the `download` table, so it survives the app stopping; `resume()` picks it up.
+/// Downloads chapters for offline reading, one chapter at a time and a few pages at once, from
+/// whichever source each series comes from. The queue is the `download` table, so it survives
+/// the app stopping; `resume()` picks it up.
+///
+/// Pausing (Android's download notification Pause) finishes the pages in flight and starts no
+/// new ones; the chapter goes back to the queue with its pages so far kept.
 actor DownloadManager {
-    static let concurrentPages = 3
+    static let defaultConcurrentPages = 3
 
     nonisolated let store: DownloadStore
     private let database: AppDatabase
-    private let kavita: KavitaClient
+    private let sources: SourceManager
     private let fetcher: any PageFetcher
+    private let defaultsBox: SendableDefaults
+    private var defaults: UserDefaults { defaultsBox.defaults }
     private var worker: Task<Void, Never>?
     private var current: (chapterId: Int, task: Task<Void, Never>)?
+    /// Finished and failed chapters since the queue last emptied, for the notifications.
+    nonisolated let events: AsyncStream<DownloadEvent>
+    private let eventContinuation: AsyncStream<DownloadEvent>.Continuation
     private let log = Logger(subsystem: "io.github.grillza.docho", category: "downloads")
 
-    init(database: AppDatabase, kavita: KavitaClient, store: DownloadStore, fetcher: any PageFetcher) {
+    init(database: AppDatabase, sources: SourceManager, store: DownloadStore, fetcher: any PageFetcher, defaults: SendableDefaults = SendableDefaults(.standard)) {
         self.database = database
-        self.kavita = kavita
+        self.sources = sources
         self.store = store
         self.fetcher = fetcher
+        self.defaultsBox = defaults
+        (events, eventContinuation) = AsyncStream.makeStream()
     }
+
+    private var preferences: DownloadPreferences { .current(defaults) }
 
     /// Picks up the queue left when the app last stopped.
     func resume() async {
@@ -38,6 +51,19 @@ actor DownloadManager {
         startWorker()
     }
 
+    /// Pauses or resumes the queue. A paused queue keeps its chapters.
+    func setPaused(_ paused: Bool) async {
+        defaults.set(paused, forKey: "download_queue_paused")
+        if paused {
+            // The worker notices between pages; wait for it to settle.
+            await worker?.value
+        } else {
+            startWorker()
+        }
+    }
+
+    var isPaused: Bool { preferences.paused }
+
     /// Takes chapters out of the queue and throws away what they had downloaded so far.
     func cancel(_ chapters: [(seriesId: Int, chapterId: Int)]) async {
         let ids = chapters.map(\.chapterId)
@@ -49,6 +75,12 @@ actor DownloadManager {
         for chapter in chapters {
             try? FileManager.default.removeItem(at: store.partialDirectory(seriesId: chapter.seriesId, chapterId: chapter.chapterId))
         }
+    }
+
+    /// Empties the queue (Android's Cancel all).
+    func cancelAll() async {
+        let queued = (try? await database.queuedDownloads()) ?? []
+        await cancel(queued.map { ($0.seriesId, $0.chapterId) })
     }
 
     /// Deletes downloaded chapters (and cancels any still in the queue).
@@ -76,15 +108,18 @@ actor DownloadManager {
     // MARK: - Worker
 
     private func startWorker() {
-        guard worker == nil else { return }
+        guard worker == nil, !preferences.paused else { return }
         worker = Task {
-            while let next = try? await database.nextQueuedDownload() {
+            while !preferences.paused, let next = try? await database.nextQueuedDownload() {
                 let task = Task { await download(next) }
                 current = (next.chapterId, task)
                 await task.value
                 current = nil
             }
             worker = nil
+            if !preferences.paused, (try? await database.queuedDownloads().isEmpty) == true {
+                eventContinuation.yield(.queueFinished)
+            }
         }
     }
 
@@ -92,39 +127,55 @@ actor DownloadManager {
         let chapterId = entry.chapterId
         let seriesId = entry.seriesId
         do {
-            try await database.updateDownload(chapterId) { $0.state = .downloading; $0.error = nil }
-            var pageCount = entry.pagesTotal
-            if pageCount <= 0 {
-                pageCount = try await kavita.chapter(id: chapterId).pages
-                try await database.updateDownload(chapterId) { [pageCount] in $0.pagesTotal = pageCount }
+            guard let chapter = try await database.chapter(id: chapterId), let series = try await database.seriesRecord(id: seriesId) else {
+                try await database.removeDownloads([chapterId])
+                return
             }
+            let source = sources.source(series.source)
+            try await database.updateDownload(chapterId) { $0.state = .downloading; $0.error = nil }
+            let pages = try await source.pages(chapter.schapter)
+            guard !pages.isEmpty else { throw SourceError.noPages }
+            let pageCount = pages.count
+            try await database.updateDownload(chapterId) { $0.pagesTotal = pageCount }
+            if chapter.pages != pageCount { try await database.setPageCount(chapterId: chapterId, pages: pageCount) }
+
             let partial = try store.preparePartial(seriesId: seriesId, chapterId: chapterId)
             // Pages fetched before an interruption are kept.
             let present = Set(store.pages(in: partial).keys)
-            let missing = (0..<pageCount).filter { !present.contains($0) }
+            let missing = pages.filter { !present.contains($0.index) }
             var done = present.count
             try await database.updateDownload(chapterId) { [done] in $0.pagesDone = done }
 
+            let preferences = preferences
             try await withThrowingTaskGroup(of: Void.self) { group in
-                var pages = missing.makeIterator()
-                func addNext() throws {
-                    guard let page = pages.next() else { return }
-                    let url = try kavita.pageImageURL(chapterId: chapterId, page: page)
+                var queue = missing.makeIterator()
+                func addNext() {
+                    // A paused queue lets the pages in flight finish and starts no more.
+                    guard !self.preferences.paused else { return }
+                    guard let page = queue.next() else { return }
+                    var request = source.imageRequest(page)
+                    request.allowsCellularAccess = !preferences.onlyOnWifi
+                    request.allowsExpensiveNetworkAccess = !preferences.onlyOnWifi
                     group.addTask { [fetcher, store] in
-                        let fetched = try await fetcher.fetch(url)
-                        try store.storePage(fetched.file, page: page, mimeType: fetched.mimeType, in: partial)
+                        let fetched = try await fetcher.fetch(request)
+                        try store.storePage(fetched.file, page: page.index, mimeType: fetched.mimeType, in: partial)
                     }
                 }
-                for _ in 0..<Self.concurrentPages { try addNext() }
+                for _ in 0..<preferences.concurrentPages { addNext() }
                 while try await group.next() != nil {
                     done += 1
                     try await database.updateDownload(chapterId) { [done] in $0.pagesDone = done }
-                    try addNext()
+                    addNext()
                 }
             }
             try Task.checkCancellation()
+            if done < pageCount {
+                try await database.updateDownload(chapterId) { $0.state = .queued }
+                return
+            }
             try store.complete(seriesId: seriesId, chapterId: chapterId)
             try await database.finishDownload(chapterId)
+            eventContinuation.yield(.finished(seriesId: seriesId, chapterId: chapterId))
             log.info("Downloaded chapter \(chapterId): \(pageCount) pages")
         } catch {
             // A cancelled download has already left the queue.
@@ -132,6 +183,22 @@ actor DownloadManager {
             log.warning("Download of chapter \(chapterId) failed: \(error)")
             let message = error.localizedDescription
             try? await database.updateDownload(chapterId) { $0.state = .failed; $0.error = message }
+            eventContinuation.yield(.failed(seriesId: seriesId, chapterId: chapterId, message: message))
         }
+    }
+}
+
+enum DownloadEvent: Sendable, Equatable {
+    case finished(seriesId: Int, chapterId: Int)
+    case failed(seriesId: Int, chapterId: Int, message: String)
+    case queueFinished
+}
+
+/// UserDefaults is documented as thread-safe but isn't marked `Sendable`.
+struct SendableDefaults: @unchecked Sendable {
+    let defaults: UserDefaults
+
+    init(_ defaults: UserDefaults) {
+        self.defaults = defaults
     }
 }

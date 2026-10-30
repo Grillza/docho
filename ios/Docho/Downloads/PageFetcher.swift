@@ -3,7 +3,7 @@ import Synchronization
 
 /// Fetches one page image to a file the caller then owns.
 protocol PageFetcher: Sendable {
-    func fetch(_ url: URL) async throws -> (file: URL, mimeType: String?)
+    func fetch(_ request: URLRequest) async throws -> (file: URL, mimeType: String?)
 }
 
 enum PageFetchError: LocalizedError, Equatable {
@@ -20,8 +20,8 @@ enum PageFetchError: LocalizedError, Equatable {
 struct SessionPageFetcher: PageFetcher {
     let session: URLSession
 
-    func fetch(_ url: URL) async throws -> (file: URL, mimeType: String?) {
-        let (data, response) = try await session.data(from: url)
+    func fetch(_ request: URLRequest) async throws -> (file: URL, mimeType: String?) {
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 200
         guard (200..<300).contains(status) else { throw PageFetchError.http(status: status) }
         let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
@@ -32,8 +32,8 @@ struct SessionPageFetcher: PageFetcher {
 
 /// `BackgroundPageFetcher.shared`, created on first use so tests never make a background session.
 struct BackgroundFetch: PageFetcher {
-    func fetch(_ url: URL) async throws -> (file: URL, mimeType: String?) {
-        try await BackgroundPageFetcher.shared.fetch(url)
+    func fetch(_ request: URLRequest) async throws -> (file: URL, mimeType: String?) {
+        try await BackgroundPageFetcher.shared.fetch(request)
     }
 }
 
@@ -58,7 +58,7 @@ final class BackgroundPageFetcher: NSObject, PageFetcher, URLSessionDownloadDele
         let configuration = URLSessionConfiguration.background(withIdentifier: Self.identifier)
         configuration.isDiscretionary = false
         configuration.sessionSendsLaunchEvents = true
-        configuration.httpMaximumConnectionsPerHost = DownloadManager.concurrentPages
+        configuration.httpMaximumConnectionsPerHost = 8
         session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }
 
@@ -67,8 +67,8 @@ final class BackgroundPageFetcher: NSObject, PageFetcher, URLSessionDownloadDele
         state.withLock { $0.eventsDone = completion }
     }
 
-    func fetch(_ url: URL) async throws -> (file: URL, mimeType: String?) {
-        let task = session.downloadTask(with: url)
+    func fetch(_ request: URLRequest) async throws -> (file: URL, mimeType: String?) {
+        let task = session.downloadTask(with: request)
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 state.withLock { $0.waiting[task.taskIdentifier] = continuation }

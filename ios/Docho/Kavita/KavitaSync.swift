@@ -11,37 +11,52 @@ import os
 /// is never undone. The one exception is marking chapters read or unread by hand, which is a
 /// deliberate choice and is sent as is.
 ///
-/// - **Push:** page turns in the reader (debounced) and hand marks are queued in the database,
-///   then sent. A page is only sent if it's further than the server's. Whatever can't be
-///   delivered stays queued; `retryRequests` asks `SyncTriggers` to try again later.
+/// - **Push:** page turns in the reader (debounced) and hand marks are queued in the database
+///   (`pendingProgress`, keyed by Kavita chapter id), then sent. A page is only sent if it's
+///   further than the server's. Whatever can't be delivered stays queued; `retryRequests` asks
+///   `SyncTriggers` to try again later.
 /// - **Pull:** `syncSeries` runs when a series is refreshed, when the reader opens, and in
 ///   library sync. A chapter read on either side ends up read on both; otherwise the higher page
 ///   is kept on both.
-actor KavitaSync {
+actor KavitaSync: SyncEngine {
     static let pageDebounce: Duration = .milliseconds(1500)
+    static let engine = "kavita"
 
-    /// Yields when something couldn't be delivered and should be retried later.
     nonisolated let retryRequests: AsyncStream<Void>
     private let retryContinuation: AsyncStream<Void>.Continuation
 
-    private let kavita: KavitaClient
+    private let source: KavitaSource
     private let database: AppDatabase
     private let settings: KavitaSettings
+    private let syncSettings: SyncSettings
     private let pageDebounce: Duration
     private var debounces: [Int: Task<Void, Never>] = [:]
     private var waitingPages: [Int: PageChange] = [:]
     private let log = Logger(subsystem: "io.github.grillza.docho", category: "sync")
 
-    init(kavita: KavitaClient, database: AppDatabase, settings: KavitaSettings, pageDebounce: Duration = KavitaSync.pageDebounce) {
-        self.kavita = kavita
+    private var kavita: KavitaClient { source.client }
+
+    init(
+        source: KavitaSource, database: AppDatabase, settings: KavitaSettings, syncSettings: SyncSettings,
+        pageDebounce: Duration = KavitaSync.pageDebounce
+    ) {
+        self.source = source
         self.database = database
         self.settings = settings
+        self.syncSettings = syncSettings
         self.pageDebounce = pageDebounce
         (retryRequests, retryContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
+    nonisolated var engine: String { Self.engine }
+
     nonisolated var isEnabled: Bool {
         settings.syncProgress && settings.credentials.isConfigured
+    }
+
+    /// While progress goes to a KOReader server, `KoreaderSync` does it instead.
+    nonisolated func syncs(_ series: SeriesRecord) -> Bool {
+        series.source == KavitaSource.id && isEnabled && !syncSettings.usesKoreader
     }
 
     // MARK: - Rules
@@ -60,9 +75,9 @@ actor KavitaSync {
     // MARK: - Push
 
     /// Called by the reader on every page change; the latest page per chapter is sent after a short pause.
-    func pageChanged(_ chapter: ChapterRecord, page: Int, pageCount: Int, read: Bool) {
-        guard isEnabled else { return }
-        waitingPages[chapter.id] = PageChange(chapter: chapter, page: page, pageCount: pageCount, read: read)
+    func pageChanged(_ series: SeriesRecord, chapter: ChapterRecord, page: Int, pageCount: Int, read: Bool) {
+        guard syncs(series) else { return }
+        waitingPages[chapter.id] = PageChange(series: series, chapter: chapter, page: page, pageCount: pageCount, read: read)
         debounces[chapter.id]?.cancel()
         debounces[chapter.id] = Task {
             try? await Task.sleep(for: pageDebounce)
@@ -72,7 +87,6 @@ actor KavitaSync {
         }
     }
 
-    /// Sends the pages still waiting out their pause now, e.g. when the app goes to the background.
     func sendWaitingPages() async {
         for chapterId in waitingPages.keys {
             debounces.removeValue(forKey: chapterId)?.cancel()
@@ -81,6 +95,7 @@ actor KavitaSync {
     }
 
     private struct PageChange {
+        var series: SeriesRecord
         var chapter: ChapterRecord
         var page: Int
         var pageCount: Int
@@ -89,7 +104,7 @@ actor KavitaSync {
 
     private func sendPage(_ chapterId: Int) async {
         guard let change = waitingPages.removeValue(forKey: chapterId),
-              let target = await target(for: change.chapter, pageCount: change.pageCount)
+              let target = await target(series: change.series, chapter: change.chapter, pageCount: change.pageCount)
         else { return }
         do {
             let entries = try await database.enqueue([target.progress(change.read ? target.pages : change.page)], markedByUser: false)
@@ -100,13 +115,13 @@ actor KavitaSync {
     }
 
     /// Pushes chapters marked read or unread by hand, in one request.
-    func readStatusChanged(_ chapters: [ChapterRecord], read: Bool) async {
-        guard isEnabled, let seriesId = chapters.first?.seriesId else { return }
+    func readStatusChanged(_ series: SeriesRecord, chapters: [ChapterRecord], read: Bool) async {
+        guard syncs(series), let seriesId = KavitaSource.seriesId(series.url) else { return }
         var targets: [Target] = []
         for chapter in chapters {
             debounces.removeValue(forKey: chapter.id)?.cancel()
             waitingPages[chapter.id] = nil
-            if let target = await target(for: chapter, pageCount: nil) { targets.append(target) }
+            if let target = await target(series: series, chapter: chapter, pageCount: nil) { targets.append(target) }
         }
         guard !targets.isEmpty else { return }
         do {
@@ -125,16 +140,28 @@ actor KavitaSync {
 
     // MARK: - Pull
 
+    func syncSeries(_ series: SeriesRecord, chapterIds: Set<Int>?) async {
+        await syncSeries(series, volumes: nil)
+    }
+
     /// Delivers this series' queued changes, then reconciles it. `volumes` may carry data that
-    /// was just fetched; otherwise the server is asked.
-    func syncSeries(_ seriesId: Int, volumes: [KavitaVolume]? = nil) async {
-        guard isEnabled else { return }
+    /// was just fetched; otherwise the source's cache from the last refresh, or the server.
+    func syncSeries(_ series: SeriesRecord, volumes: [KavitaVolume]?) async {
+        guard syncs(series), let seriesId = KavitaSource.seriesId(series.url) else { return }
         do {
-            let remoteVolumes = if let volumes { volumes } else { try await kavita.volumes(seriesId: seriesId) }
+            let remoteVolumes = if let volumes = volumes ?? source.progressCache.take(seriesId) {
+                volumes
+            } else {
+                try await kavita.volumes(seriesId: seriesId)
+            }
             let remote = Dictionary(remoteVolumes.flatMap(\.chapters).map { ($0.id, $0) }) { first, _ in first }
             let skip = try await deliverQueued(seriesId: seriesId, remote: remote)
-            let local = try await database.chapterList(seriesId: seriesId).filter { !skip.contains($0.id) }
-            let plan = Reconciliation(local: local, remote: remote)
+            let local = try await database.chapterList(seriesId: series.id).filter { chapter in
+                KavitaSource.chapterId(chapter.url).map { !skip.contains($0) } ?? false
+            }
+            let plan = Reconciliation(
+                local: local, remote: remote, seriesId: seriesId, libraryId: KavitaSource.libraryId(series.url)
+            )
 
             try await database.applyPulled(plan.pulled)
             try await push(plan, seriesId: seriesId)
@@ -146,9 +173,9 @@ actor KavitaSync {
         }
     }
 
-    /// Queued changes go first, judged against what the server has right now. Returns the chapters
-    /// to leave out of the comparison: those sent, and those still queued. Those the server has
-    /// overtaken were dropped and are pulled like any other chapter.
+    /// Queued changes go first, judged against what the server has right now. Returns the Kavita
+    /// chapters to leave out of the comparison: those sent, and those still queued. Those the
+    /// server has overtaken were dropped and are pulled like any other chapter.
     private func deliverQueued(seriesId: Int, remote: [Int: KavitaChapter]) async throws -> Set<Int> {
         var sent = Set<Int>()
         for entry in try await database.pendingProgress(seriesId: seriesId) {
@@ -182,17 +209,17 @@ actor KavitaSync {
     struct Reconciliation {
         /// Read here, not there: pushed as read.
         var readOnServer: [Target] = []
-        /// Read there, or further there: pulled.
+        /// Read there, or further there: pulled (by local chapter id).
         var pulled: [PulledProgress] = []
         /// Further here: pushed, but never as far as marking the chapter read.
         var partialPushes: [KavitaProgress] = []
 
-        init(local: [ChapterRecord], remote: [Int: KavitaChapter]) {
+        init(local: [ChapterRecord], remote: [Int: KavitaChapter], seriesId: Int, libraryId: Int) {
             for local in local {
-                guard let server = remote[local.id], server.pages > 0 else { continue }
+                guard let kavitaId = KavitaSource.chapterId(local.url), let server = remote[kavitaId], server.pages > 0 else { continue }
                 let target = Target(
-                    seriesId: local.seriesId, libraryId: local.libraryId, volumeId: server.volumeId,
-                    chapterId: local.id, pages: server.pages
+                    seriesId: seriesId, libraryId: local.chapterMemo.int(KavitaSource.memoLibraryId) ?? libraryId,
+                    volumeId: server.volumeId, chapterId: kavitaId, pages: server.pages
                 )
                 let serverRead = server.pagesRead >= server.pages
                 if local.read {
@@ -211,16 +238,16 @@ actor KavitaSync {
         var isEmpty: Bool { pulled.isEmpty && pushCount == 0 }
     }
 
-    /// Reconciles every series in the library, then delivers what's left in the queue.
-    /// Returns how many series were synced.
+    /// Reconciles every Kavita series in the library, then delivers what's left in the queue.
     @discardableResult
     func syncLibrary() async -> Int {
-        guard isEnabled, let ids = try? await database.librarySeriesIds() else { return 0 }
-        for id in ids {
-            await syncSeries(id)
+        guard isEnabled, !syncSettings.usesKoreader, let library = try? await database.librarySeriesRecords() else { return 0 }
+        let series = library.filter(syncs)
+        for item in series {
+            await syncSeries(item, volumes: nil)
         }
         await flushPending()
-        return ids.count
+        return series.count
     }
 
     /// Delivers everything queued and reconciles the series it belonged to, so progress made on
@@ -230,11 +257,12 @@ actor KavitaSync {
     /// library ones, because series opened from Browse keep their chapters locally here too.
     @discardableResult
     func syncQueued() async -> Bool {
-        guard isEnabled else { return true }
+        guard isEnabled, !syncSettings.usesKoreader else { return true }
         guard let pending = try? await database.pendingProgress(), !pending.isEmpty else { return true }
-        var seen = Set<Int>()
-        for seriesId in pending.map(\.seriesId) where seen.insert(seriesId).inserted {
-            await syncSeries(seriesId)
+        let queued = Set(pending.map(\.seriesId))
+        let stored = (try? await database.seriesRecords(source: KavitaSource.id)) ?? []
+        for series in stored where KavitaSource.seriesId(series.url).map(queued.contains) == true {
+            await syncSeries(series, volumes: nil)
         }
         await flushPending()
         return (try? await database.pendingProgress().isEmpty) ?? false
@@ -287,6 +315,7 @@ actor KavitaSync {
 
     // MARK: - Targets
 
+    /// The ids Kavita wants with a progress update.
     struct Target {
         var seriesId: Int
         var libraryId: Int
@@ -302,21 +331,25 @@ actor KavitaSync {
         }
     }
 
-    /// The ids Kavita wants with a progress update. The stored chapter has them; one with no page
-    /// count costs a request.
-    private func target(for chapter: ChapterRecord, pageCount: Int?) async -> Target? {
-        var pages = chapter.pages > 0 ? chapter.pages : pageCount ?? 0
-        var volumeId = chapter.volumeId
-        if pages <= 0 {
+    /// The stored chapter's memo has the ids; one with no page count costs a request.
+    private func target(series: SeriesRecord, chapter: ChapterRecord, pageCount: Int?) async -> Target? {
+        guard let chapterId = KavitaSource.chapterId(chapter.url), let seriesId = KavitaSource.seriesId(series.url) else { return nil }
+        let memo = chapter.chapterMemo
+        var pages = chapter.pages > 0 ? chapter.pages : pageCount ?? memo.int(KavitaSource.memoPages) ?? 0
+        var volumeId = memo.int(KavitaSource.memoVolumeId)
+        if pages <= 0 || volumeId == nil {
             do {
-                let fetched = try await kavita.chapter(id: chapter.id)
+                let fetched = try await kavita.chapter(id: chapterId)
                 pages = fetched.pages
                 volumeId = fetched.volumeId
             } catch {
-                log.warning("Could not look up chapter \(chapter.id): \(error)")
+                log.warning("Could not look up chapter \(chapterId): \(error)")
                 return nil
             }
         }
-        return Target(seriesId: chapter.seriesId, libraryId: chapter.libraryId, volumeId: volumeId, chapterId: chapter.id, pages: pages)
+        return Target(
+            seriesId: seriesId, libraryId: memo.int(KavitaSource.memoLibraryId) ?? KavitaSource.libraryId(series.url),
+            volumeId: volumeId ?? 0, chapterId: chapterId, pages: pages
+        )
     }
 }

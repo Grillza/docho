@@ -14,7 +14,7 @@ final class WebtoonReaderController: UIViewController, ReaderController {
     var onPageShown: (Int) -> Void = { _ in }
     var onToggleOverlay: () -> Void = {}
     var onLeave: (ReaderLeave) -> Void = { _ in }
-    var pageURL: (Int) -> URL? = { _ in nil }
+    var pageRequest: (Int) -> URLRequest? = { _ in nil }
 
     private(set) var content: ReaderContent?
     private var pageCount = 0
@@ -88,7 +88,13 @@ final class WebtoonReaderController: UIViewController, ReaderController {
 
     func show(_ content: ReaderContent, page: Int) {
         let reload = content.chapterId != self.content?.chapterId || content.pageCount != self.content?.pageCount
+        if content.gap != self.content?.gap {
+            layout.minimumLineSpacing = content.gap
+            layout.invalidateLayout()
+        }
         self.content = content
+        view.backgroundColor = content.background.color
+        collectionView.backgroundColor = content.background.color
         guard reload else {
             collectionView.reconfigureItems(at: [IndexPath(item: 0, section: 0), IndexPath(item: pageCount + 1, section: 0)])
             return
@@ -149,13 +155,13 @@ final class WebtoonReaderController: UIViewController, ReaderController {
 
     /// Strips are scaled to the screen width (never up), which keeps very long ones manageable.
     private func request(for page: Int) -> ImageRequest? {
-        guard let url = pageURL(page) else { return nil }
+        guard let urlRequest = pageRequest(page) else { return nil }
         let scale = view.window?.windowScene?.screen.scale ?? 2
         return ImageRequest(
-            url: url,
+            urlRequest: urlRequest,
             processors: [.resize(width: view.bounds.width * scale, unit: .pixels, upscale: false)],
             // Downloaded pages are already on disk.
-            options: url.isFileURL ? [.disableDiskCacheWrites] : []
+            options: urlRequest.url?.isFileURL == true ? [.disableDiskCacheWrites] : []
         )
     }
 
@@ -207,12 +213,14 @@ final class WebtoonReaderController: UIViewController, ReaderController {
 
     // MARK: Gestures
 
+    /// Taps follow the long strip's tap zones from Settings → Reader (L shaped by default).
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
-        let position = gesture.location(in: view).y / max(view.bounds.height, 1)
-        switch position {
-        case ..<(1 / 3): scrollBy(screens: -1)
-        case (2 / 3)...: scrollBy(screens: 1)
-        default: onToggleOverlay()
+        let location = gesture.location(in: view)
+        let point = CGPoint(x: location.x / max(view.bounds.width, 1), y: location.y / max(view.bounds.height, 1))
+        switch (content?.tapZones ?? .lShaped).action(at: point, invert: content?.invertTaps ?? .none) {
+        case .previous, .left: scrollBy(screens: -1)
+        case .next, .right: scrollBy(screens: 1)
+        case .menu: onToggleOverlay()
         }
     }
 
@@ -258,6 +266,7 @@ final class WebtoonReaderController: UIViewController, ReaderController {
     @objc private func previousKey() { scrollBy(screens: -1) }
 
     @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
+        guard content?.doubleTapZoom != false else { return }
         if zoomView.zoomScale > 1 {
             zoomView.setZoomScale(1, animated: true)
         } else {
