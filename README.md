@@ -55,7 +55,8 @@ built-in support for self-hosted libraries and progress sync. It follows Mihon's
   fingerprint, so Kavita, BookOrbit, Komga and local archives all work.
 * **Settings export**: save your servers and sync options to a file and load them on another
   device. With a password the file is encrypted (AES-256-GCM), and passwords and API keys are only
-  ever exported encrypted.
+  ever exported encrypted. Server details are left out of Mihon's own backups, which can't be
+  password protected.
 
 See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps.
 

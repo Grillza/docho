@@ -129,4 +129,20 @@ class SyncSettingsFileTest {
     private companion object {
         const val PASSWORD = "correct horse battery"
     }
+
+    @Test
+    fun `server settings are recognised so Mihon backups leave them out`() {
+        val install = configured()
+        listOf(
+            install.kavita.serverUrl,
+            install.kavita.apiKey,
+            install.bookOrbit.password,
+            install.komga.koreaderDownloads,
+            install.koreader.username,
+            install.suwayomi.password,
+            install.progressSync.mode,
+        ).forEach { assertTrue(SyncSettingsFile.isServerSetting(it.key()), it.key()) }
+        assertFalse(SyncSettingsFile.isServerSetting(install.backup.backupInterval.key()))
+        assertFalse(SyncSettingsFile.isServerSetting("pref_display_mode_library"))
+    }
 }
