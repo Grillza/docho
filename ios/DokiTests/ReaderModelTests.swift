@@ -1,6 +1,6 @@
 import GRDB
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 @MainActor
 final class ReaderModelTests: XCTestCase {

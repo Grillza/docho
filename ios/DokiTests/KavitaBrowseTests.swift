@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 final class KavitaBrowseTests: XCTestCase {
     private let noEpub = KavitaFilterStatement(comparison: 8, field: 21, value: "3")

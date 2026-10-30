@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 final class KavitaModelsTests: XCTestCase {
     private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {

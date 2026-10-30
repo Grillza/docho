@@ -1,6 +1,6 @@
 import GRDB
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 final class SkeletonTests: XCTestCase {
     func testSectionsAreLibraryBrowseDownloadsSettings() {
@@ -14,7 +14,7 @@ final class SkeletonTests: XCTestCase {
     }
 
     func testInfoPlistAllowsPlainHttpAndBackgroundRefresh() throws {
-        // Hosted tests run inside the app, so Bundle.main is Mihonka.app.
+        // Hosted tests run inside the app, so Bundle.main is Doki.app.
         let info = try XCTUnwrap(Bundle.main.infoDictionary)
         let ats = try XCTUnwrap(info["NSAppTransportSecurity"] as? [String: Any])
         XCTAssertEqual(ats["NSAllowsLocalNetworking"] as? Bool, true)

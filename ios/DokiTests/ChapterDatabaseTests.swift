@@ -1,6 +1,6 @@
 import GRDB
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 final class ChapterDatabaseTests: XCTestCase {
     private var database: AppDatabase!

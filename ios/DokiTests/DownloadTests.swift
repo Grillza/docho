@@ -1,7 +1,7 @@
 import GRDB
 import Synchronization
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 @MainActor
 final class DownloadTests: XCTestCase {

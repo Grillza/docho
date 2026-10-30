@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// Port of KavitaChapterNumbersTest.kt. Its third case (`calculateChapterGap`) tests Mihon's
 /// missing-chapter detection, which the iOS app doesn't have.

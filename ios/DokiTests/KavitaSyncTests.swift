@@ -1,7 +1,7 @@
 import GRDB
 import Synchronization
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// A Kavita server holding one series (7) with 20-page chapters, for the sync engine tests.
 private final class FakeKavita: Sendable {

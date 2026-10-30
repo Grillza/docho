@@ -1,6 +1,6 @@
 import Foundation
 import Synchronization
-@testable import Mihonka
+@testable import Doki
 
 /// A fake server for URLSession: tests set `handler` and read back `requests`. State is static
 /// because URLSession instantiates the protocol itself, so tests using it must not run in parallel.

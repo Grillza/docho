@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// Port of `KavitaSyncRulesTest.kt`.
 final class KavitaSyncRulesTests: XCTestCase {

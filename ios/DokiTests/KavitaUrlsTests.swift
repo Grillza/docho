@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// Port of KavitaUrlsTest.kt. Its manga/chapter URL half doesn't apply: iOS stores Kavita ids
 /// directly instead of encoding them into Mihon's manga and chapter URLs.

@@ -1,6 +1,6 @@
 import Synchronization
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// Engine tests against a fake server (StubURLProtocol).
 final class KavitaClientTests: XCTestCase {
@@ -29,12 +29,12 @@ final class KavitaClientTests: XCTestCase {
         XCTAssertEqual(libraries, [KavitaLibrary(id: 1, name: "Manga")])
         let auth = try XCTUnwrap(signIns.first)
         XCTAssertEqual(auth.method, "POST")
-        XCTAssertEqual(auth.url.absoluteString, "https://kavita.test/api/Plugin/authenticate?apiKey=key-1&pluginName=Mihonka")
+        XCTAssertEqual(auth.url.absoluteString, "https://kavita.test/api/Plugin/authenticate?apiKey=key-1&pluginName=Doki")
         XCTAssertEqual(String(bytes: auth.body, encoding: .utf8), "{}")
         let request = try XCTUnwrap(StubURLProtocol.requests.last)
         XCTAssertEqual(request.path, "/api/Library/libraries")
         XCTAssertEqual(request.headers["Authorization"], "Bearer t1")
-        XCTAssertEqual(request.headers["User-Agent"], "Mihonka-iOS v1.2.3 (app.mihonka)")
+        XCTAssertEqual(request.headers["User-Agent"], "Doki-iOS v1.2.3 (app.mihonka)")
         XCTAssertNil(request.query("apiKey"))
     }
 

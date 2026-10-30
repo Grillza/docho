@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct MihonkaApp: App {
+struct DokiApp: App {
     @UIApplicationDelegateAdaptor private var delegate: AppDelegate
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase

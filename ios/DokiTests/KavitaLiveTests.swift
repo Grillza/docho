@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// Runs against a real Kavita server, and is skipped unless one is given:
 /// `TEST_RUNNER_KAVITA_LIVE_URL=… TEST_RUNNER_KAVITA_LIVE_KEY=… xcodebuild test …`

@@ -1,4 +1,4 @@
-# Mihonka for iOS: plan, part 2
+# Doki for iOS: plan, part 2
 
 Version 1 ([PLAN.md](PLAN.md), milestones 1–9) is finished and runs on the iPad. Part 2 brings
 the iOS app up to the Android app:
@@ -27,7 +27,7 @@ These replace part 1's where they disagree. Part 1's "Kavita only, no extension 
 | Sources | **Kavita, BookOrbit, Komga, and installed extensions** | Matches Android, plus Komga for a published app |
 | Built-in sources | **Swift**, as Kavita is now. BookOrbit is ported like Kavita was, and Komga written the same way from [Part H](#part-h-komga) | Kavita's Swift port works and is tested, and its sync queue lives in GRDB. Built-ins must work offline and start instantly, which a JVM doesn't |
 | Extensions | **An embedded JVM runs the unmodified Android extension APKs** (dex2jar on the device, then a class loader), with Suwayomi's Android compatibility layer | It's how Tachimanga does it ([research](#how-tachimanga-runs-extensions)), and the only way to use the existing extension repos without rewriting extensions |
-| Extension runtime origin | **Fork [oneechan-runtime](https://github.com/leros1337/oneechan-runtime)** to `Grillza/mihonka-runtime` and use the fork, behind our own Swift protocol. Take upstream fixes by merging deliberately. If the trial (milestone 16) fails, rebuild the host in the fork from its `jvm-ios` approach and Suwayomi's `AndroidCompat`; don't start from scratch | It already does the hard parts for a Swift app. Writing our own gains nothing in App Review, but a week-old, one-author upstream is a risk for an app we keep, so we own the copy we ship (MPL-2.0 allows it) |
+| Extension runtime origin | **Fork [oneechan-runtime](https://github.com/leros1337/oneechan-runtime)** to `Grillza/doki-runtime` and use the fork, behind our own Swift protocol. Take upstream fixes by merging deliberately. If the trial (milestone 16) fails, rebuild the host in the fork from its `jvm-ios` approach and Suwayomi's `AndroidCompat`; don't start from scratch | It already does the hard parts for a Swift app. Writing our own gains nothing in App Review, but a week-old, one-author upstream is a risk for an app we keep, so we own the copy we ship (MPL-2.0 allows it) |
 | JVM | **Eclipse OpenJ9 only** (what oneechan builds), never OpenJDK's HotSpot | OpenJ9's licence (EPL-2.0/Apache-2.0) works on the App Store; HotSpot's GPLv2 is the kind of licence that got VLC pulled. See [App Store route](#app-store-route) |
 | App ↔ JVM | **JSON calls over JNI** through a small C shim, with **page images and HTTP bodies as raw bytes**. All networking goes through **URLSession** | Keeps the Swift side in charge of networking, cookies and Cloudflare (WKWebView), as Tachimanga and oneechan both do |
 | Sync choice | **"Sync progress with: Default (each series with its source) or KOReader"**, app-wide, as on Android | Same behaviour on both apps against the same servers |
@@ -124,7 +124,7 @@ nothing lost and every download still opening.
 
 ## Part C: BookOrbit
 
-Port `app/src/main/java/mihonka/bookorbit/` the way Kavita was ported (PLAN.md's approach: port
+Port `app/src/main/java/doki/bookorbit/` the way Kavita was ported (PLAN.md's approach: port
 behaviour, not structure; the Android code wins over this summary):
 
 - **Sign-in:** like BookOrbit's iPhone app, as a "native" client. The password is exchanged for an
@@ -153,7 +153,7 @@ it) becomes the iOS Settings' first screen, **Sync**, using the same wording:
 | **Komga** | Server address ("e.g. http://komga.lan:25600"), API key ("Create one in Komga: your account settings → API Keys"), Connection ("Connected to Komga as name"), Sync reading progress, Sync library now, Browse Komga, waiting to be sent. No Android equivalent yet; same wording pattern |
 | **KOReader sync** | Server address ("The address KOReader uses, e.g. http://bookorbit.lan:3010/api/v1/koreader"), username, password ("In BookOrbit, create it under Settings → KOReader"), Connection ("Signed in as …"), Sync library now ("Only runs while sync is set to KOReader"), and the matching note |
 
-**KOReader sync** (port of `mihonka/koreader/` and `sync/ProgressSync.kt`):
+**KOReader sync** (port of `doki/koreader/` and `sync/ProgressSync.kt`):
 
 - **Routing:** one `ProgressSync` sends page changes, read marks and reconciliation to whichever
   sync applies to a series. In KOReader mode the sources' own syncs stand down.
@@ -303,7 +303,7 @@ wrote the runtime doesn't matter to App Review; what the app does and what it sh
 - **Downloaded code (guideline 2.5.2):** apps may not download or run code that adds or changes
   their features. Extensions are that, whoever's runtime runs them. Tachimanga is on the App
   Store with the same design, and seems to pass because it ships with nothing and the user
-  brings the repos or extension files. Mihonka does the same:
+  brings the repos or extension files. Doki does the same:
   - **No repos or extensions built in, suggested, or linked** from the app or its App Store page.
     Adding a repo means typing or pasting its URL.
   - **Extensions are off until turned on** (Settings → Browse → Extensions). With them off,
@@ -324,14 +324,14 @@ wrote the runtime doesn't matter to App Review; what the app does and what it sh
 
 | Part | Licence | On the App Store |
 |---|---|---|
-| Mihonka iOS (our code) | Apache-2.0, like Mihon | Fine |
+| Doki iOS (our code) | Apache-2.0, like Mihon | Fine |
 | OpenJ9 (the JVM) | EPL-2.0 / Apache-2.0 | Fine. **Use only OpenJ9**, never OpenJDK's HotSpot, which is GPLv2 |
 | OpenJDK class library | GPLv2 with the Classpath Exception | Linking is allowed by the exception. Ship its licence and `NOTICE` |
 | Suwayomi `AndroidCompat`, oneechan-runtime and our fork | MPL-2.0 | Fine. The fork is public, so changes to MPL files are published as the licence requires |
 | dex2jar | Apache-2.0 | Fine |
 | Extensions | Their own licences | Not shipped; the user installs them |
 
-Add an **Acknowledgements** screen like Android's (0.24.0, `mihonka/acknowledgements/AcknowledgementsScreen.kt`,
+Add an **Acknowledgements** screen like Android's (0.24.0, `doki/acknowledgements/AcknowledgementsScreen.kt`,
 in the More tab where Mihon had Support Us): sections for what the app is built on, servers and
 sync, libraries, icons and tools, each linking to its GitHub repository, then the full licence
 texts. On iOS, list the Swift packages (GRDB, Nuke), the runtime's parts from the table above, and
@@ -339,13 +339,13 @@ the licences generated from the runtime's `NOTICE` at build time.
 
 ### The fork
 
-- **`Grillza/mihonka-runtime`**, a GitHub fork of oneechan-runtime, public, MPL-2.0. It's added to
-  this repo as a submodule at `ios/Vendor/mihonka-runtime`, pinned to a commit.
+- **`Grillza/doki-runtime`**, a GitHub fork of oneechan-runtime, public, MPL-2.0. It's added to
+  this repo as a submodule at `ios/Vendor/doki-runtime`, pinned to a commit.
 - `main` follows our needs. Upstream changes come in by merging, after the contract tests pass,
   never automatically.
 - The **JSON protocol** between Swift and the host is ours from day one. Keep oneechan's
   "only add, never change" rule and its `contract/fixtures`, and run them in `check.sh`.
-- Strip what Mihonka doesn't use (the desktop dev host, unused JDK modules via `jlink`) to keep
+- Strip what Doki doesn't use (the desktop dev host, unused JDK modules via `jlink`) to keep
   the app smaller.
 - A short `ios/Vendor/README.md` records the pinned commit, how to rebuild the JVM
   (`jvm-ios/package.sh`, about 40 minutes the first time) and how to take upstream changes.
@@ -364,7 +364,7 @@ the licences generated from the runtime's `NOTICE` at build time.
 ## Part H: Komga
 
 Komga is a self-hosted comics server, like Kavita. **Android has it since 0.23.0**
-(`app/src/main/java/mihonka/komga/`, with `KomgaSourceTest` and `KomgaSyncRulesTest`), so port
+(`app/src/main/java/doki/komga/`, with `KomgaSourceTest` and `KomgaSyncRulesTest`), so port
 it like Kavita and BookOrbit: the Android code wins over this summary. Every request below was
 checked against a Komga 1.29 server. Each Komga series is a series, and each book a chapter.
 
@@ -458,8 +458,8 @@ iPad, and commit at the end of each.
 15. **Settings mirror and recent Android features** (Parts E and F). Accept: the JoJo series
     sorts by file name on iOS as on Android, and Unread lists unfinished series on both servers.
 16. **Extension runtime trial (go/no-go):**
-    - Fork oneechan-runtime to `Grillza/mihonka-runtime` and add the fork as a submodule at
-      `ios/Vendor/mihonka-runtime`, pinned to a commit ([The fork](#the-fork)). Build its
+    - Fork oneechan-runtime to `Grillza/doki-runtime` and add the fork as a submodule at
+      `ios/Vendor/doki-runtime`, pinned to a commit ([The fork](#the-fork)). Build its
       `jvm-ios` (OpenJ9), link it, and wrap it in `ExtensionHost`.
     - Install one simple extension and one Cloudflare-protected one from a repo. Browse page 1
       and open a chapter's page list.
@@ -472,7 +472,7 @@ iPad, and commit at the end of each.
 18. **Reading and downloading from extensions:** library, series screen, reader, downloads and
     the download indicator, plus Cloudflare and WebView handling.
 19. **Polish:** empty and error states for extension failures ("This extension needs an Android
-    feature Mihonka for iOS doesn't have"), accessibility, the README in PLAN.md updated for
+    feature Doki for iOS doesn't have"), accessibility, the README in PLAN.md updated for
     sources and extensions, the extensions switch (off by default), and the Acknowledgements
     screen ([App Store route](#app-store-route)).
 20. **App Store readiness** (only when the paid account exists): bundle id, privacy details,
@@ -487,7 +487,7 @@ iPad, and commit at the end of each.
    file to match. This plan follows Android.
 3. Pause semantics for the system Live Activity: the plan treats cancel as pause. Should it
    cancel the queue instead, as Android's Cancel does?
-4. App Store name: "Mihonka" or something without Mihon in it? Mihon is Apache-2.0, so the code
+4. App Store name: "Doki" or something without Mihon in it? Mihon is Apache-2.0, so the code
    is fine, but a name close to Mihon's may draw attention in review.
 
 ## Progress log

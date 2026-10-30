@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 final class PageSpreadsTests: XCTestCase {
     func testTheCoverStandsAloneAndTheRestArePaired() {

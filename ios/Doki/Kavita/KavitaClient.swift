@@ -40,7 +40,7 @@ enum KavitaError: LocalizedError, Equatable {
 /// request and renewed once when the server answers 401. Concurrent requests share one sign-in.
 actor KavitaClient {
     static let pageSize = 30
-    private static let pluginName = "Mihonka"
+    private static let pluginName = "Doki"
 
     nonisolated let connectionChanges: AsyncStream<KavitaConnection>
     private let connectionContinuation: AsyncStream<KavitaConnection>.Continuation
@@ -64,7 +64,7 @@ actor KavitaClient {
     ) {
         self.session = session
         self.credentials = credentials
-        self.userAgent = "Mihonka-iOS v\(appVersion) (app.mihonka)"
+        self.userAgent = "Doki-iOS v\(appVersion) (app.mihonka)"
         (connectionChanges, connectionContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 

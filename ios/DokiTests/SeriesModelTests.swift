@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 @MainActor
 final class SeriesModelTests: XCTestCase {

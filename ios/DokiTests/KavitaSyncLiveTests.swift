@@ -1,5 +1,5 @@
 import XCTest
-@testable import Mihonka
+@testable import Doki
 
 /// The milestone 6 acceptance checks against a real Kavita server, with "another device" played
 /// by direct API calls. Skipped unless `TEST_RUNNER_KAVITA_LIVE_URL` and `…_KEY` are set. The

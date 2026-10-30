@@ -21,8 +21,8 @@ trap 'rm -rf "$log" "$(dirname "$results")"' EXIT
 
 status=0
 xcodebuild clean test \
-    -project Mihonka.xcodeproj \
-    -scheme Mihonka \
+    -project Doki.xcodeproj \
+    -scheme Doki \
     -derivedDataPath build/DerivedData \
     -resultBundlePath "$results" \
     -collect-test-diagnostics never \
@@ -51,7 +51,7 @@ print("tests:", ", ".join(f"{n} {r.lower()}" for r, n in sorted(counts.items()))
 ' || true
 fi
 
-warnings="$(grep -E "^$ios_dir/(Mihonka|MihonkaTests|MihonkaUITests)/.*: warning:" "$log" | sort -u || true)"
+warnings="$(grep -E "^$ios_dir/(Doki|DokiTests|DokiUITests)/.*: warning:" "$log" | sort -u || true)"
 if [ -n "$warnings" ]; then
     echo "$warnings"
     echo "check.sh: warnings in our sources" >&2
