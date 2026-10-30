@@ -1,4 +1,4 @@
-# Doki for iOS: plan
+# Docho for iOS: plan
 
 A native SwiftUI app for iPhone and iPad that reads manga and comics from a **Kavita** server
 and syncs reading progress with it, the same way the Android app does. It's for personal use
@@ -31,13 +31,13 @@ iPhone or iPad on iOS 18 or later. The main target is an iPad mini on iOS 27.
 
 **Build an .ipa and sideload it** (free Apple ID):
 
-1. `ios/scripts/build-ipa.sh` builds an unsigned `ios/build/Doki.ipa` (Release).
+1. `ios/scripts/build-ipa.sh` builds an unsigned `ios/build/Docho.ipa` (Release).
 2. Copy it to the device (AirDrop, Files) and install it with **SideStore** or **AltStore**,
    which sign it with your Apple ID.
 3. With a free Apple ID the app must be re-signed every **7 days**; SideStore can refresh it on
    the device. The app's data (library, progress, downloads) survives a refresh.
 
-**Or run it from Xcode:** `cd ios && xcodegen`, open `Doki.xcodeproj`, choose your Personal
+**Or run it from Xcode:** `cd ios && xcodegen`, open `Docho.xcodeproj`, choose your Personal
 Team under Signing & Capabilities, plug the device in, and run. Developer Mode must be on.
 
 **First launch:** Settings → enter the Kavita server address (e.g. `https://kavita.example.com`
@@ -105,7 +105,7 @@ widget, reading lists, and background library refresh.
    components.
 2. Install Homebrew if needed, then `brew install xcodegen swiftlint`.
 3. In Xcode → Settings → Accounts, sign in with your Apple ID; this creates a free "Personal Team".
-4. Clone and switch to the branch: `git clone https://github.com/Grillza/doki && cd doki && git checkout ios`
+4. Clone and switch to the branch: `git clone https://github.com/Grillza/docho && cd docho && git checkout ios`
 5. Install Claude Code on the Mac and run it from the repo root. Point it at this file:
    *"Read ios/PLAN.md and start milestone 1."*
 
@@ -125,9 +125,9 @@ widget, reading lists, and background library refresh.
 ios/
   PLAN.md                    this file
   project.yml                XcodeGen spec: the .xcodeproj is generated, not committed
-  Doki/                   app target
-    App/                     DokiApp.swift, root navigation, dependency container
-    Kavita/                  port of app/src/main/java/doki/kavita/: API, models, ordering, sync
+  Docho/                   app target
+    App/                     DochoApp.swift, root navigation, dependency container
+    Kavita/                  port of app/src/main/java/docho/kavita/: API, models, ordering, sync
     Data/                    database (GRDB), records, migrations, repositories
     Features/
       Settings/
@@ -137,14 +137,14 @@ ios/
       Reader/                UIKit-backed paged and webtoon readers wrapped for SwiftUI
       Downloads/
     Resources/               Assets.xcassets, Info.plist entries, Localizable.xcstrings
-  DokiTests/              XCTest, including ports of the Android Kavita tests
+  DochoTests/              XCTest, including ports of the Android Kavita tests
   scripts/                   build-ipa.sh, etc.
 ```
 
-- **XcodeGen** (`project.yml`) generates `Doki.xcodeproj`. That keeps the project definition
+- **XcodeGen** (`project.yml`) generates `Docho.xcodeproj`. That keeps the project definition
   as reviewable text with no merge conflicts. Commit `project.yml` and git-ignore `*.xcodeproj`.
   After pulling, run `cd ios && xcodegen`.
-- **Bundle id** `app.doki`, matching Android. Display name **Dōki**.
+- **Bundle id** `io.github.grillza.docho`, matching Android. Display name **Dōchō**.
 - **Minimum iOS 18** (raised from 17 on 2026-10-10). That gives Observation (`@Observable`),
   the modern SwiftUI navigation APIs, `ScrollView` paging improvements, and the `Tab` API with
   `.sidebarAdaptable`. iPhone and iPad, all orientations.
@@ -164,26 +164,26 @@ blocks that by default. Set these Info.plist keys:
 - `NSAppTransportSecurity` → `NSAllowsLocalNetworking = YES`, which covers local IPs and `.local`
   names. Also set `NSAllowsArbitraryLoads = YES`, because this is a personal sideloaded app and
   the server address is user-supplied. Add a comment saying that.
-- `NSLocalNetworkUsageDescription`, e.g. "Doki connects to your Kavita server on your local
+- `NSLocalNetworkUsageDescription`, e.g. "Docho connects to your Kavita server on your local
   network." This is required for the local-network permission prompt.
 - HTTPS (Tailscale `*.ts.net`, a reverse proxy) is still the recommendation shown under the
   server field.
 
 ## The Kavita behaviour to port
 
-The Android implementation in `app/src/main/java/doki/kavita/` is the source of truth:
+The Android implementation in `app/src/main/java/docho/kavita/` is the source of truth:
 `KavitaApi.kt`, `KavitaModels.kt`, `KavitaSource.kt`, `KavitaSync.kt`, `KavitaSyncWorker.kt`,
-`KavitaPreferences.kt`. Its tests in `app/src/test/java/doki/kavita/` must be ported to
+`KavitaPreferences.kt`. Its tests in `app/src/test/java/docho/kavita/` must be ported to
 XCTest and pass. If this plan and that code disagree, the code wins; note the difference here.
 
 ### Authentication
 
 Kavita's plugin flow:
 
-1. `POST {api}/Plugin/authenticate?apiKey=<key>&pluginName=Doki` with body `{}` returns
+1. `POST {api}/Plugin/authenticate?apiKey=<key>&pluginName=Docho` with body `{}` returns
    `{ username, token, kavitaVersion }`. A 401 means a bad API key.
 2. Every request to the server sends `Authorization: Bearer <token>` and
-   `User-Agent: Doki-iOS v<version> (app.doki)`.
+   `User-Agent: Docho-iOS v<version> (io.github.grillza.docho)`.
 3. On a **401**, sign in again **once** and retry. If it fails again, report "Kavita rejected
    the API key."
 4. Requests whose path contains `/image` (case-insensitive) also get `apiKey=<key>` as a query
@@ -213,7 +213,7 @@ All are relative to `{api}` = the normalised address.
 
 | Purpose | Request |
 |---|---|
-| Sign in | `POST /Plugin/authenticate?apiKey=&pluginName=Doki`, body `{}` |
+| Sign in | `POST /Plugin/authenticate?apiKey=&pluginName=Docho`, body `{}` |
 | Libraries | `GET /Library/libraries` → `[{id, name, type}]` |
 | Series list (browse/search) | `POST /Series/all-v2?pageNumber=N&pageSize=30`, filter JSON body. Read the `Pagination` response header (`{currentPage, totalPages}`); if it's missing, assume more pages when the page came back full |
 | Series | `GET /Series/{seriesId}` |
@@ -522,13 +522,13 @@ and, where relevant, on the device. Commit at the end of every milestone.
 - `Info.plist` is generated by XcodeGen from the `info:` section of `project.yml`, so the ATS
   comment lives there, and the generated plist is git-ignored along with the `.xcodeproj`.
 - Warnings are errors (`SWIFT_TREAT_WARNINGS_AS_ERRORS`), so "builds with no warnings" is enforced.
-- The background refresh task identifier is `app.doki.progress-sync` (`UIBackgroundModes` = `fetch`).
+- The background refresh task identifier is `io.github.grillza.docho.progress-sync` (`UIBackgroundModes` = `fetch`).
 - The test target links only the app. GRDB and Nuke come in through the host app, so they
   aren't duplicated, and tests can still `import GRDB`.
 - Root layout: a single `TabView` using the `Tab` API with `.sidebarAdaptable`. That's a tab
   bar on iPhone, and on iPad a top tab bar that the user can expand into a sidebar.
 - The dependency container in `App/` is left until milestone 2, when there's something to hold.
-- `ios/scripts/build-ipa.sh [out-dir]` writes an unsigned `build/Doki.ipa`.
+- `ios/scripts/build-ipa.sh [out-dir]` writes an unsigned `build/Docho.ipa`.
 - Verified: tests pass and the app launches on the iPhone 18 Pro and iPad mini (A17 Pro)
   simulators (iOS 27.0). Not yet installed on a real device.
 
@@ -563,7 +563,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
 ### Milestone 3: Browse and Library (2026-10-10)
 
 - `Data/AppDatabase.swift` holds the GRDB setup and migration `v1` (`library`, `series`), in
-  `Application Support/doki.sqlite`. `Data/Records.swift` has the records and queries;
+  `Application Support/docho.sqlite`. `Data/Records.swift` has the records and queries;
   views observe the database with `ValueObservation` (`for try await` in `.task`).
   `chapter` and `pendingProgress` come in their own migrations (milestones 4 and 6).
 - Browse → Kavita (`KavitaBrowseView` + `KavitaBrowseModel`): a paged grid (30 per page, loads
@@ -666,7 +666,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
   with backoff from 1 to 30 minutes, flushes when `NWPathMonitor` sees the network come back,
   when the scene becomes active, and when it goes to the background (with
   `beginBackgroundTask`, sending pages still in their debounce first). A `BGAppRefreshTask`
-  (`app.doki.progress-sync`, via SwiftUI's `.backgroundTask`) is submitted whenever
+  (`io.github.grillza.docho.progress-sync`, via SwiftUI's `.backgroundTask`) is submitted whenever
   something is left queued.
 - **Deliberate difference:** `syncQueued` reconciles every series with queued changes, not only
   library ones, because series opened from Browse keep their chapters locally here.
@@ -728,7 +728,7 @@ and, where relevant, on the device. Commit at the end of every milestone.
   only fetches what's missing. A failed page fails the chapter (shown with its error, and
   retryable). The root is excluded from backup.
 - **Transport:** `BackgroundPageFetcher` uses a background `URLSession`
-  (`app.doki.downloads`) with download tasks, so pages keep coming while the app is
+  (`io.github.grillza.docho.downloads`) with download tasks, so pages keep coming while the app is
   suspended; `AppDelegate` passes `handleEventsForBackgroundURLSession` to it. Page URLs carry
   the `apiKey`, so no token is needed. A file finished for a task from before a relaunch is
   thrown away; the queue fetches the page again. Tests use `SessionPageFetcher` on the fake

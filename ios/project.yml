@@ -1,9 +1,9 @@
 # XcodeGen spec. Generate the project with `xcodegen` in this directory;
-# Doki.xcodeproj and Info.plist are generated and git-ignored.
-name: Doki
+# Docho.xcodeproj and Info.plist are generated and git-ignored.
+name: Docho
 
 options:
-  bundleIdPrefix: app.doki
+  bundleIdPrefix: io.github.grillza.docho
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -25,11 +25,11 @@ packages:
     from: "12.0.0"
 
 targets:
-  Doki:
+  Docho:
     type: application
     platform: iOS
     sources:
-      - path: Doki
+      - path: Docho
     dependencies:
       - package: GRDB
       - package: Nuke
@@ -37,17 +37,17 @@ targets:
         product: NukeUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.doki
-        PRODUCT_NAME: Doki
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho
+        PRODUCT_NAME: Docho
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
     info:
-      path: Doki/Resources/Info.plist
+      path: Docho/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Dōki
+        CFBundleDisplayName: Dōchō
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
@@ -67,42 +67,42 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
           NSAllowsArbitraryLoads: true
-        NSLocalNetworkUsageDescription: Dōki connects to your Kavita server on your local network.
+        NSLocalNetworkUsageDescription: Dōchō connects to your Kavita server on your local network.
         # "fetch" enables BGAppRefreshTask for opportunistic delivery of queued reading progress.
         UIBackgroundModes:
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
-          - app.doki.progress-sync
+          - io.github.grillza.docho.progress-sync
     scheme:
       testTargets:
-        - DokiTests
-        - DokiUITests
+        - DochoTests
+        - DochoUITests
       gatherCoverageData: false
 
-  DokiTests:
+  DochoTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: DokiTests
+      - path: DochoTests
     dependencies:
       # GRDB and Nuke come in through the host app; linking them here too would duplicate them.
-      - target: Doki
+      - target: Docho
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.doki.tests
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
 
-  DokiUITests:
+  DochoUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: DokiUITests
+      - path: DochoUITests
     dependencies:
-      - target: Doki
+      - target: Docho
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.doki.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho.uitests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
-        TEST_TARGET_NAME: Doki
+        TEST_TARGET_NAME: Docho

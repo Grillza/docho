@@ -1,7 +1,7 @@
 included:
-  - Doki
-  - DokiTests
-  - DokiUITests
+  - Docho
+  - DochoTests
+  - DochoUITests
 
 line_length:
   warning: 140

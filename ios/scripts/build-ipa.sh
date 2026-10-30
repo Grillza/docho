@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds an unsigned Doki.ipa for SideStore/AltStore, which sign it on install.
+# Builds an unsigned Docho.ipa for SideStore/AltStore, which sign it on install.
 # Usage: ios/scripts/build-ipa.sh [output-dir]   (default: ios/build)
 set -eu
 
@@ -11,8 +11,8 @@ cd "$ios_dir"
 xcodegen --quiet
 
 xcodebuild build \
-    -project Doki.xcodeproj \
-    -scheme Doki \
+    -project Docho.xcodeproj \
+    -scheme Docho \
     -configuration Release \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$derived" \
@@ -21,13 +21,13 @@ xcodebuild build \
     CODE_SIGN_IDENTITY="" \
     -quiet
 
-app="$derived/Build/Products/Release-iphoneos/Doki.app"
+app="$derived/Build/Products/Release-iphoneos/Docho.app"
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 
 mkdir "$staging/Payload"
 cp -R "$app" "$staging/Payload/"
-rm -f "$out_dir/Doki.ipa"
-(cd "$staging" && zip -qry "$out_dir/Doki.ipa" Payload)
+rm -f "$out_dir/Docho.ipa"
+(cd "$staging" && zip -qry "$out_dir/Docho.ipa" Payload)
 
-echo "$out_dir/Doki.ipa"
+echo "$out_dir/Docho.ipa"
