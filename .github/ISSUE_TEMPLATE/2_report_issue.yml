@@ -52,7 +52,7 @@ body:
       label: Dōchō version
       description: You can find your Dōchō version in **More → About and Help**.
       placeholder: |
-        Example: "0.26.0"
+        Example: "0.26.2"
     validations:
       required: true
 
@@ -95,7 +95,7 @@ body:
           required: true
         - label: I have gone through the [FAQ](https://mihon.app/docs/faq/general) and [troubleshooting guide](https://mihon.app/docs/guides/troubleshooting/).
           required: true
-        - label: I have updated the app to the latest version (**0.26.0**).
+        - label: I have updated the app to the latest version (**0.26.2**).
           required: true
         - label: I have filled out all of the requested information in this form, including specific version numbers.
           required: true
