@@ -61,11 +61,12 @@ final class AppPreferences {
     enum NavAlignment: String, CaseIterable, Sendable {
         case start, center, end
 
-        var title: String {
+        /// Left, centred or right in a bar; top, centred or bottom in a rail at the side.
+        func title(vertical: Bool) -> String {
             switch self {
-            case .start: String(localized: "Left")
+            case .start: vertical ? String(localized: "Top") : String(localized: "Left")
             case .center: String(localized: "Centred")
-            case .end: String(localized: "Right")
+            case .end: vertical ? String(localized: "Bottom") : String(localized: "Right")
             }
         }
     }

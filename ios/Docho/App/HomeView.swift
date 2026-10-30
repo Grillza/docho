@@ -71,6 +71,8 @@ struct HomeView: View {
 
     /// Where the bar sits: the setting, or a bottom bar on iPhone and a left rail on iPad.
     private var position: AppPreferences.NavPosition {
+        // On iPhone the bar is always at the bottom.
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return .bottom }
         let chosen = app.preferences.navPosition
         guard chosen == .automatic else { return chosen }
         return sizeClass == .regular ? .left : .bottom

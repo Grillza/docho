@@ -374,43 +374,94 @@ private struct NavigationBarSettings: View {
     @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
 
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    /// The bar as it would sit: always at the bottom on iPhone.
+    private var position: AppPreferences.NavPosition {
+        guard isPad else { return .bottom }
+        return app.preferences.navPosition == .automatic ? .left : app.preferences.navPosition
+    }
+
     var body: some View {
         @Bindable var preferences = app.preferences
+        let vertical = position == .left || position == .right
         PreferenceHeader(title: String(localized: "Navigation bar"))
         preview
-        Text("Choose which tabs show in the navigation bar. Library and More always show, so you can always get around the app.")
+        if isPad {
+            ListPreference(
+                title: String(localized: "Bar position"), selection: $preferences.navPosition,
+                options: AppPreferences.NavPosition.allCases.map { ($0, $0.title) }
+            )
+        }
+        ListPreference(
+            title: String(localized: "Tab position"), selection: $preferences.navAlignment,
+            options: AppPreferences.NavAlignment.allCases.map { ($0, $0.title(vertical: vertical)) }
+        )
+        Text("Drag tabs to change their order, and tap the eye to show or hide one. Library and More always show, so you can always get around the app.")
             .font(M3Type.bodySmall)
             .foregroundStyle(m3.onSurfaceVariant)
             .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
-        SwitchPreference(title: String(localized: "Updates"), icon: "nav.updates", isOn: $preferences.showUpdatesTab)
-        SwitchPreference(title: String(localized: "History"), icon: "nav.history", isOn: $preferences.showHistoryTab)
-        SwitchPreference(title: String(localized: "Browse"), icon: "nav.browse", isOn: $preferences.showBrowseTab)
-        ListPreference(
-            title: String(localized: "Bar position"), selection: $preferences.navPosition,
-            options: AppPreferences.NavPosition.allCases.map { ($0, $0.title) }
-        )
-        ListPreference(
-            title: String(localized: "Tab position"), selection: $preferences.navAlignment,
-            options: AppPreferences.NavAlignment.allCases.map { ($0, $0.title) }
-        )
-        PreferenceRow(title: String(localized: "Tab order"), subtitle: String(localized: "Move tabs up or down"))
-        ForEach(Array(order.enumerated()), id: \.element) { index, tab in
-            HStack(spacing: 16) {
-                MIcon(tab.icon).foregroundStyle(m3.primary)
-                Text(tab.title).font(.system(size: 16)).foregroundStyle(m3.onSurface)
-                Spacer()
-                AppBarIcon("keyboard_arrow_up", label: String(localized: "Move \(tab.title) up")) { move(index, by: -1) }
-                    .disabled(index == 0)
-                    .opacity(index == 0 ? 0.38 : 1)
-                AppBarIcon("keyboard_arrow_down", label: String(localized: "Move \(tab.title) down")) { move(index, by: 1) }
-                    .disabled(index == order.count - 1)
-                    .opacity(index == order.count - 1 ? 0.38 : 1)
+        // Touch and drag the handle to reorder, as Android's category list does.
+        List {
+            ForEach(order) { tab in
+                HStack(spacing: 16) {
+                    MIcon(tab.icon).foregroundStyle(m3.primary)
+                    Text(tab.title).font(.system(size: 16)).foregroundStyle(isShown(tab) ? m3.onSurface : m3.onSurfaceVariant)
+                    Spacer()
+                    if tab.canHide {
+                        Button { setShown(tab, !isShown(tab)) } label: {
+                            MIcon(isShown(tab) ? "visibility" : "visibility_off")
+                                .foregroundStyle(isShown(tab) ? m3.primary : m3.onSurfaceVariant)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isShown(tab) ? String(localized: "Hide \(tab.title)") : String(localized: "Show \(tab.title)"))
+                    } else {
+                        MIcon("keep", size: 20).foregroundStyle(m3.onSurfaceVariant).frame(width: 44, height: 44)
+                            .accessibilityLabel(String(localized: "Always shown"))
+                    }
+                }
+                .frame(height: 56)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 8))
+                .listRowBackground(m3.surface)
+                .listRowSeparator(.hidden)
+                .opacity(isShown(tab) ? 1 : 0.6)
             }
-            .foregroundStyle(m3.onSurfaceVariant)
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
+            .onMove { from, to in
+                var tabs = order
+                tabs.move(fromOffsets: from, toOffset: to)
+                app.preferences.tabOrder = tabs.map(\.rawValue)
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollDisabled(true)
+        .environment(\.editMode, .constant(.active))
+        .environment(\.defaultMinListRowHeight, 56)
+        .frame(height: CGFloat(HomeTab.allCases.count) * 56)
+        .tint(m3.onSurfaceVariant)
+    }
+
+    private func isShown(_ tab: HomeTab) -> Bool {
+        switch tab {
+        case .updates: app.preferences.showUpdatesTab
+        case .history: app.preferences.showHistoryTab
+        case .browse: app.preferences.showBrowseTab
+        default: true
+        }
+    }
+
+    private func setShown(_ tab: HomeTab, _ shown: Bool) {
+        withAnimation {
+            switch tab {
+            case .updates: app.preferences.showUpdatesTab = shown
+            case .history: app.preferences.showHistoryTab = shown
+            case .browse: app.preferences.showBrowseTab = shown
+            default: break
+            }
         }
     }
 
@@ -419,22 +470,11 @@ private struct NavigationBarSettings: View {
         return ordered + HomeTab.allCases.filter { !ordered.contains($0) }
     }
 
-    private func move(_ index: Int, by offset: Int) {
-        var tabs = order
-        let target = index + offset
-        guard tabs.indices.contains(target) else { return }
-        tabs.swapAt(index, target)
-        withAnimation { app.preferences.tabOrder = tabs.map(\.rawValue) }
-    }
-
     /// A small copy of the bar as the settings would show it (Android's preview).
     @ViewBuilder
     private var preview: some View {
         let preferences = app.preferences
         let tabs = HomeTab.visible(preferences)
-        let position = preferences.navPosition == .automatic
-            ? (UIDevice.current.userInterfaceIdiom == .pad ? AppPreferences.NavPosition.left : .bottom)
-            : preferences.navPosition
         let bar = NavBar(tabs: tabs, position: position, alignment: preferences.navAlignment, current: tabs.first ?? .library,
                          badge: { _ in nil }, selection: { _ in })
             .allowsHitTesting(false)
