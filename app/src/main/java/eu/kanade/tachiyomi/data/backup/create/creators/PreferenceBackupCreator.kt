@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.data.backup.create.creators
 
 import dev.zacsweers.metro.Inject
+import docho.sync.SyncSettingsFile
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
 import eu.kanade.tachiyomi.data.backup.models.BooleanPreferenceValue
@@ -25,6 +26,8 @@ class PreferenceBackupCreator(
     fun createApp(includePrivatePreferences: Boolean): List<BackupPreference> {
         return preferenceStore.getAll().toBackupPreferences()
             .withPrivatePreferences(includePrivatePreferences)
+            // Docho: server details only go in the password-protected settings file.
+            .filterNot { SyncSettingsFile.isServerSetting(it.key) }
     }
 
     suspend fun createSource(includePrivatePreferences: Boolean): List<BackupSourcePreferences> {

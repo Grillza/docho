@@ -5,6 +5,7 @@ import docho.bookorbit.BookOrbitPreferences
 import docho.kavita.KavitaPreferences
 import docho.komga.KomgaPreferences
 import docho.koreader.KoreaderPreferences
+import docho.suwayomi.SuwayomiPreferences
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,6 +25,7 @@ class SyncSettingsFileTest {
         val bookOrbit = BookOrbitPreferences(store)
         val komga = KomgaPreferences(store)
         val koreader = KoreaderPreferences(store)
+        val suwayomi = SuwayomiPreferences(store)
         val progressSync = ProgressSyncPreferences(store)
         val backup = BackupPreferences(store)
         val file = SyncSettingsFile(
@@ -32,6 +34,7 @@ class SyncSettingsFileTest {
             BookOrbitApi(bookOrbit, mockk(relaxed = true), Json),
             komga,
             koreader,
+            suwayomi,
             progressSync,
             backup,
             Json,
@@ -125,5 +128,21 @@ class SyncSettingsFileTest {
 
     private companion object {
         const val PASSWORD = "correct horse battery"
+    }
+
+    @Test
+    fun `server settings are recognised so Mihon backups leave them out`() {
+        val install = configured()
+        listOf(
+            install.kavita.serverUrl,
+            install.kavita.apiKey,
+            install.bookOrbit.password,
+            install.komga.koreaderDownloads,
+            install.koreader.username,
+            install.suwayomi.password,
+            install.progressSync.mode,
+        ).forEach { assertTrue(SyncSettingsFile.isServerSetting(it.key()), it.key()) }
+        assertFalse(SyncSettingsFile.isServerSetting(install.backup.backupInterval.key()))
+        assertFalse(SyncSettingsFile.isServerSetting("pref_display_mode_library"))
     }
 }

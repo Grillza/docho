@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.data.backup.restore.restorers
 import android.content.Context
 import android.util.Log
 import dev.zacsweers.metro.Inject
+import docho.sync.SyncSettingsFile
 import eu.kanade.tachiyomi.data.backup.create.BackupCreateWorker
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
@@ -34,7 +35,8 @@ class PreferenceRestorer(
         backupCategories: List<BackupCategory>?,
     ) {
         restorePreferences(
-            preferences,
+            // Docho: server details come from the settings file, not backups (older ones had them).
+            preferences.filterNot { SyncSettingsFile.isServerSetting(it.key) },
             preferenceStore,
             backupCategories,
         )

@@ -70,6 +70,7 @@ object SettingsSyncScreen : SearchableSettings {
             KavitaSettingsGroup.getGroup(),
             BookOrbitSettingsGroup.getGroup(),
             KomgaSettingsGroup.getGroup(),
+            SuwayomiSettingsGroup.getGroup(),
             KoreaderSettingsGroup.getGroup(),
             getSettingsFileGroup(),
         )

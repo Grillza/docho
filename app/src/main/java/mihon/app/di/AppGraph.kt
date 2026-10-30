@@ -21,6 +21,9 @@ import docho.komga.KomgaSync
 import docho.koreader.KoreaderApi
 import docho.koreader.KoreaderPreferences
 import docho.koreader.KoreaderSync
+import docho.suwayomi.SuwayomiApi
+import docho.suwayomi.SuwayomiPreferences
+import docho.suwayomi.SuwayomiSources
 import docho.sync.ProgressSyncPreferences
 import docho.sync.SyncSettingsFile
 import eu.kanade.domain.base.BasePreferences
@@ -162,6 +165,10 @@ interface AppGraph : ViewModelGraph {
     val komgaApi: KomgaApi
     val komgaSource: KomgaSource
     val komgaSync: KomgaSync
+
+    val suwayomiPreferences: SuwayomiPreferences
+    val suwayomiApi: SuwayomiApi
+    val suwayomiSources: SuwayomiSources
 
     @DependencyGraph.Factory
     fun interface Factory {

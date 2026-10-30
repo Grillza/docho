@@ -76,6 +76,9 @@ class UiPreferences(
 
     val showBrowseTab: Preference<Boolean> = preferenceStore.getBoolean("nav_show_browse", true)
 
+    /** The tabs' order as their keys, comma-separated; tabs missing from it follow in the usual order. */
+    val navBarOrder: Preference<String> = preferenceStore.getString("nav_bar_order", "")
+
     val navBarAlignment: Preference<NavBarAlignment> = preferenceStore.getEnum(
         "nav_bar_alignment",
         NavBarAlignment.CENTER,

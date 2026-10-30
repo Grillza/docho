@@ -1,7 +1,7 @@
 # Self-hosted servers and sync
 
 Dōchō can read straight from your own Kavita, BookOrbit or Komga server, and keep your reading
-progress in sync with it. It can also sync progress through a KOReader sync server instead.
+progress in sync with it, and read from the extensions on a Suwayomi server. It can also sync progress through a KOReader sync server instead.
 
 Everything here is set up in **More → Settings → Sync / Self-hosted sources**. Each server has its
 own section: tap it to open it. When a server is set up, its series also appear under
@@ -33,6 +33,25 @@ Comic archives (CBZ, CBR, CB7) can be read; ebooks are left out.
 3. **Connection** turns green once Dōchō has connected.
 
 Comic archives and PDFs can be read; text-only EPUBs are left out.
+
+## Suwayomi
+
+[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) runs Mihon's extensions on a computer or
+server. If you already use one, Dōchō can read from its sources without installing the extensions
+on your phone.
+
+1. In Dōchō, open **Suwayomi** and enter:
+   - **Server address**: the address you open Suwayomi at, e.g. `http://192.168.1.20:4567`
+   - **Username** and **Password**: only if your server has basic authentication turned on
+2. **Connection** turns green once Dōchō has reached the server.
+
+The extensions installed on the server then appear under **Browse → Sources** beside the ones on
+your device, filtered by your source languages like any other. Extensions on the device keep
+working as usual; if the same extension is installed in both places, the device's copy is used.
+NSFW sources stay hidden unless you turn on **Show NSFW sources**. To install, update or remove
+extensions on the server, tap **Manage extensions** to open Suwayomi in your browser.
+
+Suwayomi sources don't sync reading progress back to the server.
 
 ## How progress syncs
 

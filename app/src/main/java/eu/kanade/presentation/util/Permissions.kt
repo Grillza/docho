@@ -1,5 +1,6 @@
 package eu.kanade.presentation.util
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -14,7 +15,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 fun rememberRequestPackageInstallsPermissionState(initialValue: Boolean = false): Boolean {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    // Docho: watch the activity itself, the screen's lifecycle owner doesn't always resume after a system prompt
+    val lifecycleOwner = (LocalActivity.current as? LifecycleOwner) ?: LocalLifecycleOwner.current
 
     var installGranted by remember { mutableStateOf(initialValue) }
 

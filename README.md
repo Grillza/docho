@@ -24,6 +24,9 @@ Dōchō is a fork of [Mihon](https://github.com/mihonapp/mihon), the free and op
 It keeps everything Mihon does, including extensions, trackers, backups and the reader, and adds
 built-in support for self-hosted libraries and progress sync. It follows Mihon's releases.
 
+> [!NOTE]
+> Dōchō's additions to Mihon were built with the help of AI, using [Claude](https://claude.ai) by Anthropic.
+
 ## What Dōchō adds
 
 ### Self-hosted servers, built in
@@ -34,6 +37,10 @@ built-in support for self-hosted libraries and progress sync. It follows Mihon's
   series show in **Browse → Sources** with the server's own logo.
 * Comic archives (CBZ, CBR, CB7) are read page by page; PDFs too on Kavita and Komga.
 * Volumes, chapters and specials keep the server's own numbering.
+* **[Suwayomi](https://github.com/Suwayomi/Suwayomi-Server)**: if you already run extensions on a
+  Suwayomi server, its sources show in **Browse → Sources** beside the extensions on your device,
+  so you can read from them without installing anything on the phone. Extensions on the device
+  keep working as usual, and take over if the same one is installed in both places.
 * Each server's section folds down to its logo, name and connection status, and **Delete** erases
   that server's details without touching the others.
 
@@ -48,7 +55,8 @@ built-in support for self-hosted libraries and progress sync. It follows Mihon's
   fingerprint, so Kavita, BookOrbit, Komga and local archives all work.
 * **Settings export**: save your servers and sync options to a file and load them on another
   device. With a password the file is encrypted (AES-256-GCM), and passwords and API keys are only
-  ever exported encrypted.
+  ever exported encrypted. Server details are left out of Mihon's own backups, which can't be
+  password protected.
 
 See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps.
 
@@ -57,8 +65,8 @@ See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps
 * **Custom themes**: keep up to five of your own. Pick six colours with a colour wheel, swatches
   or hex codes, set the contrast, start from any built-in theme and preview it full screen.
   Dōchō warns about colours that would be hard to read.
-* **Navigation bar**: hide Updates, History or Browse, choose where the remaining tabs sit, and
-  see the result in a live preview.
+* **Navigation bar**: drag the tabs into any order, tap the eye to hide Updates, History or
+  Browse, choose where the remaining tabs sit, and see the result in a live preview.
 * **Hide missing chapter indicators** for individual series.
 * **File name chapter sort** and an **Unread** listing in Browse.
 * An **Acknowledgements** screen credits the projects Dōchō is built on.
