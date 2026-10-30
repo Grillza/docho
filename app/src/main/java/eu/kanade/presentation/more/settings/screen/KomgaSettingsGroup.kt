@@ -21,9 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import doki.komga.KomgaApi
-import doki.komga.KomgaConnection
-import doki.komga.KomgaSource
+import docho.komga.KomgaApi
+import docho.komga.KomgaConnection
+import docho.komga.KomgaSource
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen

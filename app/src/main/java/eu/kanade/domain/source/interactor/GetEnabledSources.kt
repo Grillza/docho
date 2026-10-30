@@ -1,7 +1,7 @@
 package eu.kanade.domain.source.interactor
 
 import dev.zacsweers.metro.Inject
-import doki.BuiltInSources
+import docho.BuiltInSources
 import eu.kanade.domain.source.service.SourcePreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine

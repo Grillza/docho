@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Dōki</string>
+    <string name="app_name" translatable="false">Dōchō</string>
 
     <!-- Generic strings -->
     <string name="on">On</string>
@@ -50,10 +50,10 @@
     <string name="pref_sync_settings_export">Export settings</string>
     <string name="pref_sync_settings_export_summary">Save these servers and sync options, and how often to back up, to a file you can import on another device</string>
     <string name="pref_sync_settings_import">Import settings</string>
-    <string name="pref_sync_settings_import_summary">Load a settings file exported from Dōki. Settings in the file replace the ones here.</string>
+    <string name="pref_sync_settings_import_summary">Load a settings file exported from Dōchō. Settings in the file replace the ones here.</string>
     <string name="sync_settings_sign_in_include">Include passwords and API keys</string>
     <string name="sync_settings_sign_in_summary">So the other device connects straight away. Needs a password, so they\'re never saved unencrypted.</string>
-    <string name="sync_settings_password_text">Set a password to encrypt the file. Only Dōki can open it, and only with this password, which can\'t be recovered if forgotten.</string>
+    <string name="sync_settings_password_text">Set a password to encrypt the file. Only Dōchō can open it, and only with this password, which can\'t be recovered if forgotten.</string>
     <string name="sync_settings_password_optional">Optional. Leave empty to save the file unencrypted.</string>
     <string name="sync_settings_password_needed">Needed to include passwords and API keys</string>
     <string name="sync_settings_password_too_short">At least %1$d characters</string>
@@ -68,7 +68,7 @@
     <string name="sync_settings_exported_encrypted">Settings exported, encrypted</string>
     <string name="sync_settings_exported">Settings exported</string>
     <string name="sync_settings_export_failed">Couldn\'t save the settings file</string>
-    <string name="sync_settings_import_failed">That isn\'t a Dōki settings file</string>
+    <string name="sync_settings_import_failed">That isn\'t a Dōchō settings file</string>
     <string name="pref_category_nav_bar">Navigation bar</string>
     <string name="pref_nav_bar_info">Choose which tabs show in the navigation bar. Library and More always show, so you can always get around the app.</string>
     <string name="pref_nav_bar_alignment">Tab position</string>
@@ -76,7 +76,7 @@
     <string name="nav_bar_alignment_left">Left</string>
     <string name="nav_bar_alignment_center">Centred</string>
     <string name="nav_bar_alignment_right">Right</string>
-    <string name="acknowledgements_intro">Dōki is built on the work of these open source projects. Tap one to open its source code.</string>
+    <string name="acknowledgements_intro">Dōchō is built on the work of these open source projects. Tap one to open its source code.</string>
     <string name="acknowledgements_built_on">Built on</string>
     <string name="acknowledgements_servers">Servers and sync</string>
     <string name="acknowledgements_libraries">Libraries</string>
@@ -1177,11 +1177,11 @@
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
 
-    <!-- Doki: per-manga missing chapters -->
+    <!-- Docho: per-manga missing chapters -->
     <string name="action_hide_missing_chapters">Hide missing chapters</string>
     <string name="action_show_missing_chapters">Show missing chapters</string>
 
-    <!-- Doki: Kavita -->
+    <!-- Docho: Kavita -->
     <string name="pref_category_kavita" translatable="false">Kavita</string>
     <string name="pref_kavita_server_url">Server address</string>
     <string name="pref_kavita_server_url_hint">e.g. https://kavita.example.com</string>
@@ -1203,7 +1203,7 @@
     <string name="kavita_sync_running">Syncing with Kavita…</string>
     <string name="kavita_sync_done">Synced %1$d Kavita series</string>
 
-    <!-- Doki: Sync settings -->
+    <!-- Docho: Sync settings -->
     <string name="pref_category_sync">Sync / Self-hosted sources</string>
     <string name="pref_sync_summary">Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes</string>
     <string name="pref_progress_sync">Reading progress</string>
@@ -1212,7 +1212,7 @@
     <string name="pref_progress_sync_mode_koreader">KOReader</string>
     <string name="pref_progress_sync_mode_koreader_summary">KOReader: every series syncs with the KOReader sync server below instead of its source. Works for Kavita, BookOrbit, Komga (if you allow downloading its books) and local archives; online sources have no files to match, so they don\'t sync.</string>
 
-    <!-- Doki: BookOrbit -->
+    <!-- Docho: BookOrbit -->
     <string name="pref_category_bookorbit" translatable="false">BookOrbit</string>
     <string name="pref_bookorbit_server_url_hint">The address you open BookOrbit at, e.g. http://bookorbit.lan:3010</string>
     <string name="pref_bookorbit_credentials_summary">The account you sign in to BookOrbit with</string>
@@ -1224,7 +1224,7 @@
     <string name="bookorbit_sync_running">Syncing with BookOrbit…</string>
     <string name="bookorbit_sync_done">Synced %1$d BookOrbit series</string>
 
-    <!-- Doki: Komga -->
+    <!-- Docho: Komga -->
     <string name="pref_category_komga" translatable="false">Komga</string>
     <string name="pref_komga_server_url_hint">The address you open Komga at, e.g. http://komga.lan:25600</string>
     <string name="pref_komga_api_key_summary">Create one in Komga: your account settings, under API Keys</string>
@@ -1237,14 +1237,14 @@
     <string name="komga_sync_running">Syncing with Komga…</string>
     <string name="komga_sync_done">Synced %1$d Komga series</string>
     <string name="komga_koreader_notice_title">Komga and KOReader sync</string>
-    <string name="komga_koreader_notice_text">KOReader recognises a book by a fingerprint taken across its whole file. Komga can only send complete files, so to sync a Komga book with KOReader, Dōki has to download the book once to work out its fingerprint. The download isn\'t kept, but large books can use a lot of data.\n\nYou can change this later under KOReader sync.</string>
+    <string name="komga_koreader_notice_text">KOReader recognises a book by a fingerprint taken across its whole file. Komga can only send complete files, so to sync a Komga book with KOReader, Dōchō has to download the book once to work out its fingerprint. The download isn\'t kept, but large books can use a lot of data.\n\nYou can change this later under KOReader sync.</string>
     <string name="komga_koreader_notice_hide">Don\'t show this again</string>
     <string name="komga_koreader_notice_allow">I understand, sync Komga</string>
     <string name="komga_koreader_notice_deny">Don\'t sync Komga</string>
     <string name="pref_koreader_komga_downloads">Match Komga books</string>
     <string name="pref_koreader_komga_downloads_summary">Downloads each Komga book once to work out the fingerprint KOReader matches it by. Large books can use a lot of data.</string>
 
-    <!-- Doki: KOReader sync -->
+    <!-- Docho: KOReader sync -->
     <string name="pref_category_koreader">KOReader sync</string>
     <string name="pref_koreader_server_url_hint">The address KOReader uses, e.g. http://bookorbit.lan:3010/api/v1/koreader</string>
     <string name="pref_koreader_username">Username</string>

@@ -35,7 +35,7 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.doki"
+        applicationId = "io.github.grillza.docho"
 
         versionCode = 41
         versionName = "0.26.0"

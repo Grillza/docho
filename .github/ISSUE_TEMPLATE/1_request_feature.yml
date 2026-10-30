@@ -1,12 +1,12 @@
 name: ⭐ Feature request
-description: Suggest a feature to improve Dōki
+description: Suggest a feature to improve Dōchō
 labels: [feature request]
 body:
   - type: textarea
     id: feature-description
     attributes:
       label: Describe your suggested feature
-      description: How can Dōki be improved?
+      description: How can Dōchō be improved?
       placeholder: |
         Example:
           "It should work like this..."

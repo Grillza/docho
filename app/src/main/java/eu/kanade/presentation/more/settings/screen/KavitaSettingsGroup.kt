@@ -21,9 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import doki.kavita.KavitaApi
-import doki.kavita.KavitaConnection
-import doki.kavita.KavitaSource
+import docho.kavita.KavitaApi
+import docho.kavita.KavitaConnection
+import docho.kavita.KavitaSource
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen

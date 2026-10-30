@@ -1,5 +1,5 @@
 name: 🐞 Issue report
-description: Report an issue in Dōki
+description: Report an issue in Dōchō
 labels: [bug]
 body:
   - type: textarea
@@ -49,8 +49,8 @@ body:
   - type: input
     id: app-version
     attributes:
-      label: Dōki version
-      description: You can find your Dōki version in **More → About and Help**.
+      label: Dōchō version
+      description: You can find your Dōchō version in **More → About and Help**.
       placeholder: |
         Example: "0.26.0"
     validations:
@@ -99,5 +99,5 @@ body:
           required: true
         - label: I have filled out all of the requested information in this form, including specific version numbers.
           required: true
-        - label: I understand that **Dōki does not have or fix any extensions**, and I **will not receive help** for any issues related to sources or extensions.
+        - label: I understand that **Dōchō does not have or fix any extensions**, and I **will not receive help** for any issues related to sources or extensions.
           required: true

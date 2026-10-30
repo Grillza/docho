@@ -1,7 +1,7 @@
 package eu.kanade.domain.chapter.interactor
 
 import dev.zacsweers.metro.Inject
-import doki.sync.ProgressSync
+import docho.sync.ProgressSync
 import eu.kanade.domain.download.interactor.DeleteDownload
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat

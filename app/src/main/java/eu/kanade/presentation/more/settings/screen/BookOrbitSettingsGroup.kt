@@ -21,9 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import doki.bookorbit.BookOrbitApi
-import doki.bookorbit.BookOrbitConnection
-import doki.bookorbit.BookOrbitSource
+import docho.bookorbit.BookOrbitApi
+import docho.bookorbit.BookOrbitConnection
+import docho.bookorbit.BookOrbitSource
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen

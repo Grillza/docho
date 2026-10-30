@@ -1,8 +1,8 @@
 package eu.kanade.domain.chapter.interactor
 
 import dev.zacsweers.metro.Inject
-import doki.BuiltInSources
-import doki.sync.ProgressSync
+import docho.BuiltInSources
+import docho.sync.ProgressSync
 import eu.kanade.domain.chapter.model.copyFromSChapter
 import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.domain.manga.interactor.GetExcludedScanlators

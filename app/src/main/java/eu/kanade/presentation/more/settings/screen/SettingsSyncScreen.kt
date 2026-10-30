@@ -35,10 +35,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import doki.sync.InvalidSyncSettingsFileException
-import doki.sync.ProgressSyncMode
-import doki.sync.SyncSettingsFile
-import doki.sync.WrongPasswordException
+import docho.sync.InvalidSyncSettingsFileException
+import docho.sync.ProgressSyncMode
+import docho.sync.SyncSettingsFile
+import docho.sync.WrongPasswordException
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +56,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 
 private const val MIN_PASSWORD_LENGTH = 8
 
-/** The servers Doki reads from and syncs with, and where reading progress is synced. */
+/** The servers Docho reads from and syncs with, and where reading progress is synced. */
 object SettingsSyncScreen : SearchableSettings {
 
     @ReadOnlyComposable

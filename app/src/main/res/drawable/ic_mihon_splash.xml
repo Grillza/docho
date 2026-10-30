@@ -3,6 +3,6 @@
     <item
         android:width="96dp"
         android:height="72dp"
-        android:drawable="@drawable/ic_doki_wordmark"
+        android:drawable="@drawable/ic_docho_wordmark"
         android:gravity="center" />
 </layer-list>

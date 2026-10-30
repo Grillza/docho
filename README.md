@@ -1,18 +1,18 @@
 <div align="center">
 
-<img src="./.github/assets/logo.svg" alt="Dōki logo" title="Dōki logo" width="96"/>
+<img src="./.github/assets/logo.svg" alt="Dōchō logo" title="Dōchō logo" width="96"/>
 
-# Dōki
+# Dōchō
 
-### 同期 · どうき · sync
+### 同調 · どうちょう
 
 A manga reader for your own servers. Read straight from Kavita, Komga or BookOrbit and keep your
 place in sync with them, or with KOReader on your e-reader.
 
 [![Based on Mihon v0.21.3](https://img.shields.io/badge/based_on-Mihon_v0.21.3-0877d2?labelColor=27303D)](https://github.com/mihonapp/mihon/releases/tag/v0.21.3)
-[![License: Apache-2.0](https://img.shields.io/github/license/Grillza/doki?labelColor=27303D&color=0877d2)](/LICENSE)
+[![License: Apache-2.0](https://img.shields.io/github/license/Grillza/docho?labelColor=27303D&color=0877d2)](/LICENSE)
 
-[![Download](https://img.shields.io/github/v/release/Grillza/doki?label=Download&labelColor=06599d&color=043b69)](https://github.com/Grillza/doki/releases/latest)
+[![Download](https://img.shields.io/github/v/release/Grillza/docho?label=Download&labelColor=06599d&color=043b69)](https://github.com/Grillza/docho/releases/latest)
 
 *Requires Android 8.0 or higher.*
 
@@ -20,11 +20,11 @@ place in sync with them, or with KOReader on your e-reader.
 
 ## About
 
-Dōki is a fork of [Mihon](https://github.com/mihonapp/mihon), the free and open source manga reader.
+Dōchō is a fork of [Mihon](https://github.com/mihonapp/mihon), the free and open source manga reader.
 It keeps everything Mihon does, including extensions, trackers, backups and the reader, and adds
 built-in support for self-hosted libraries and progress sync. It follows Mihon's releases.
 
-## What Dōki adds
+## What Dōchō adds
 
 ### Self-hosted servers, built in
 
@@ -56,12 +56,12 @@ See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps
 
 * **Custom themes**: keep up to five of your own. Pick six colours with a colour wheel, swatches
   or hex codes, set the contrast, start from any built-in theme and preview it full screen.
-  Dōki warns about colours that would be hard to read.
+  Dōchō warns about colours that would be hard to read.
 * **Navigation bar**: hide Updates, History or Browse, choose where the remaining tabs sit, and
   see the result in a live preview.
 * **Hide missing chapter indicators** for individual series.
 * **File name chapter sort** and an **Unread** listing in Browse.
-* An **Acknowledgements** screen credits the projects Dōki is built on.
+* An **Acknowledgements** screen credits the projects Dōchō is built on.
 
 ## From Mihon
 
@@ -76,7 +76,7 @@ See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps
 
 ## Download
 
-Get the latest APK from **[Releases](https://github.com/Grillza/doki/releases/latest)**. Most devices
+Get the latest APK from **[Releases](https://github.com/Grillza/docho/releases/latest)**. Most devices
 want the `arm64-v8a` build; `universal` runs anywhere but is larger.
 
 ## Building
@@ -86,18 +86,18 @@ want the `arm64-v8a` build; `universal` runs anywhere but is larger.
 ```
 
 Release builds are signed with the keystore named in `keystore.properties`. An iPad version is
-being built on the [`ios`](https://github.com/Grillza/doki/tree/ios) branch.
+being built on the [`ios`](https://github.com/Grillza/docho/tree/ios) branch.
 
 ## Help and issues
 
-For problems with Dōki itself, open an [issue](https://github.com/Grillza/doki/issues).
+For problems with Dōchō itself, open an [issue](https://github.com/Grillza/docho/issues).
 For general reader questions, Mihon's [FAQ](https://mihon.app/docs/faq/general) and
 [troubleshooting guide](https://mihon.app/docs/guides/troubleshooting/) still apply. Extensions are
 not made or supported here.
 
 ## Credits
 
-Dōki is built on [Mihon](https://github.com/mihonapp/mihon) and
+Dōchō is built on [Mihon](https://github.com/mihonapp/mihon) and
 [Tachiyomi](https://github.com/tachiyomiorg/tachiyomi). Thank you to everyone who has
 contributed to them.
 
