@@ -41,6 +41,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import docho.BuiltInSources
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.browse.components.SourceIcon
 import eu.kanade.presentation.components.AppBar
@@ -49,21 +50,21 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.browse.migration.search.MigrateSearchScreen
 import eu.kanade.tachiyomi.util.system.LocaleHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import mihon.feature.migration.list.MigrationListScreen
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.ArrowForward
 import mihon.icons.materialsymbols.rounded.Deselect
 import mihon.icons.materialsymbols.rounded.DragHandle
 import mihon.icons.materialsymbols.rounded.SelectAll
-import mihonka.kavita.KavitaSource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.source.model.Source
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
@@ -334,7 +335,7 @@ class MigrationConfigScreen(private val mangaIds: Collection<Long>) : Screen() {
         }
 
         init {
-            viewModelScope.launchIO {
+            viewModelScope.launch(Dispatchers.IO) {
                 initSources()
                 state.update { it.copy(isLoading = false) }
             }
@@ -358,7 +359,7 @@ class MigrationConfigScreen(private val mangaIds: Collection<Long>) : Screen() {
             val sources = sourceManager.getAll()
                 .asSequence()
                 .filterIsInstance<HttpSource>()
-                .filter { it.lang in languages || it.id == KavitaSource.ID }
+                .filter { it.lang in languages || BuiltInSources.isBuiltIn(it.id) }
                 .map {
                     val source = Source(
                         id = it.id,

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Mihonka</string>
+    <string name="app_name" translatable="false">Dōchō</string>
 
     <!-- Generic strings -->
     <string name="on">On</string>
@@ -37,6 +37,53 @@
     <string name="label_extension_info">Extension info</string>
     <string name="label_help">Help</string>
     <string name="label_support_us">Support Us</string>
+    <string name="label_acknowledgements">Acknowledgements</string>
+    <string name="action_expanded">Expanded</string>
+    <string name="action_collapsed">Collapsed</string>
+    <string name="about_general_help">For general help: refer to Mihon troubleshooting page</string>
+    <string name="about_contact">Contact us</string>
+    <string name="about_contact_summary">For further help or app suggestions, email us at %1$s. Tap to copy the address.</string>
+    <string name="pref_server_delete_summary">Erase the %1$s settings on this device</string>
+    <string name="pref_server_delete_title">Delete %1$s settings?</string>
+    <string name="pref_server_delete_text">This erases the %1$s server address, sign-in details, sync options and any progress not yet sent. Nothing is deleted on the server, and your other settings stay as they are.</string>
+    <string name="pref_sync_settings_file">Settings file</string>
+    <string name="pref_sync_settings_export">Export settings</string>
+    <string name="pref_sync_settings_export_summary">Save these servers and sync options, and how often to back up, to a file you can import on another device</string>
+    <string name="pref_sync_settings_import">Import settings</string>
+    <string name="pref_sync_settings_import_summary">Load a settings file exported from Dōchō. Settings in the file replace the ones here.</string>
+    <string name="sync_settings_sign_in_include">Include passwords and API keys</string>
+    <string name="sync_settings_sign_in_summary">So the other device connects straight away. Needs a password, so they\'re never saved unencrypted.</string>
+    <string name="sync_settings_password_text">Set a password to encrypt the file. Only Dōchō can open it, and only with this password, which can\'t be recovered if forgotten.</string>
+    <string name="sync_settings_password_optional">Optional. Leave empty to save the file unencrypted.</string>
+    <string name="sync_settings_password_needed">Needed to include passwords and API keys</string>
+    <string name="sync_settings_password_too_short">At least %1$d characters</string>
+    <string name="sync_settings_password_confirm">Confirm password</string>
+    <string name="sync_settings_password_mismatch">The passwords don\'t match</string>
+    <string name="sync_settings_password_show">Show password</string>
+    <string name="sync_settings_password_hide">Hide password</string>
+    <string name="sync_settings_import_password_title">Encrypted settings file</string>
+    <string name="sync_settings_import_password_text">Enter the password this file was exported with.</string>
+    <string name="sync_settings_password_wrong">Wrong password</string>
+    <string name="sync_settings_password_checking">Checking…</string>
+    <string name="sync_settings_exported_encrypted">Settings exported, encrypted</string>
+    <string name="sync_settings_exported">Settings exported</string>
+    <string name="sync_settings_export_failed">Couldn\'t save the settings file</string>
+    <string name="sync_settings_import_failed">That isn\'t a Dōchō settings file</string>
+    <string name="pref_category_nav_bar">Navigation bar</string>
+    <string name="pref_nav_bar_info">Choose which tabs show in the navigation bar. Library and More always show, so you can always get around the app.</string>
+    <string name="pref_nav_bar_alignment">Tab position</string>
+    <string name="pref_nav_bar_preview">Preview</string>
+    <string name="nav_bar_alignment_left">Left</string>
+    <string name="nav_bar_alignment_center">Centred</string>
+    <string name="nav_bar_alignment_right">Right</string>
+    <string name="acknowledgements_intro">Dōchō is built on the work of these open source projects. Tap one to open its source code.</string>
+    <string name="acknowledgements_built_on">Built on</string>
+    <string name="acknowledgements_servers">Servers and sync</string>
+    <string name="acknowledgements_libraries">Libraries</string>
+    <string name="acknowledgements_icons">Icons</string>
+    <string name="acknowledgements_tools">Tools</string>
+    <string name="acknowledgements_all_licenses">All open source licences</string>
+    <string name="acknowledgements_all_licenses_summary">Every library in this build, with its licence</string>
     <string name="label_default">Default</string>
     <string name="label_warning">Warning</string>
     <string name="label_auto">Auto</string>
@@ -188,6 +235,8 @@
     <string name="onboarding_storage_selection_required">A folder must be selected</string>
     <string name="onboarding_storage_help_info">Updating from an older version and not sure what to select? Refer to the storage guide for more information.</string>
     <string name="onboarding_storage_help_action">Storage guide</string>
+    <string name="app_migrating_title">Finishing the update</string>
+    <string name="app_migrating_summary">Getting things ready after the update. This can take a few minutes, so keep the app open.</string>
     <string name="onboarding_permission_install_apps">Install apps permission</string>
     <string name="onboarding_permission_install_apps_description">To install source extensions.</string>
     <string name="onboarding_permission_notifications">Notification permission</string>
@@ -199,7 +248,10 @@
     <string name="onboarding_permission_analytics">Allow analytics</string>
     <string name="onboarding_permission_analytics_description">Send anonymized usage data to improve app features.</string>
     <string name="onboarding_permission_action_grant">Grant</string>
-    <string name="onboarding_guides_new_user">New to %s? We recommend checking out the getting started guide.</string>
+    <string name="onboarding_permission_granted">Granted</string>
+    <string name="onboarding_guides_new_user">New to %s? It\'s built on Mihon, so it shares Mihon\'s getting started guide. We recommend checking it out.</string>
+    <string name="onboarding_guides_self_hosted">Reading from your own Kavita, BookOrbit or Komga server, or syncing with KOReader?</string>
+    <string name="onboarding_guides_self_hosted_action">Learn about setting up sync with self-hosted servers</string>
     <string name="onboarding_guides_returning_user">Reinstalling %s?</string>
 
     <!-- Preferences -->
@@ -211,7 +263,7 @@
     <string name="pref_category_downloads">Downloads</string>
     <string name="pref_category_tracking">Tracking</string>
     <string name="pref_category_advanced">Advanced</string>
-    <string name="pref_category_about">About</string>
+    <string name="pref_category_about">About and Help</string>
 
     <string name="pref_appearance_summary">Theme, date &amp; time format</string>
     <string name="pref_library_summary">Categories, global update, chapter swipe</string>
@@ -236,6 +288,7 @@
     <string name="theme_lavender">Lavender</string>
     <string name="theme_midnightdusk">Midnight Dusk</string>
     <string name="theme_monochrome">Monochrome</string>
+    <string name="theme_custom">Custom</string>
     <string name="theme_nord">Nord</string>
     <string name="theme_strawberrydaiquiri">Strawberry Daiquiri</string>
     <string name="theme_tako">Tako</string>
@@ -248,6 +301,13 @@
     <!-- "Today" instead of "2023-12-31" -->
     <string name="pref_relative_format_summary">\"%1$s\" instead of \"%2$s\"</string>
     <string name="pref_date_format">Date format</string>
+    <string name="pref_time_format">Time format</string>
+    <!-- "Follow" as in "adhere to", "align with" (the system default) -->
+    <string name="follow_system">Follow system</string>
+    <!-- "Follow" as in "adhere to", "align with" (the language default) -->
+    <string name="follow_language">Follow language</string>
+    <string name="time_24_hours">24-hour</string>
+    <string name="time_12_hours">12-hour</string>
     <string name="pref_display_images_description">Render images in manga descriptions</string>
 
     <string name="pref_manage_notifications">Manage notifications</string>
@@ -345,8 +405,6 @@
     <string name="ext_filtered">Filtered</string>
     <string name="ext_not_loaded">Not loaded</string>
     <string name="ext_not_loaded_dialog">Couldn\'t load</string>
-    <string name="ext_install_error">Couldn\'t install</string>
-    <string name="ext_install_error_details">Why it failed</string>
     <string name="ext_not_loaded_details">Why it isn\'t loaded</string>
     <string name="ext_copy_stacktrace">Copy stack trace</string>
     <string name="ext_filtered_message">This extension\'s content warning isn\'t one you chose to load, so its sources aren\'t available.</string>
@@ -409,6 +467,8 @@
     <string name="pref_double_tap_zoom">Double tap to zoom</string>
     <string name="pref_cutout_short">Show content in cutout area</string>
     <string name="pref_page_transitions">Animate page transitions</string>
+    <string name="pref_load_ahead_only_over_wifi">Load ahead only on Wi-Fi</string>
+    <string name="pref_load_ahead_only_over_wifi_summary">Saves mobile data by loading only the pages near the one you\'re reading</string>
     <string name="pref_flash_page">Flash on page change</string>
     <string name="pref_flash_page_summ">Reduces ghosting on e-ink displays</string>
     <string name="pref_flash_duration">Flash duration</string>
@@ -543,6 +603,11 @@
     <string name="dual_page_view_wide">When wide</string>
     <string name="pref_continuous_minwidth">Min width</string>
     <string name="pref_continuous_gap">Gap</string>
+    <string name="pref_image_filters">Image filters</string>
+    <string name="pref_tile_filters">Tile filters</string>
+    <string name="pref_disable_double_tap_gestures">Disable double tap gestures</string>
+    <string name="action_add_shader">Add shader</string>
+    <string name="image_filter_invalid">Couldn\'t add shader</string>
 
       <!-- Downloads section -->
     <string name="pref_category_delete_chapters">Delete chapters</string>
@@ -568,8 +633,6 @@
     <string name="auto_download_while_reading">Auto download while reading</string>
     <string name="download_ahead_info">Only works if the current chapter + the next one are already downloaded.</string>
     <string name="save_chapter_as_cbz">Save as CBZ archive</string>
-    <string name="split_tall_images">Split tall images</string>
-    <string name="split_tall_images_summary">Improves reader performance</string>
     <string name="pref_download_concurrent_sources">Concurrent source downloads</string>
     <string name="pref_download_concurrent_pages">Concurrent page downloads</string>
     <string name="pref_download_concurrent_pages_summary">Pages downloaded simultaneously per source</string>
@@ -684,6 +747,8 @@
     <string name="pref_tablet_ui_mode">Tablet UI</string>
     <string name="pref_verbose_logging">Verbose logging</string>
     <string name="pref_verbose_logging_summary">Print verbose logs to system log (reduces app performance)</string>
+    <string name="pref_redact_sensitive_headers">Redact sensitive headers</string>
+    <string name="pref_redact_sensitive_headers_summary">Redacts certain sensitive values in the logs. Keep enabled for your security when sharing logs with other people.</string>
     <string name="pref_debug_info">Debug info</string>
     <string name="pref_update_library_manga_titles">Update library manga titles to match source</string>
     <string name="pref_update_library_manga_titles_summary">Warning: if a manga is renamed, it will be removed from the download queue (if present).</string>
@@ -803,6 +868,7 @@
     <string name="sort_by_source">By source</string>
     <string name="sort_by_number">By chapter number</string>
     <string name="sort_by_upload_date">By upload date</string>
+    <string name="sort_by_file_name">By file name</string>
     <string name="manga_download">Download</string>
     <string name="download_unread">Unread</string>
     <string name="download_bookmarked">Bookmarked</string>
@@ -991,6 +1057,9 @@
     <!--UpdateCheck-->
     <string name="update_check_confirm">Download</string>
     <string name="update_check_open">Open on GitHub</string>
+    <string name="update_check_skip">Skip this version</string>
+    <string name="update_check_skip_title">Skip %s?</string>
+    <string name="update_check_skip_message">Updates often contain bug fixes and security improvements. You won\'t be reminded about this version again, but you\'ll still be notified when a newer one is released.</string>
     <!-- reserved for future use -->
     <string name="update_check_eol">This Android version is no longer supported</string>
     <string name="update_check_no_new_updates">No new updates available</string>
@@ -1015,6 +1084,8 @@
     <string name="information_webview_required">WebView is required for the app to function</string>
     <!-- Do not translate "WebView" -->
     <string name="information_webview_outdated">Please update the WebView app for better compatibility</string>
+    <!-- Do not translate "WebView" -->
+    <string name="information_webview_crashed">WebView stopped working and the page was closed</string>
     <string name="chapter_settings_updated">Updated default chapter settings</string>
 
     <!-- Download Notification -->
@@ -1024,7 +1095,6 @@
     <string name="download_notifier_text_only_wifi">No Wi-Fi connection available</string>
     <string name="download_notifier_no_network">No network connection available</string>
     <string name="download_notifier_download_paused">Downloads paused</string>
-    <string name="download_notifier_split_page_not_found">Page %d not found while splitting</string>
     <string name="download_notifier_split_page_path_not_found">Couldn\'t find file path of page %d</string>
     <string name="download_notifier_cache_renewal">Checking downloads</string>
 
@@ -1107,14 +1177,12 @@
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
 
-    <!-- Mihonka: per-manga missing chapters -->
+    <!-- Docho: per-manga missing chapters -->
     <string name="action_hide_missing_chapters">Hide missing chapters</string>
     <string name="action_show_missing_chapters">Show missing chapters</string>
 
-    <!-- Mihonka: Kavita -->
+    <!-- Docho: Kavita -->
     <string name="pref_category_kavita" translatable="false">Kavita</string>
-    <string name="pref_kavita_summary">Server, browsing and reading progress sync</string>
-    <string name="pref_kavita_server">Server</string>
     <string name="pref_kavita_server_url">Server address</string>
     <string name="pref_kavita_server_url_hint">e.g. https://kavita.example.com</string>
     <string name="pref_kavita_api_key">API key</string>
@@ -1128,11 +1196,116 @@
     <string name="kavita_not_configured">Enter the server address and API key first</string>
     <string name="pref_kavita_browse">Browse Kavita</string>
     <string name="pref_kavita_browse_summary">Your Kavita series also appear under Browse → Sources. Add them to the library like any other manga.</string>
-    <string name="pref_kavita_sync">Reading progress</string>
     <string name="pref_kavita_sync_progress">Sync reading progress</string>
     <string name="pref_kavita_sync_progress_summary">Sends every page you read to Kavita and picks up the page reached on other devices. The side that has read further wins.</string>
     <string name="pref_kavita_sync_now">Sync library now</string>
     <string name="pref_kavita_sync_now_summary">Reconciles progress for every Kavita series in your library</string>
     <string name="kavita_sync_running">Syncing with Kavita…</string>
     <string name="kavita_sync_done">Synced %1$d Kavita series</string>
+
+    <!-- Docho: Sync settings -->
+    <string name="pref_category_sync">Sync / Self-hosted sources</string>
+    <string name="pref_sync_summary">Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes</string>
+    <string name="pref_progress_sync">Reading progress</string>
+    <string name="pref_progress_sync_mode">Sync progress with</string>
+    <string name="pref_progress_sync_mode_source">Default - Sync with source</string>
+    <string name="pref_progress_sync_mode_koreader">KOReader</string>
+    <string name="pref_progress_sync_mode_koreader_summary">KOReader: every series syncs with the KOReader sync server below instead of its source. Works for Kavita, BookOrbit, Komga (if you allow downloading its books) and local archives; online sources have no files to match, so they don\'t sync.</string>
+
+    <!-- Docho: BookOrbit -->
+    <string name="pref_category_bookorbit" translatable="false">BookOrbit</string>
+    <string name="pref_bookorbit_server_url_hint">The address you open BookOrbit at, e.g. http://bookorbit.lan:3010</string>
+    <string name="pref_bookorbit_credentials_summary">The account you sign in to BookOrbit with</string>
+    <string name="bookorbit_not_configured">Enter the server address, username and password first</string>
+    <string name="pref_bookorbit_browse">Browse BookOrbit</string>
+    <string name="pref_bookorbit_browse_summary">Your BookOrbit series also appear under Browse → Sources. Comic archives (CBZ, CBR, CB7) can be read; ebooks are left out.</string>
+    <string name="pref_bookorbit_sync_progress_summary">Sends every page you read to BookOrbit and picks up the page reached in its reader, KOReader or Kobo. The side that has read further wins.</string>
+    <string name="pref_bookorbit_sync_now_summary">Reconciles progress for every BookOrbit series in your library</string>
+    <string name="bookorbit_sync_running">Syncing with BookOrbit…</string>
+    <string name="bookorbit_sync_done">Synced %1$d BookOrbit series</string>
+
+    <!-- Docho: Komga -->
+    <string name="pref_category_komga" translatable="false">Komga</string>
+    <string name="pref_komga_server_url_hint">The address you open Komga at, e.g. http://komga.lan:25600</string>
+    <string name="pref_komga_api_key_summary">Create one in Komga: your account settings, under API Keys</string>
+    <string name="komga_not_configured">Enter the server address and API key first</string>
+    <string name="komga_test_success">Connected to Komga as %1$s</string>
+    <string name="pref_komga_browse">Browse Komga</string>
+    <string name="pref_komga_browse_summary">Your Komga series also appear under Browse → Sources. Comic archives and PDFs can be read; text-only EPUBs are left out.</string>
+    <string name="pref_komga_sync_progress_summary">Sends every page you read to Komga and picks up the page reached in its reader or on other devices. The side that has read further wins.</string>
+    <string name="pref_komga_sync_now_summary">Reconciles progress for every Komga series in your library</string>
+    <string name="komga_sync_running">Syncing with Komga…</string>
+    <string name="komga_sync_done">Synced %1$d Komga series</string>
+    <string name="komga_koreader_notice_title">Komga and KOReader sync</string>
+    <string name="komga_koreader_notice_text">KOReader recognises a book by a fingerprint taken across its whole file. Komga can only send complete files, so to sync a Komga book with KOReader, Dōchō has to download the book once to work out its fingerprint. The download isn\'t kept, but large books can use a lot of data.\n\nYou can change this later under KOReader sync.</string>
+    <string name="komga_koreader_notice_hide">Don\'t show this again</string>
+    <string name="komga_koreader_notice_allow">I understand, sync Komga</string>
+    <string name="komga_koreader_notice_deny">Don\'t sync Komga</string>
+    <string name="pref_koreader_komga_downloads">Match Komga books</string>
+    <string name="pref_koreader_komga_downloads_summary">Downloads each Komga book once to work out the fingerprint KOReader matches it by. Large books can use a lot of data.</string>
+
+    <!-- Docho: KOReader sync -->
+    <string name="pref_category_koreader">KOReader sync</string>
+    <string name="pref_koreader_server_url_hint">The address KOReader uses, e.g. http://bookorbit.lan:3010/api/v1/koreader</string>
+    <string name="pref_koreader_username">Username</string>
+    <string name="pref_koreader_password">Password</string>
+    <string name="pref_koreader_credentials_summary">Your KOReader sync account. In BookOrbit, create it under Settings → KOReader.</string>
+    <string name="koreader_not_configured">Enter the server address, username and password first</string>
+    <string name="koreader_test_success">Signed in as %1$s</string>
+    <string name="pref_koreader_matching_info">Chapters are matched by file, the way KOReader matches books, so the sync server needs the same files. Kavita, BookOrbit and local chapters that are a single archive (or PDF on Kavita) can be matched, and Komga books once you allow downloading them.</string>
+    <string name="pref_koreader_sync_now_summary">Reconciles progress for every library series that syncs here. Only runs while sync is set to KOReader.</string>
+    <string name="koreader_sync_running">Syncing with the KOReader server…</string>
+    <string name="koreader_sync_done">Synced %1$d series</string>
+
+    <!-- Custom themes -->
+    <string name="action_rename">Rename</string>
+    <string name="action_export">Export</string>
+    <string name="action_import">Import</string>
+    <string name="custom_themes">Custom themes</string>
+    <string name="custom_themes_info">Tap a theme to use it. You can keep up to %1$d.</string>
+    <string name="custom_themes_empty">Make your own colour theme. You can keep up to %1$d.</string>
+    <string name="custom_themes_full">Tap a theme to use it. You have %1$d themes, the most you can keep; delete one to make another.</string>
+    <string name="custom_theme_new">New theme</string>
+    <string name="custom_theme_edit">Edit theme</string>
+    <string name="custom_theme_name">Name</string>
+    <string name="custom_theme_default_name">My theme %1$d</string>
+    <string name="custom_theme_start_from">Start from a built-in theme</string>
+    <string name="custom_theme_start_from_summary">Copy another theme\'s colours, then change what you like</string>
+    <string name="custom_theme_colors">Colours</string>
+    <string name="custom_theme_primary">Accent</string>
+    <string name="custom_theme_primary_summary">Buttons, switches, tabs and selected items</string>
+    <string name="custom_theme_secondary">Secondary</string>
+    <string name="custom_theme_secondary_summary">Unread badges and the selected tab in the navigation bar</string>
+    <string name="custom_theme_tertiary">Highlight</string>
+    <string name="custom_theme_tertiary_summary">Downloaded badges and other highlights</string>
+    <string name="custom_theme_background">Background</string>
+    <string name="custom_theme_background_summary">Behind every screen</string>
+    <string name="custom_theme_surface">Bars and cards</string>
+    <string name="custom_theme_surface_summary">The navigation bar, menus and cards</string>
+    <string name="custom_theme_text">Text</string>
+    <string name="custom_theme_text_summary">Titles, labels and icons</string>
+    <string name="custom_theme_contrast">Contrast</string>
+    <string name="custom_theme_contrast_summary">How strongly text on buttons, outlines and shaded areas stand out from what they sit on</string>
+    <string name="custom_theme_hard_to_read">Hard to see on the background: %1$s. Text needs a contrast of 4.5:1 or more, the other colours 3:1. Each colour\'s picker shows its contrast.</string>
+    <string name="custom_theme_light_dark_note">A custom theme looks the same in light and dark mode. It\'s light or dark by its background colour.</string>
+    <string name="custom_theme_preview">Preview</string>
+    <string name="custom_theme_preview_of">Preview: %1$s</string>
+    <string name="custom_theme_preview_main_menu">Main menu</string>
+    <string name="custom_theme_preview_checkbox">A checkbox</string>
+    <string name="custom_theme_discard_title">Discard changes?</string>
+    <string name="custom_theme_discard_text">Your changes to this theme haven\'t been saved.</string>
+    <string name="custom_theme_discard">Discard</string>
+    <string name="custom_theme_keep_editing">Keep editing</string>
+    <string name="custom_theme_delete_title">Delete %1$s?</string>
+    <string name="custom_theme_delete_text">This theme will be erased. If you\'re using it, the app switches to another theme.</string>
+    <string name="color_picker_standard">Standard</string>
+    <string name="color_picker_wheel">Colour wheel</string>
+    <string name="color_picker_brightness">Brightness</string>
+    <string name="color_picker_saturation">Saturation</string>
+    <string name="color_picker_hex">Hex code</string>
+    <string name="color_contrast">Contrast %1$s:1</string>
+    <string name="color_contrast_great">Very easy to read</string>
+    <string name="color_contrast_good">Easy to read</string>
+    <string name="color_contrast_low">Hard to read for small text</string>
+    <string name="color_contrast_poor">Hard to read</string>
 </resources>

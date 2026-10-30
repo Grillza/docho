@@ -9,8 +9,10 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -39,7 +41,6 @@ import eu.kanade.tachiyomi.util.system.launchRequestPackageInstallsPermission
 import eu.kanade.tachiyomi.util.system.telemetryIncluded
 import mihon.app.di.appGraph
 import mihon.icons.materialsymbols.MaterialSymbols
-import mihon.icons.materialsymbols.rounded.Check
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
@@ -172,13 +173,11 @@ internal class PermissionStep : OnboardingStep {
                 OutlinedButton(
                     enabled = !granted,
                     onClick = onButtonClick,
+                    colors = ButtonDefaults.outlinedButtonColors(disabledContentColor = GrantedColor),
+                    border = if (granted) BorderStroke(1.dp, GrantedColor) else ButtonDefaults.outlinedButtonBorder(),
                 ) {
                     if (granted) {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        Text(stringResource(MR.strings.onboarding_permission_granted))
                     } else {
                         Text(stringResource(MR.strings.onboarding_permission_action_grant))
                     }
@@ -212,3 +211,6 @@ internal class PermissionStep : OnboardingStep {
         )
     }
 }
+
+/** Readable on both light and dark backgrounds. */
+private val GrantedColor = Color(0xFF43A047)

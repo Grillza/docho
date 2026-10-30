@@ -20,6 +20,9 @@ enum class AppTheme(val titleRes: StringResource?) {
     TOKYONIGHT(MR.strings.theme_tokyonight),
     MONOCHROME(MR.strings.theme_monochrome),
 
+    // One of the user's own themes; which one is UiPreferences.customThemeIndex.
+    CUSTOM(MR.strings.theme_custom),
+
     // Deprecated
     DARK_BLUE(null),
     HOT_PINK(null),

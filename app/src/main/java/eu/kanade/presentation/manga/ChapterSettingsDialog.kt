@@ -31,7 +31,7 @@ import eu.kanade.presentation.components.TabbedDialog
 import eu.kanade.presentation.components.TabbedDialogPaddings
 import mihon.app.di.appGraph
 import mihon.icons.materialsymbols.MaterialSymbols
-import mihon.icons.materialsymbols.rounded.PeopleAlt
+import mihon.icons.materialsymbols.rounded.Group
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
@@ -174,7 +174,7 @@ fun ScanlatorFilterItem(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         Icon(
-            imageVector = MaterialSymbols.Rounded.PeopleAlt,
+            imageVector = MaterialSymbols.Rounded.Group,
             contentDescription = null,
             tint = if (active) {
                 MaterialTheme.colorScheme.active
@@ -200,6 +200,7 @@ private fun ColumnScope.SortPage(
         MR.strings.sort_by_number to Manga.CHAPTER_SORTING_NUMBER,
         MR.strings.sort_by_upload_date to Manga.CHAPTER_SORTING_UPLOAD_DATE,
         MR.strings.action_sort_alpha to Manga.CHAPTER_SORTING_ALPHABET,
+        MR.strings.sort_by_file_name to Manga.CHAPTER_SORTING_FILE_NAME,
     ).map { (titleRes, mode) ->
         SortItem(
             label = stringResource(titleRes),

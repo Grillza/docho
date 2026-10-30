@@ -1,6 +1,7 @@
 package eu.kanade.presentation.more.settings.screen.about
 
 import android.content.Context
+import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,8 +28,8 @@ import eu.kanade.presentation.more.LogoHeader
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.rememberIs24HourSystem
 import eu.kanade.tachiyomi.BuildConfig
-import eu.kanade.tachiyomi.data.updater.RELEASE_URL
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
 import eu.kanade.tachiyomi.util.lang.toDateTimestampString
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -36,22 +37,16 @@ import eu.kanade.tachiyomi.util.system.isFossBuildType
 import eu.kanade.tachiyomi.util.system.isNightlyBuildType
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.system.updaterEnabled
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import logcat.LogPriority
 import mihon.app.di.appGraph
-import mihon.icons.materialsymbols.MaterialSymbols
-import mihon.icons.materialsymbols.rounded.Public
-import mihon.icons.simpleicons.Discord
-import mihon.icons.simpleicons.Facebook
 import mihon.icons.simpleicons.Github
-import mihon.icons.simpleicons.Reddit
 import mihon.icons.simpleicons.SimpleIcons
-import mihon.icons.simpleicons.X
 import tachiyomi.core.common.Constants
-import tachiyomi.core.common.util.lang.withIOContext
-import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.release.interactor.GetApplicationRelease
 import tachiyomi.i18n.MR
@@ -61,9 +56,17 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.Locale
 import kotlin.time.Instant
 
 object AboutScreen : Screen() {
+
+    private const val REPO_URL = "https://github.com/Grillza/docho"
+
+    private const val PRIVACY_POLICY_URL = "$REPO_URL/blob/main/docs/privacy-policy.md"
+
+    /** GitHub's relay address for the repository owner. */
+    private const val CONTACT_EMAIL = "174673301+Grillza@users.noreply.github.com"
 
     @Composable
     override fun Content() {
@@ -74,6 +77,7 @@ object AboutScreen : Screen() {
         val navigator = LocalNavigator.currentOrThrow
         var isCheckingUpdates by remember { mutableStateOf(false) }
         val crashLogUtil = remember { context.appGraph.crashLogUtil }
+        val is24HourSystem = rememberIs24HourSystem()
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -96,7 +100,9 @@ object AboutScreen : Screen() {
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.version),
-                        subtitle = getVersionName(withBuildDate = true),
+                        // Keyed on the system 12/24h setting, which can change while the app is backgrounded.
+                        // Date/time prefs only change in Appearance, which recreates this screen on return.
+                        subtitle = remember(is24HourSystem) { getVersionName(withBuildDate = true) },
                         onPreferenceClick = {
                             val deviceInfo = crashLogUtil.getDebugInfo()
                             context.copyToClipboard("Debug information", deviceInfo)
@@ -143,15 +149,6 @@ object AboutScreen : Screen() {
                     }
                 }
 
-                if (!BuildConfig.DEBUG) {
-                    item {
-                        TextPreferenceWidget(
-                            title = stringResource(MR.strings.whats_new),
-                            onPreferenceClick = { uriHandler.openUri(RELEASE_URL) },
-                        )
-                    }
-                }
-
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.licenses),
@@ -162,7 +159,22 @@ object AboutScreen : Screen() {
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.privacy_policy),
-                        onPreferenceClick = { uriHandler.openUri("https://mihon.app/privacy/") },
+                        onPreferenceClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
+                    )
+                }
+
+                item {
+                    TextPreferenceWidget(
+                        title = stringResource(MR.strings.about_general_help),
+                        onPreferenceClick = { uriHandler.openUri(Constants.URL_HELP) },
+                    )
+                }
+
+                item {
+                    TextPreferenceWidget(
+                        title = stringResource(MR.strings.about_contact),
+                        subtitle = stringResource(MR.strings.about_contact_summary, CONTACT_EMAIL),
+                        onPreferenceClick = { context.copyToClipboard(CONTACT_EMAIL, CONTACT_EMAIL) },
                     )
                 }
 
@@ -174,34 +186,9 @@ object AboutScreen : Screen() {
                         horizontalArrangement = Arrangement.Center,
                     ) {
                         LinkIcon(
-                            label = stringResource(MR.strings.website),
-                            icon = MaterialSymbols.Rounded.Public,
-                            url = "https://mihon.app",
-                        )
-                        LinkIcon(
-                            label = "Discord",
-                            icon = SimpleIcons.Discord,
-                            url = Constants.URL_DISCORD,
-                        )
-                        LinkIcon(
-                            label = "X",
-                            icon = SimpleIcons.X,
-                            url = "https://x.com/mihonapp",
-                        )
-                        LinkIcon(
-                            label = "Facebook",
-                            icon = SimpleIcons.Facebook,
-                            url = "https://facebook.com/mihonapp",
-                        )
-                        LinkIcon(
-                            label = "Reddit",
-                            icon = SimpleIcons.Reddit,
-                            url = "https://www.reddit.com/r/mihonapp",
-                        )
-                        LinkIcon(
                             label = "GitHub",
                             icon = SimpleIcons.Github,
-                            url = "https://github.com/mihonapp",
+                            url = REPO_URL,
                         )
                     }
                 }
@@ -218,9 +205,9 @@ object AboutScreen : Screen() {
         onFinish: () -> Unit,
     ) {
         val updateChecker = context.appGraph.updateChecker
-        withUIContext {
+        withContext(Dispatchers.Main) {
             try {
-                when (val result = withIOContext { updateChecker.checkForUpdate(forceCheck = true) }) {
+                when (val result = updateChecker.checkForUpdate(forceCheck = true)) {
                     is GetApplicationRelease.Result.NewUpdate -> {
                         onAvailableUpdate(result)
                     }
@@ -275,11 +262,16 @@ object AboutScreen : Screen() {
 
     internal fun getFormattedBuildTime(): String {
         return try {
+            val context = Injekt.get<Context>()
+            val uiPreferences = context.appGraph.uiPreferences
             Instant.parse(BuildConfig.BUILD_TIME)
                 .toLocalDateTime(TimeZone.currentSystemDefault())
                 .toDateTimestampString(
-                    UiPreferences.dateFormat(
-                        Injekt.get<Context>().appGraph.uiPreferences.dateFormat.get(),
+                    UiPreferences.dateTimeFormat(
+                        uiPreferences.dateFormat.get(),
+                        uiPreferences.timeFormat.get(),
+                        Locale.getDefault(),
+                        DateFormat.is24HourFormat(context),
                     ),
                 )
         } catch (_: Exception) {

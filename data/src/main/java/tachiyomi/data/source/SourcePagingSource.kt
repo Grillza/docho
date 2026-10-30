@@ -5,10 +5,12 @@ import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import mihon.domain.manga.model.toDomainManga
-import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.source.model.UnreadListingSource
 import tachiyomi.domain.source.repository.SourcePagingSource
 
 class SourceSearchPagingSource(
@@ -40,6 +42,16 @@ class SourceLatestPagingSource(
     }
 }
 
+class SourceUnreadPagingSource(
+    source: suspend () -> Source,
+    networkToLocalManga: NetworkToLocalManga,
+) : BaseSourcePagingSource(source, networkToLocalManga) {
+    override suspend fun requestNextPage(source: Source, currentPage: Int): MangasPage {
+        return (source as? UnreadListingSource)?.getUnreadManga(currentPage)
+            ?: throw UnsupportedOperationException("${source.name} has no unread listing")
+    }
+}
+
 abstract class BaseSourcePagingSource(
     private val source: suspend () -> Source,
     private val networkToLocalManga: NetworkToLocalManga,
@@ -54,7 +66,7 @@ abstract class BaseSourcePagingSource(
 
         return try {
             val source = source()
-            val mangasPage = withIOContext {
+            val mangasPage = withContext(Dispatchers.IO) {
                 requestNextPage(source, page.toInt())
                     .takeIf { it.mangas.isNotEmpty() }
                     ?: throw NoResultsException()

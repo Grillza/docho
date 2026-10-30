@@ -57,6 +57,7 @@ internal fun AppThemePreferenceWidget(
     value: AppTheme,
     amoled: Boolean,
     onItemClick: (AppTheme) -> Unit,
+    onCustomClick: (() -> Unit)? = null,
 ) {
     BasePreferenceWidget(
         subcomponent = {
@@ -64,6 +65,7 @@ internal fun AppThemePreferenceWidget(
                 currentTheme = value,
                 amoled = amoled,
                 onItemClick = onItemClick,
+                onCustomClick = onCustomClick,
             )
         },
     )
@@ -74,11 +76,14 @@ private fun AppThemesList(
     currentTheme: AppTheme,
     amoled: Boolean,
     onItemClick: (AppTheme) -> Unit,
+    onCustomClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val appThemes = remember {
+    val appThemes = remember(onCustomClick == null) {
         AppTheme.entries
             .filterNot { it.titleRes == null || (it == AppTheme.MONET && !DeviceUtil.isDynamicColorAvailable) }
+            // Custom themes are made in a screen of their own, so only offered where one can be opened.
+            .filterNot { it == AppTheme.CUSTOM && onCustomClick == null }
     }
     LazyRow(
         contentPadding = PaddingValues(horizontal = PrefsHorizontalPadding),
@@ -100,6 +105,10 @@ private fun AppThemesList(
                     AppThemePreviewItem(
                         selected = currentTheme == appTheme,
                         onClick = {
+                            if (appTheme == AppTheme.CUSTOM) {
+                                onCustomClick?.invoke()
+                                return@AppThemePreviewItem
+                            }
                             onItemClick(appTheme)
                             (context as? Activity)?.let { ActivityCompat.recreate(it) }
                         },

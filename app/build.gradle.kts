@@ -35,10 +35,10 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.mihonka"
+        applicationId = "io.github.grillza.docho"
 
-        versionCode = 34
-        versionName = "0.20.4"
+        versionCode = 42
+        versionName = "0.26.1"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
@@ -205,6 +205,7 @@ dependencies {
     baselineProfile(projects.baselineProfile)
 
     implementation(projects.i18n)
+    implementation(projects.icons.customMaterialSymbols)
     implementation(projects.icons.materialSymbols)
     implementation(projects.icons.simpleIcons)
     implementation(projects.core.archive)
@@ -228,6 +229,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.uiTooling)
     implementation(libs.androidx.compose.uiToolingPreview)
     implementation(libs.androidx.compose.uiUtil)
+    implementation(libs.androidx.navigationEvent)
 
     implementation(libs.androidx.interpolator)
 
@@ -294,7 +296,6 @@ dependencies {
 
     // UI libraries
     implementation(libs.material)
-    implementation(libs.flexibleAdapter)
     implementation(libs.photoView)
     implementation(libs.directionalViewPager) {
         exclude(group = "androidx.viewpager", module = "viewpager")

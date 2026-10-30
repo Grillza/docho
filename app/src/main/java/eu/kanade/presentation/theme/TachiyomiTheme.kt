@@ -8,8 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import eu.kanade.domain.ui.model.AppTheme
+import eu.kanade.domain.ui.model.CustomTheme
 import eu.kanade.presentation.theme.colorscheme.BaseColorScheme
 import eu.kanade.presentation.theme.colorscheme.CatppuccinColorScheme
+import eu.kanade.presentation.theme.colorscheme.CustomColorScheme
 import eu.kanade.presentation.theme.colorscheme.GreenAppleColorScheme
 import eu.kanade.presentation.theme.colorscheme.LavenderColorScheme
 import eu.kanade.presentation.theme.colorscheme.MidnightDuskColorScheme
@@ -37,6 +39,21 @@ fun TachiyomiTheme(
     BaseTachiyomiTheme(
         appTheme = appTheme ?: uiPreferences.appTheme.get(),
         isAmoled = amoled ?: uiPreferences.themeDarkAmoled.get(),
+        customTheme = remember { uiPreferences.selectedCustomTheme() },
+        content = content,
+    )
+}
+
+/** [content] in the colours of [customTheme], such as one being edited. */
+@Composable
+fun CustomTachiyomiTheme(
+    customTheme: CustomTheme,
+    content: @Composable () -> Unit,
+) {
+    val context = LocalContext.current
+    val isAmoled = remember { context.appGraph.uiPreferences.themeDarkAmoled.get() }
+    MaterialExpressiveTheme(
+        colorScheme = remember(customTheme, isAmoled) { CustomColorScheme.colorScheme(customTheme, isAmoled) },
         content = content,
     )
 }
@@ -46,18 +63,22 @@ fun TachiyomiPreviewTheme(
     appTheme: AppTheme = AppTheme.DEFAULT,
     isAmoled: Boolean = false,
     content: @Composable () -> Unit,
-) = BaseTachiyomiTheme(appTheme, isAmoled, content)
+) = BaseTachiyomiTheme(appTheme, isAmoled, customTheme = null, content = content)
 
 @Composable
 private fun BaseTachiyomiTheme(
     appTheme: AppTheme,
     isAmoled: Boolean,
+    customTheme: CustomTheme?,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
     MaterialExpressiveTheme(
-        colorScheme = remember(appTheme, isDark, isAmoled) {
+        colorScheme = remember(appTheme, isDark, isAmoled, customTheme) {
+            if (appTheme == AppTheme.CUSTOM && customTheme != null) {
+                return@remember CustomColorScheme.colorScheme(customTheme, isAmoled)
+            }
             getThemeColorScheme(
                 context = context,
                 appTheme = appTheme,
@@ -69,7 +90,7 @@ private fun BaseTachiyomiTheme(
     )
 }
 
-private fun getThemeColorScheme(
+internal fun getThemeColorScheme(
     context: Context,
     appTheme: AppTheme,
     isDark: Boolean,

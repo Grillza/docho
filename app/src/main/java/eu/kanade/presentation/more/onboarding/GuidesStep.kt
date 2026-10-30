@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
@@ -40,6 +41,17 @@ internal class GuidesStep(
                 Text(stringResource(MR.strings.getting_started_guide))
             }
 
+            Text(stringResource(MR.strings.onboarding_guides_self_hosted))
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { handler.openUri(SELF_HOSTED_GUIDE_URL) },
+            ) {
+                Text(
+                    text = stringResource(MR.strings.onboarding_guides_self_hosted_action),
+                    textAlign = TextAlign.Center,
+                )
+            }
+
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -57,6 +69,8 @@ internal class GuidesStep(
 }
 
 const val GETTING_STARTED_URL = "https://mihon.app/docs/guides/getting-started"
+
+private const val SELF_HOSTED_GUIDE_URL = "https://github.com/Grillza/docho/blob/main/docs/self-hosted-sync.md"
 
 @PreviewLightDark
 @Composable

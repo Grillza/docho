@@ -14,6 +14,7 @@ class GetRemoteManga(
         return when (query) {
             QUERY_POPULAR -> repository.getPopular(sourceId)
             QUERY_LATEST -> repository.getLatest(sourceId)
+            QUERY_UNREAD -> repository.getUnread(sourceId)
             else -> repository.search(sourceId, query, filterList)
         }
     }
@@ -21,5 +22,6 @@ class GetRemoteManga(
     companion object {
         const val QUERY_POPULAR = "eu.kanade.domain.source.interactor.POPULAR"
         const val QUERY_LATEST = "eu.kanade.domain.source.interactor.LATEST"
+        const val QUERY_UNREAD = "eu.kanade.domain.source.interactor.UNREAD"
     }
 }

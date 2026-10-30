@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -50,6 +51,7 @@ import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
+import tachiyomi.presentation.core.util.collectAsState
 
 object HomeScreen : Screen() {
 
@@ -62,14 +64,6 @@ object HomeScreen : Screen() {
 
     @Suppress("ConstPropertyName")
     private const val TabNavigatorKey = "HomeTabs"
-
-    private val TABS = listOf(
-        LibraryTab,
-        UpdatesTab,
-        HistoryTab,
-        BrowseTab,
-        MoreTab,
-    )
 
     @Composable
     override fun Content() {
@@ -107,7 +101,7 @@ object HomeScreen : Screen() {
                     ),
                     navigationItemVerticalArrangement = Arrangement.Center,
                     navigationItems = {
-                        TABS.fastForEach { NavigationSuiteItem(it, navigationSuiteType) }
+                        NavigationItems(navigationSuiteType)
                     },
                 ) {
                     AnimatedContent(
@@ -162,6 +156,22 @@ object HomeScreen : Screen() {
                     }
                 }
             }
+        }
+    }
+
+    /** The tabs the user hasn't hidden; on the bottom bar, placed as chosen in Appearance. */
+    @Composable
+    private fun NavigationItems(navigationSuiteType: NavigationSuiteType) {
+        val tabs = visibleNavBarTabs()
+        if (navigationSuiteType != NavigationSuiteType.NavigationBar) {
+            tabs.fastForEach { key(it) { NavigationSuiteItem(it, navigationSuiteType) } }
+            return
+        }
+        val alignment by LocalContext.current.appGraph.uiPreferences.navBarAlignment.collectAsState()
+        // The bar spreads its items evenly, so give it one child that places the tabs itself.
+        // Keyed, so each tab keeps its own icon as others are shown or hidden.
+        NavBarTabsLayout(alignment = alignment) {
+            tabs.fastForEach { key(it) { NavigationSuiteItem(it, navigationSuiteType) } }
         }
     }
 

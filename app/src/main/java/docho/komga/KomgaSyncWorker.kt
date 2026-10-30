@@ -1,0 +1,45 @@
+package docho.komga
+
+import android.content.Context
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkerParameters
+import eu.kanade.tachiyomi.util.system.workManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import mihon.app.di.AppGraph
+import mihon.core.metro.metroGraph
+import java.util.concurrent.TimeUnit
+
+/**
+ * Delivers progress that was queued while Komga couldn't be reached. Android
+ * starts it once there is a network again, even if the app was closed in the meantime.
+ */
+class KomgaSyncWorker(context: Context, workerParams: WorkerParameters) :
+    CoroutineWorker(context, workerParams) {
+
+    private val graph: AppGraph = context.metroGraph()
+
+    override suspend fun doWork(): Result {
+        val done = withContext(Dispatchers.IO) { graph.komgaSync.syncQueued() }
+        return if (done) Result.success() else Result.retry()
+    }
+
+    companion object {
+        private const val TAG = "KomgaSync"
+
+        fun enqueue(context: Context) {
+            val request = OneTimeWorkRequestBuilder<KomgaSyncWorker>()
+                .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+                .addTag(TAG)
+                .build()
+            // An already waiting run delivers whatever is queued by the time it starts.
+            context.workManager.enqueueUniqueWork(TAG, ExistingWorkPolicy.KEEP, request)
+        }
+    }
+}

@@ -1,0 +1,22 @@
+<!-- BookOrbit's app icon: Lucide's "orbit" on BookOrbit's dark background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="192dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+  <path
+      android:pathData="M0,0h192v192H0z"
+      android:fillColor="#2c2c22"/>
+  <group
+      android:translateX="33"
+      android:translateY="33"
+      android:scaleX="5.25"
+      android:scaleY="5.25">
+    <path
+        android:pathData="M20.341,6.484A10,10 0,0 1,10.266 21.85M3.659,17.516A10,10 0,0 1,13.74 2.152M9,12a3,3 0,1 0,6 0a3,3 0,1 0,-6 0M17,5a2,2 0,1 0,4 0a2,2 0,1 0,-4 0M3,19a2,2 0,1 0,4 0a2,2 0,1 0,-4 0"
+        android:strokeWidth="1.5"
+        android:strokeColor="#E6FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+  </group>
+</vector>
