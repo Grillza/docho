@@ -176,9 +176,9 @@ def main() -> None:
     write_imageset("nav.more", svg)
     write_imageset("nav.more.fill", svg)
     static("wordmark", "ic_docho_wordmark.xml")
-    for server in ["kavita", "komga", "bookorbit", "koreader"]:
+    for server in ["kavita", "komga", "bookorbit", "koreader", "suwayomi"]:
         static(f"brand.{server}", f"brand_{server}.xml", template=False)
-    print(f"{count} symbols, 5 navigation icons, the wordmark and 4 server logos written to {OUT.relative_to(ROOT)}")
+    print(f"{count} symbols, 5 navigation icons, the wordmark and 5 server logos written to {OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

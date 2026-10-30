@@ -7,6 +7,7 @@ struct LibraryView: View {
     @Environment(\.m3) private var m3
     @Environment(\.openReader) private var openReader
     @Environment(\.navigate) private var navigate
+    @Environment(\.openBrowse) private var openBrowse
     @State private var items: [LibraryItem] = []
     @State private var categories: [CategoryRecord] = []
     @State private var loaded = false
@@ -123,9 +124,8 @@ struct LibraryView: View {
             LoadingScreen()
         } else if items.isEmpty {
             EmptyScreen(message: String(localized: "Your library is empty")) {
-                NavigationLink(value: Route.settingsPage(.sync)) {
-                    Text("Set up a server").font(M3Type.labelLarge).foregroundStyle(m3.primary)
-                }
+                M3TextButton(title: String(localized: "Add files from Browse")) { openBrowse() }
+                    .accessibilityIdentifier("library.addFromBrowse")
             }
         } else {
             let visible = visibleItems

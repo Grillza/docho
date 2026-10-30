@@ -179,6 +179,8 @@ final class AppPreferences {
     var downloadedOnly: Bool { didSet { save(downloadedOnly, "pref_downloaded_only") } }
     /// Reading isn't saved to history.
     var incognitoMode: Bool { didSet { save(incognitoMode, "incognito_mode") } }
+    /// Whether the welcome guide has been shown (Mihon's `onboarding_complete`).
+    var shownWelcome: Bool { didSet { save(shownWelcome, "onboarding_complete") } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -242,6 +244,7 @@ final class AppPreferences {
 
         downloadedOnly = bool("pref_downloaded_only", false)
         incognitoMode = bool("incognito_mode", false)
+        shownWelcome = bool("onboarding_complete", false)
     }
 
     /// Whether any library filter is on (the filter icon shows as active).

@@ -104,6 +104,25 @@ struct HomeView: View {
         .background(m3.surface.ignoresSafeArea())
         .environment(\.openReader, OpenReaderAction { reader = $0 })
         .environment(\.navigate, NavigateAction { route in paths[selection, default: []].append(route) })
+        .environment(\.openBrowse, OpenBrowseAction { route in
+            // Browse may be hidden from the bar; then its screen opens on the current tab.
+            if tabs.contains(.browse) {
+                selection = .browse
+                paths[.browse] = route.map { [$0] } ?? []
+            } else {
+                paths[selection, default: []].append(route ?? .source(LocalSource.id, listing: .popular))
+            }
+        })
+        .fullScreenCover(isPresented: Binding(get: { !app.preferences.shownWelcome }, set: { if !$0 { app.preferences.shownWelcome = true } })) {
+            WelcomeView { setUpServer in
+                app.preferences.shownWelcome = true
+                if setUpServer {
+                    selection = .more
+                    paths[.more] = [.settings, .settingsPage(.sync)]
+                }
+            }
+            .environment(\.m3, m3)
+        }
         .fullScreenCover(item: $reader) { launch in
             ReaderView(model: ReaderModel(app: app, series: launch.series, chapters: launch.chapters, start: launch.start))
                 .environment(\.m3, m3)
@@ -397,6 +416,27 @@ extension EnvironmentValues {
     var navigate: NavigateAction {
         get { self[NavigateKey.self] }
         set { self[NavigateKey.self] = newValue }
+    }
+}
+
+/// Switches to Browse, opening `route` there if given (the Library's "Add files from Browse").
+struct OpenBrowseAction: Sendable {
+    let open: @MainActor (Route?) -> Void
+
+    @MainActor
+    func callAsFunction(_ route: Route? = nil) {
+        open(route)
+    }
+}
+
+private struct OpenBrowseKey: EnvironmentKey {
+    static let defaultValue = OpenBrowseAction { _ in }
+}
+
+extension EnvironmentValues {
+    var openBrowse: OpenBrowseAction {
+        get { self[OpenBrowseKey.self] }
+        set { self[OpenBrowseKey.self] = newValue }
     }
 }
 

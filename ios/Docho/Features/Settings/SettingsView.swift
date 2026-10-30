@@ -348,6 +348,12 @@ private struct AdvancedSettings: View {
     @State private var cleared: String?
 
     var body: some View {
+        PreferenceHeader(title: String(localized: "Help"))
+        PreferenceRow(
+            title: String(localized: "Show the welcome guide"),
+            subtitle: String(localized: "How to get around, and add comics from files or a server"),
+            action: { app.preferences.shownWelcome = false }
+        )
         PreferenceHeader(title: String(localized: "Data"))
         PreferenceRow(
             title: String(localized: "Clear chapter cache"),

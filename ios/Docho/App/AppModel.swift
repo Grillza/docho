@@ -131,6 +131,10 @@ final class AppModel {
     /// screenshots: `DOCHO_KAVITA_URL`/`_KEY`, `DOCHO_KOMGA_URL`/`_KEY`, and
     /// `DOCHO_BOOKORBIT_URL`/`_USER`/`_PASSWORD`. `DOCHO_RESET=1` starts from an empty library.
     func applyLaunchSettings(_ environment: [String: String]) {
+        // Launches for tests and screenshots skip the welcome guide unless they ask for it.
+        if environment.keys.contains(where: { $0.hasPrefix("DOCHO_") }) {
+            preferences.shownWelcome = environment["DOCHO_WELCOME"] == nil
+        }
         if environment["DOCHO_RESET"] == "1" {
             try? database.writer.write { db in
                 try db.execute(sql: "DELETE FROM series; DELETE FROM category; DELETE FROM download; DELETE FROM pendingProgress; DELETE FROM syncQueue")

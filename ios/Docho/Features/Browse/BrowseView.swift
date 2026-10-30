@@ -107,9 +107,42 @@ struct BrowseView: View {
                             SourceRow(source: source)
                         }
                     }
+                    if !hasServer { setUpServer }
                 }
             }
         }
+    }
+
+    /// Whether any self-hosted server is set up.
+    private var hasServer: Bool {
+        app.settings.credentials.isConfigured || app.komgaSettings.isConfigured || app.bookOrbitSettings.isConfigured
+            || app.suwayomi.isConfigured
+    }
+
+    /// Shown until a server is set up: where to connect one.
+    private var setUpServer: some View {
+        NavigationLink(value: Route.settingsPage(.sync)) {
+            HStack(spacing: 16) {
+                MIcon("dns").foregroundStyle(m3.onSecondaryContainer)
+                    .frame(width: 40, height: 40)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(m3.secondaryContainer))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Set up a server").font(M3Type.bodyMedium).foregroundStyle(m3.onSurface)
+                    Text("Connect Kavita, Komga or BookOrbit for your own library, or Suwayomi for extensions")
+                        .font(M3Type.bodySmall)
+                        .foregroundStyle(m3.onSurfaceVariant)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                MIcon("keyboard_arrow_right").foregroundStyle(m3.onSurfaceVariant)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.ripple)
+        .padding(.top, 8)
+        .accessibilityIdentifier("browse.setUpServer")
     }
 
     /// The built-in sources under "Other", then the server's by language, as Mihon groups them.
