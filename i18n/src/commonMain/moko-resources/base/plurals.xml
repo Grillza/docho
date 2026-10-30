@@ -114,4 +114,8 @@
         <item quantity="one">%1$d update failed</item>
         <item quantity="other">%1$d updates failed</item>
     </plurals>
+    <plurals name="sync_settings_imported">
+        <item quantity="one">Imported %1$d setting</item>
+        <item quantity="other">Imported %1$d settings</item>
+    </plurals>
 </resources>

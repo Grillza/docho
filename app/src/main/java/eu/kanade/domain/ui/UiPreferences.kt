@@ -4,11 +4,13 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.domain.ui.model.AppTheme
+import eu.kanade.domain.ui.model.CustomTheme
 import eu.kanade.domain.ui.model.NavBarAlignment
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.isDynamicColorAvailable
+import kotlinx.serialization.json.Json
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.preference.getEnum
@@ -34,6 +36,23 @@ class UiPreferences(
     )
 
     val themeDarkAmoled: Preference<Boolean> = preferenceStore.getBoolean("pref_theme_dark_amoled_key", false)
+
+    /** The user's own themes, at most [CustomTheme.MAX]. */
+    val customThemes: Preference<List<CustomTheme>> = preferenceStore.getObjectFromString(
+        key = "custom_themes",
+        defaultValue = emptyList(),
+        serializer = { Json.encodeToString(it) },
+        deserializer = { runCatching { Json.decodeFromString<List<CustomTheme>>(it) }.getOrDefault(emptyList()) },
+    )
+
+    /** Which of [customThemes] is used when the app theme is [AppTheme.CUSTOM]. */
+    val customThemeIndex: Preference<Int> = preferenceStore.getInt("custom_theme_index", 0)
+
+    /** The custom theme in use, if there is one. */
+    fun selectedCustomTheme(): CustomTheme? {
+        val themes = customThemes.get()
+        return themes.getOrNull(customThemeIndex.get()) ?: themes.firstOrNull()
+    }
 
     val relativeTime: Preference<Boolean> = preferenceStore.getBoolean("relative_time_v2", true)
 

@@ -61,6 +61,7 @@ import mihonka.koreader.KoreaderApi
 import mihonka.koreader.KoreaderPreferences
 import mihonka.koreader.KoreaderSync
 import mihonka.sync.ProgressSyncPreferences
+import mihonka.sync.SyncSettingsFile
 import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.category.interactor.GetCategories
@@ -150,6 +151,7 @@ interface AppGraph : ViewModelGraph {
     val koreaderApi: KoreaderApi
     val koreaderSync: KoreaderSync
     val progressSyncPreferences: ProgressSyncPreferences
+    val syncSettingsFile: SyncSettingsFile
 
     val bookOrbitPreferences: BookOrbitPreferences
     val bookOrbitApi: BookOrbitApi

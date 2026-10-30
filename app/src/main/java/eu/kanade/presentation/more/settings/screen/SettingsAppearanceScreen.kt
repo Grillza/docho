@@ -2,11 +2,15 @@ package eu.kanade.presentation.more.settings.screen
 
 import android.app.Activity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -17,8 +21,11 @@ import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.screen.appearance.AppLanguageScreen
+import eu.kanade.presentation.more.settings.screen.appearance.CustomThemeEditorScreen
+import eu.kanade.presentation.more.settings.screen.appearance.CustomThemesScreen
 import eu.kanade.presentation.more.settings.widget.AppThemeModePreferenceWidget
 import eu.kanade.presentation.more.settings.widget.AppThemePreferenceWidget
+import eu.kanade.tachiyomi.ui.home.NavBarPreview
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
@@ -54,13 +61,34 @@ object SettingsAppearanceScreen : SearchableSettings {
         val showUpdates by uiPreferences.showUpdatesTab.collectAsState()
         val showHistory by uiPreferences.showHistoryTab.collectAsState()
         val showBrowse by uiPreferences.showBrowseTab.collectAsState()
+        val alignment by uiPreferences.navBarAlignment.collectAsState()
+        val allShown = showUpdates && showHistory && showBrowse
+        val shownTabs = listOfNotNull(
+            stringResource(MR.strings.label_library),
+            stringResource(MR.strings.label_recent_updates).takeIf { showUpdates },
+            stringResource(MR.strings.label_recent_manga).takeIf { showHistory },
+            stringResource(MR.strings.browse).takeIf { showBrowse },
+            stringResource(MR.strings.label_more),
+        ).joinToString()
+        val alignmentName = stringResource(alignment.titleRes)
 
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_category_nav_bar),
+            collapsible = true,
+            summary = if (allShown) shownTabs else "$shownTabs · $alignmentName",
             preferenceItems = listOf(
                 Preference.PreferenceItem.InfoPreference(
                     title = stringResource(MR.strings.pref_nav_bar_info),
                 ),
+                Preference.PreferenceItem.CustomPreference(
+                    title = stringResource(MR.strings.pref_nav_bar_preview),
+                ) {
+                    NavBarPreview(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                },
                 Preference.PreferenceItem.SwitchPreference(
                     preference = uiPreferences.showUpdatesTab,
                     title = stringResource(MR.strings.label_recent_updates),
@@ -77,7 +105,7 @@ object SettingsAppearanceScreen : SearchableSettings {
                     preference = uiPreferences.navBarAlignment,
                     entries = NavBarAlignment.entries.associateWith { stringResource(it.titleRes) },
                     title = stringResource(MR.strings.pref_nav_bar_alignment),
-                    visible = !(showUpdates && showHistory && showBrowse),
+                    visible = !allShown,
                 ),
             ),
         )
@@ -88,6 +116,7 @@ object SettingsAppearanceScreen : SearchableSettings {
         uiPreferences: UiPreferences,
     ): Preference.PreferenceGroup {
         val context = LocalContext.current
+        val navigator = LocalNavigator.currentOrThrow
 
         val themeModePref = uiPreferences.themeMode
         val themeMode by themeModePref.collectAsState()
@@ -117,6 +146,14 @@ object SettingsAppearanceScreen : SearchableSettings {
                             value = appTheme,
                             amoled = amoled,
                             onItemClick = { appThemePref.set(it) },
+                            onCustomClick = {
+                                // With none made yet, go straight to making one.
+                                if (uiPreferences.customThemes.get().isEmpty()) {
+                                    navigator.push(CustomThemeEditorScreen(index = null))
+                                } else {
+                                    navigator.push(CustomThemesScreen())
+                                }
+                            },
                         )
                     }
                 },
