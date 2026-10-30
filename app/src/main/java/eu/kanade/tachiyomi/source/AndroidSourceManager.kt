@@ -4,6 +4,12 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import doki.bookorbit.BookOrbitPreferences
+import doki.bookorbit.BookOrbitSource
+import doki.kavita.KavitaPreferences
+import doki.kavita.KavitaSource
+import doki.komga.KomgaPreferences
+import doki.komga.KomgaSource
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -17,12 +23,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import mihonka.bookorbit.BookOrbitPreferences
-import mihonka.bookorbit.BookOrbitSource
-import mihonka.kavita.KavitaPreferences
-import mihonka.kavita.KavitaSource
-import mihonka.komga.KomgaPreferences
-import mihonka.komga.KomgaSource
 import mihon.core.metro.AppCoroutineScope
 import tachiyomi.domain.source.model.StubSource
 import tachiyomi.domain.source.repository.StubSourceRepository

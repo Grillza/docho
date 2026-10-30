@@ -1,6 +1,8 @@
 package eu.kanade.domain.chapter.interactor
 
 import dev.zacsweers.metro.Inject
+import doki.BuiltInSources
+import doki.sync.ProgressSync
 import eu.kanade.domain.chapter.model.copyFromSChapter
 import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.domain.manga.interactor.GetExcludedScanlators
@@ -14,8 +16,6 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import mihonka.BuiltInSources
-import mihonka.sync.ProgressSync
 import tachiyomi.data.chapter.ChapterSanitizer
 import tachiyomi.domain.chapter.interactor.ShouldUpdateDbChapter
 import tachiyomi.domain.chapter.model.Chapter

@@ -35,6 +35,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import doki.sync.InvalidSyncSettingsFileException
+import doki.sync.ProgressSyncMode
+import doki.sync.SyncSettingsFile
+import doki.sync.WrongPasswordException
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.Dispatchers
@@ -44,10 +48,6 @@ import mihon.app.di.appGraph
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Visibility
 import mihon.icons.materialsymbols.rounded.VisibilityOff
-import mihonka.sync.InvalidSyncSettingsFileException
-import mihonka.sync.ProgressSyncMode
-import mihonka.sync.SyncSettingsFile
-import mihonka.sync.WrongPasswordException
 import tachiyomi.core.common.i18n.pluralStringResource
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
@@ -56,7 +56,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 
 private const val MIN_PASSWORD_LENGTH = 8
 
-/** The servers Mihonka reads from and syncs with, and where reading progress is synced. */
+/** The servers Doki reads from and syncs with, and where reading progress is synced. */
 object SettingsSyncScreen : SearchableSettings {
 
     @ReadOnlyComposable

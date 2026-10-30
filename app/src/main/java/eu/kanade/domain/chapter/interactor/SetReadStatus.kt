@@ -1,9 +1,9 @@
 package eu.kanade.domain.chapter.interactor
 
 import dev.zacsweers.metro.Inject
+import doki.sync.ProgressSync
 import eu.kanade.domain.download.interactor.DeleteDownload
 import logcat.LogPriority
-import mihonka.sync.ProgressSync
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate

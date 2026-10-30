@@ -21,6 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import doki.kavita.KavitaApi
+import doki.kavita.KavitaConnection
+import doki.kavita.KavitaSource
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
@@ -30,9 +33,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mihon.app.di.appGraph
-import mihonka.kavita.KavitaApi
-import mihonka.kavita.KavitaConnection
-import mihonka.kavita.KavitaSource
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.source.interactor.GetRemoteManga
 import tachiyomi.i18n.MR

@@ -70,7 +70,7 @@ internal class GuidesStep(
 
 const val GETTING_STARTED_URL = "https://mihon.app/docs/guides/getting-started"
 
-private const val SELF_HOSTED_GUIDE_URL = "https://github.com/Grillza/mihonka/blob/main/docs/self-hosted-sync.md"
+private const val SELF_HOSTED_GUIDE_URL = "https://github.com/Grillza/doki/blob/main/docs/self-hosted-sync.md"
 
 @PreviewLightDark
 @Composable

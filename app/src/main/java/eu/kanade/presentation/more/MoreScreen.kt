@@ -11,8 +11,8 @@ import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.Label
 import mihon.icons.materialsymbols.rounded.CloudOff
 import mihon.icons.materialsymbols.rounded.Download
-import mihon.icons.materialsymbols.rounded.Favorite
 import mihon.icons.materialsymbols.rounded.Eyeglasses2
+import mihon.icons.materialsymbols.rounded.Favorite
 import mihon.icons.materialsymbols.rounded.Info
 import mihon.icons.materialsymbols.rounded.QueryStats
 import mihon.icons.materialsymbols.rounded.Settings

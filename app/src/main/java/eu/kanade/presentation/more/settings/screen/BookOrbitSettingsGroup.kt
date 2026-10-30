@@ -21,6 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import doki.bookorbit.BookOrbitApi
+import doki.bookorbit.BookOrbitConnection
+import doki.bookorbit.BookOrbitSource
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
@@ -30,9 +33,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mihon.app.di.appGraph
-import mihonka.bookorbit.BookOrbitApi
-import mihonka.bookorbit.BookOrbitConnection
-import mihonka.bookorbit.BookOrbitSource
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.source.interactor.GetRemoteManga
 import tachiyomi.i18n.MR

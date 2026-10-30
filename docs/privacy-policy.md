@@ -68,4 +68,4 @@ in this repository's commits.
 ## Contact
 
 Questions about this policy can be raised as an
-[issue on GitHub](https://github.com/Grillza/mihonka/issues).
+[issue on GitHub](https://github.com/Grillza/doki/issues).

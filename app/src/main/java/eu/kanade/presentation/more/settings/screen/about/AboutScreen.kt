@@ -61,7 +61,7 @@ import kotlin.time.Instant
 
 object AboutScreen : Screen() {
 
-    private const val REPO_URL = "https://github.com/Grillza/mihonka"
+    private const val REPO_URL = "https://github.com/Grillza/doki"
 
     private const val PRIVACY_POLICY_URL = "$REPO_URL/blob/main/docs/privacy-policy.md"
 

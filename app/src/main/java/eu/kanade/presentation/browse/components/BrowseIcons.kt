@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import doki.BuiltInSources
 import eu.kanade.presentation.util.rememberResourceBitmapPainter
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.coil.InstalledExtensionIcon
@@ -22,7 +23,6 @@ import eu.kanade.tachiyomi.extension.model.Extension
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.roundedfilled.Dangerous
 import mihon.icons.materialsymbols.roundedfilled.Warning
-import mihonka.BuiltInSources
 import tachiyomi.domain.source.model.Source
 import tachiyomi.source.local.isLocal
 

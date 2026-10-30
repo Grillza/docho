@@ -1,11 +1,11 @@
 package eu.kanade.domain.source.interactor
 
 import dev.zacsweers.metro.Inject
+import doki.BuiltInSources
 import eu.kanade.domain.source.service.SourcePreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import mihonka.BuiltInSources
 import tachiyomi.domain.source.model.Pin
 import tachiyomi.domain.source.model.Pins
 import tachiyomi.domain.source.model.Source
