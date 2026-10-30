@@ -64,6 +64,21 @@ final class SettingsFileTests: XCTestCase {
         XCTAssertEqual(settings["progress_sync_mode"] as? String, "SOURCE")
     }
 
+    func testCarriesSuwayomiSettingsAsAndroidNamesThem() async throws {
+        app.suwayomiSettings.serverURL = "http://suwayomi.lan:4567"
+        app.suwayomiSettings.showNSFW = true
+        let data = try SettingsFile(app: app).export(includeSignIn: false, password: nil)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let settings = try XCTUnwrap(json["settings"] as? [String: Any])
+        XCTAssertEqual(settings["suwayomi_server_url"] as? String, "http://suwayomi.lan:4567")
+        XCTAssertEqual(settings["suwayomi_show_nsfw"] as? Bool, true)
+
+        app.suwayomiSettings.reset()
+        try await SettingsFile(app: app).importFile(data)
+        XCTAssertEqual(app.suwayomiSettings.serverURL, "http://suwayomi.lan:4567")
+        XCTAssertTrue(app.suwayomiSettings.showNSFW)
+    }
+
     func testRejectsOtherFiles() async {
         do {
             try await SettingsFile(app: app).importFile(Data(#"{"format":"something-else"}"#.utf8))

@@ -2,8 +2,10 @@ import CommonCrypto
 import CryptoKit
 import Foundation
 
-/// Port of Android's `SyncSettingsFile` (0.25): the Sync / Self-hosted sources settings, and how
-/// often to back up, as a JSON file to set up another device the same way. With a password the
+/// Port of Android's `SyncSettingsFile` (0.27): the Sync / Self-hosted sources settings, and how
+/// often to back up, as a JSON file to set up another device the same way. It's the only way
+/// server details move between installs: Android leaves them out of Mihon's backups, which
+/// can't be password protected. With a password the
 /// settings are encrypted (AES-256-GCM, key from PBKDF2-HMAC-SHA256 at 600,000 rounds), and one
 /// is needed to include sign-in details. Files move between the Android and iOS apps: the format
 /// and the keys (Android's preference keys) are the same.
@@ -80,10 +82,10 @@ struct SettingsFile {
             text("__PRIVATE_komga_api_key", secret: true, { komga.apiKey }, { komga.apiKey = $0 }),
             flag("komga_sync_progress", { komga.syncProgress }, { komga.syncProgress = $0 }),
             flag("komga_koreader_downloads", { komga.koreaderDownloads }, { komga.koreaderDownloads = $0 }),
-            // iOS only (Android runs extensions itself); Android skips keys it doesn't know.
             text("suwayomi_server_url", { suwayomi.serverURL }, { suwayomi.serverURL = $0 }),
             text("suwayomi_username", { suwayomi.username }, { suwayomi.username = $0 }),
             text("__PRIVATE_suwayomi_password", secret: true, { suwayomi.password }, { suwayomi.password = $0 }),
+            flag("suwayomi_show_nsfw", { suwayomi.showNSFW }, { suwayomi.showNSFW = $0 }),
             text("koreader_server_url", { koreader.serverURL }, { koreader.serverURL = $0 }),
             text("koreader_username", { koreader.username }, { koreader.username = $0 }),
             text("__PRIVATE_koreader_password", secret: true, { koreader.password }, { koreader.password = $0 }),

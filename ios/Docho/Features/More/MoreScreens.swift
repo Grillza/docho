@@ -221,7 +221,7 @@ struct DataStorageView: View {
                             message = String(localized: "Cache cleared")
                         }
                     )
-                    InfoPreference(text: String(localized: "Backups aren't on iOS yet. Library, progress and settings stay on the device, and reading progress syncs with your servers."))
+                    InfoPreference(text: String(localized: "Backups aren't on iOS yet. Library, progress and settings stay on the device, and reading progress syncs with your servers. To move your servers to another device, use Export settings in Settings → Sync / Self-hosted sources."))
                 }
             }
         }
