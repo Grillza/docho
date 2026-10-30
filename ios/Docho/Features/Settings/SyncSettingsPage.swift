@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Android's Settings → Sync / Self-hosted sources: where reading progress goes, then a section
 /// per server that folds down to its logo, name and connection status.
@@ -24,6 +25,7 @@ struct SyncSettingsPage: View {
             BookOrbitSection(waiting: counts[BookOrbitSync.engine] ?? 0)
             KomgaSection(waiting: counts[KomgaSync.engine] ?? 0)
             KoreaderSection(waiting: counts[KoreaderSync.engine] ?? 0)
+            SettingsFileSection()
         }
         .onAppear { mode = app.syncSettings.mode }
         .onChange(of: mode) { old, new in
@@ -507,5 +509,174 @@ private func connectionText(_ status: ServerConnection, configured: Bool) -> Str
     case .checking: String(localized: "Connecting…")
     case .connected(let text): text
     case .failed(let reason): String(localized: "Couldn't connect: \(reason)")
+    }
+}
+
+// MARK: - Settings file
+
+/// Android's Settings file group: export these servers and sync options to a file, encrypted
+/// with a password, and import one on another device (the Android app's files work too).
+private struct SettingsFileSection: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.m3) private var m3
+    @State private var exporting = false
+    @State private var includeSignIn = false
+    @State private var password = ""
+    @State private var confirm = ""
+    @State private var document: SettingsDocument?
+    @State private var importing = false
+    @State private var pendingImport: Data?
+    @State private var importPassword = ""
+    @State private var wrongPassword = false
+    @State private var result: String?
+
+    var body: some View {
+        PreferenceHeader(title: String(localized: "Settings file"))
+        PreferenceRow(
+            title: String(localized: "Export settings"),
+            subtitle: String(localized: "Save these servers and sync options, and how often to back up, to a file you can import on another device"),
+            action: {
+                includeSignIn = false
+                password = ""
+                confirm = ""
+                exporting = true
+            }
+        )
+        PreferenceRow(
+            title: String(localized: "Import settings"),
+            subtitle: result ?? String(localized: "Load a settings file exported from Dōchō. Settings in the file replace the ones here."),
+            action: { importing = true }
+        )
+        .m3Dialog(isPresented: $exporting, title: String(localized: "Export settings")) {
+            VStack(alignment: .leading, spacing: 12) {
+                CheckboxRow(title: String(localized: "Include passwords and API keys"), isOn: $includeSignIn)
+                Text("So the other device connects straight away. Needs a password, so they're never saved unencrypted.")
+                    .font(M3Type.bodySmall)
+                    .padding(.horizontal, 24)
+                Text("Set a password to encrypt the file. Only Dōchō can open it, and only with this password, which can't be recovered if forgotten.")
+                    .padding(.horizontal, 24)
+                M3TextField(
+                    label: String(localized: "Password"), text: $password, secure: true,
+                    supporting: passwordProblem ?? (includeSignIn
+                        ? String(localized: "Needed to include passwords and API keys")
+                        : String(localized: "Optional. Leave empty to save the file unencrypted."))
+                )
+                .padding(.horizontal, 24)
+                if !password.isEmpty {
+                    M3TextField(label: String(localized: "Confirm password"), text: $confirm, secure: true).padding(.horizontal, 24)
+                }
+            }
+        } buttons: {
+            M3TextButton(title: String(localized: "Cancel")) { exporting = false }
+            M3TextButton(title: String(localized: "Export")) { export() }
+                .disabled(!canExport)
+                .opacity(canExport ? 1 : 0.38)
+        }
+        .fileExporter(
+            isPresented: Binding(get: { document != nil }, set: { if !$0 { document = nil } }),
+            document: document, contentType: .json, defaultFilename: SettingsFile.fileName
+        ) { outcome in
+            switch outcome {
+            case .success: result = password.isEmpty ? String(localized: "Settings exported") : String(localized: "Settings exported, encrypted")
+            case .failure: result = String(localized: "Couldn't save the settings file")
+            }
+            password = ""
+            confirm = ""
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .data]) { outcome in
+            guard case .success(let url) = outcome else { return }
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else {
+                result = SettingsFile.FileError.invalid.localizedDescription
+                return
+            }
+            if SettingsFile.isEncrypted(data) {
+                importPassword = ""
+                wrongPassword = false
+                pendingImport = data
+            } else {
+                runImport(data, password: nil)
+            }
+        }
+        .m3Dialog(
+            isPresented: Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),
+            title: String(localized: "Encrypted settings file")
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Enter the password this file was exported with.").padding(.horizontal, 24)
+                M3TextField(
+                    label: String(localized: "Password"), text: $importPassword, secure: true,
+                    supporting: wrongPassword ? String(localized: "Wrong password") : nil
+                )
+                .padding(.horizontal, 24)
+            }
+        } buttons: {
+            M3TextButton(title: String(localized: "Cancel")) { pendingImport = nil }
+            M3TextButton(title: String(localized: "Import")) {
+                if let data = pendingImport { runImport(data, password: importPassword) }
+            }
+        }
+    }
+
+    private var passwordProblem: String? {
+        if !password.isEmpty, password.count < SettingsFile.minimumPassword {
+            return String(localized: "At least \(SettingsFile.minimumPassword) characters")
+        }
+        if !confirm.isEmpty, confirm != password { return String(localized: "The passwords don't match") }
+        return nil
+    }
+
+    private var canExport: Bool {
+        if includeSignIn, password.isEmpty { return false }
+        if password.isEmpty { return true }
+        return password.count >= SettingsFile.minimumPassword && confirm == password
+    }
+
+    private func export() {
+        exporting = false
+        do {
+            let data = try SettingsFile(app: app).export(includeSignIn: includeSignIn, password: password.isEmpty ? nil : password)
+            document = SettingsDocument(data: data)
+        } catch {
+            result = String(localized: "Couldn't save the settings file")
+        }
+    }
+
+    private func runImport(_ data: Data, password: String?) {
+        Task {
+            do {
+                let count = try await SettingsFile(app: app).importFile(data, password: password)
+                pendingImport = nil
+                result = count == 1 ? String(localized: "Imported 1 setting") : String(localized: "Imported \(count) settings")
+                await app.kavita.checkConnection()
+                await app.komga.checkConnection()
+                await app.bookOrbit.checkConnection()
+                await app.koreader.checkConnection()
+            } catch SettingsFile.FileError.wrongPassword {
+                wrongPassword = true
+            } catch {
+                pendingImport = nil
+                result = error.localizedDescription
+            }
+        }
+    }
+}
+
+/// The exported settings, for the system's save panel.
+struct SettingsDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.json]
+    let data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }

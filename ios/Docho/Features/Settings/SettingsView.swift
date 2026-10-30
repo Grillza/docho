@@ -127,19 +127,42 @@ private struct AppearanceSettings: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(AppTheme.allCases) { theme in
-                    ThemePreview(theme: theme, selected: preferences.appTheme == theme, dark: m3.isDark) {
+                    ThemePreview(theme: theme, selected: !preferences.useCustomTheme && preferences.appTheme == theme, dark: m3.isDark) {
                         preferences.appTheme = theme
+                        preferences.useCustomTheme = false
                     }
                 }
+                // "Custom" is the last theme, as on Android: the user's own themes.
+                NavigationLink(value: Route.customThemes) {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 17).fill(m3.surfaceContainerHigh)
+                            if let custom = preferences.customThemes.first {
+                                HStack(spacing: 0) {
+                                    ForEach(CustomTheme.Role.allCases) { Color(argb: custom[keyPath: $0.keyPath]) }
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 17))
+                            }
+                            MIcon(preferences.useCustomTheme ? "check_circle.fill" : "palette", size: 32)
+                                .foregroundStyle(m3.primary)
+                                .padding(8)
+                                .background(Circle().fill(m3.surface))
+                        }
+                        .frame(width: 114, height: 170)
+                        .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(
+                            preferences.useCustomTheme ? m3.primary : m3.outlineVariant, lineWidth: preferences.useCustomTheme ? 4 : 1
+                        ))
+                        Text("Custom").font(M3Type.bodySmall).foregroundStyle(m3.onSurface)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Custom themes"))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
         SwitchPreference(title: String(localized: "Pure black dark mode"), isOn: $preferences.pureBlack)
-        PreferenceHeader(title: String(localized: "Navigation"))
-        SwitchPreference(title: String(localized: "Show Updates"), isOn: $preferences.showUpdatesTab)
-        SwitchPreference(title: String(localized: "Show History"), isOn: $preferences.showHistoryTab)
-        SwitchPreference(title: String(localized: "Show Browse"), isOn: $preferences.showBrowseTab)
+        NavigationBarSettings()
         PreferenceHeader(title: String(localized: "Display"))
         ListPreference(
             title: String(localized: "Date format"), selection: $preferences.dateFormat,
@@ -340,5 +363,97 @@ private struct AdvancedSettings: View {
                 }
             }
         )
+    }
+}
+
+// MARK: - Navigation bar
+
+/// Android's navigation bar settings (0.25): a live preview, which tabs show, where the tabs
+/// sit in the bar; plus where the bar itself sits and the tabs' order.
+private struct NavigationBarSettings: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.m3) private var m3
+
+    var body: some View {
+        @Bindable var preferences = app.preferences
+        PreferenceHeader(title: String(localized: "Navigation bar"))
+        preview
+        Text("Choose which tabs show in the navigation bar. Library and More always show, so you can always get around the app.")
+            .font(M3Type.bodySmall)
+            .foregroundStyle(m3.onSurfaceVariant)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        SwitchPreference(title: String(localized: "Updates"), icon: "nav.updates", isOn: $preferences.showUpdatesTab)
+        SwitchPreference(title: String(localized: "History"), icon: "nav.history", isOn: $preferences.showHistoryTab)
+        SwitchPreference(title: String(localized: "Browse"), icon: "nav.browse", isOn: $preferences.showBrowseTab)
+        ListPreference(
+            title: String(localized: "Bar position"), selection: $preferences.navPosition,
+            options: AppPreferences.NavPosition.allCases.map { ($0, $0.title) }
+        )
+        ListPreference(
+            title: String(localized: "Tab position"), selection: $preferences.navAlignment,
+            options: AppPreferences.NavAlignment.allCases.map { ($0, $0.title) }
+        )
+        PreferenceRow(title: String(localized: "Tab order"), subtitle: String(localized: "Move tabs up or down"))
+        ForEach(Array(order.enumerated()), id: \.element) { index, tab in
+            HStack(spacing: 16) {
+                MIcon(tab.icon).foregroundStyle(m3.primary)
+                Text(tab.title).font(.system(size: 16)).foregroundStyle(m3.onSurface)
+                Spacer()
+                AppBarIcon("keyboard_arrow_up", label: String(localized: "Move \(tab.title) up")) { move(index, by: -1) }
+                    .disabled(index == 0)
+                    .opacity(index == 0 ? 0.38 : 1)
+                AppBarIcon("keyboard_arrow_down", label: String(localized: "Move \(tab.title) down")) { move(index, by: 1) }
+                    .disabled(index == order.count - 1)
+                    .opacity(index == order.count - 1 ? 0.38 : 1)
+            }
+            .foregroundStyle(m3.onSurfaceVariant)
+            .padding(.leading, 16)
+            .padding(.trailing, 8)
+        }
+    }
+
+    private var order: [HomeTab] {
+        let ordered = app.preferences.tabOrder.compactMap(HomeTab.init(rawValue:))
+        return ordered + HomeTab.allCases.filter { !ordered.contains($0) }
+    }
+
+    private func move(_ index: Int, by offset: Int) {
+        var tabs = order
+        let target = index + offset
+        guard tabs.indices.contains(target) else { return }
+        tabs.swapAt(index, target)
+        withAnimation { app.preferences.tabOrder = tabs.map(\.rawValue) }
+    }
+
+    /// A small copy of the bar as the settings would show it (Android's preview).
+    @ViewBuilder
+    private var preview: some View {
+        let preferences = app.preferences
+        let tabs = HomeTab.visible(preferences)
+        let position = preferences.navPosition == .automatic
+            ? (UIDevice.current.userInterfaceIdiom == .pad ? AppPreferences.NavPosition.left : .bottom)
+            : preferences.navPosition
+        let bar = NavBar(tabs: tabs, position: position, alignment: preferences.navAlignment, current: tabs.first ?? .library,
+                         badge: { _ in nil }, selection: { _ in })
+            .allowsHitTesting(false)
+        let screen = RoundedRectangle(cornerRadius: 8).fill(m3.surfaceContainerLow)
+        Group {
+            switch position {
+            case .left, .automatic: HStack(spacing: 0) { bar; screen }
+            case .right: HStack(spacing: 0) { screen; bar }
+            case .top: VStack(spacing: 0) { bar; screen }
+            case .bottom: VStack(spacing: 0) { screen; bar }
+            }
+        }
+        .frame(height: position == .left || position == .right ? 480 : 200)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(m3.outlineVariant))
+        .padding(16)
+        .animation(.easeOut(duration: 0.2), value: preferences.navPosition)
+        .animation(.easeOut(duration: 0.2), value: preferences.navAlignment)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Preview: \(tabs.map(\.title).joined(separator: ", "))"))
     }
 }

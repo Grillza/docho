@@ -18,6 +18,19 @@ final class AppPreferences {
     var appTheme: AppTheme { didSet { save(appTheme.rawValue, "pref_app_theme") } }
     /// Pure black backgrounds in dark mode.
     var pureBlack: Bool { didSet { save(pureBlack, "pref_theme_dark_amoled_key") } }
+    /// Whether one of the user's own themes is used instead of `appTheme` (Android's CUSTOM).
+    var useCustomTheme: Bool { didSet { save(useCustomTheme, "pref_app_theme_custom") } }
+    /// Up to `CustomTheme.max` themes the user made.
+    var customThemes: [CustomTheme] {
+        didSet { if let data = try? JSONEncoder().encode(customThemes) { save(data, "custom_themes") } }
+    }
+    var customThemeIndex: Int { didSet { save(customThemeIndex, "custom_theme_index") } }
+
+    /// The custom theme in use, if "Custom" is chosen and there is one.
+    var activeCustomTheme: CustomTheme? {
+        guard useCustomTheme, !customThemes.isEmpty else { return nil }
+        return customThemes.indices.contains(customThemeIndex) ? customThemes[customThemeIndex] : customThemes[0]
+    }
     var relativeTimestamps: Bool { didSet { save(relativeTimestamps, "relative_time_v2") } }
     /// "" follows the system; otherwise a `DateFormatter` pattern.
     var dateFormat: String { didSet { save(dateFormat, "app_date_format") } }
@@ -27,6 +40,40 @@ final class AppPreferences {
     var showUpdatesTab: Bool { didSet { save(showUpdatesTab, "nav_show_updates") } }
     var showHistoryTab: Bool { didSet { save(showHistoryTab, "nav_show_history") } }
     var showBrowseTab: Bool { didSet { save(showBrowseTab, "nav_show_browse") } }
+
+    /// Where the navigation bar sits. Automatic is a bar at the bottom on iPhone and a rail on
+    /// the left on iPad, as on Android.
+    enum NavPosition: String, CaseIterable, Sendable {
+        case automatic, bottom, top, left, right
+
+        var title: String {
+            switch self {
+            case .automatic: String(localized: "Automatic")
+            case .bottom: String(localized: "Bottom")
+            case .top: String(localized: "Top")
+            case .left: String(localized: "Left")
+            case .right: String(localized: "Right")
+            }
+        }
+    }
+
+    /// Where the tabs sit within the bar when some are hidden (Android's "Tab position").
+    enum NavAlignment: String, CaseIterable, Sendable {
+        case start, center, end
+
+        var title: String {
+            switch self {
+            case .start: String(localized: "Left")
+            case .center: String(localized: "Centred")
+            case .end: String(localized: "Right")
+            }
+        }
+    }
+
+    var navPosition: NavPosition { didSet { save(navPosition.rawValue, "nav_bar_position") } }
+    var navAlignment: NavAlignment { didSet { save(navAlignment.rawValue, "nav_bar_alignment") } }
+    /// The tabs in the order the bar shows them.
+    var tabOrder: [String] { didSet { save(tabOrder, "nav_bar_order") } }
 
     // MARK: Library
 
@@ -138,11 +185,17 @@ final class AppPreferences {
         themeMode = string("pref_theme_mode_key").flatMap(ThemeMode.init) ?? .system
         appTheme = string("pref_app_theme").flatMap(AppTheme.init) ?? .default
         pureBlack = bool("pref_theme_dark_amoled_key", false)
+        useCustomTheme = bool("pref_app_theme_custom", false)
+        customThemes = defaults.data(forKey: "custom_themes").flatMap { try? JSONDecoder().decode([CustomTheme].self, from: $0) } ?? []
+        customThemeIndex = int("custom_theme_index", 0)
         relativeTimestamps = bool("relative_time_v2", true)
         dateFormat = string("app_date_format") ?? ""
         showUpdatesTab = bool("nav_show_updates", true)
         showHistoryTab = bool("nav_show_history", true)
         showBrowseTab = bool("nav_show_browse", true)
+        navPosition = string("nav_bar_position").flatMap(NavPosition.init) ?? .automatic
+        navAlignment = string("nav_bar_alignment").flatMap(NavAlignment.init) ?? .center
+        tabOrder = defaults.stringArray(forKey: "nav_bar_order") ?? ["library", "updates", "history", "browse", "more"]
 
         displayMode = string("pref_display_mode_library").flatMap(DisplayMode.init) ?? .compactGrid
         gridColumnsPortrait = int("pref_library_columns_portrait_key", 0)

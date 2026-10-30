@@ -19,6 +19,24 @@ enum HomeTab: String, CaseIterable, Identifiable, Hashable {
 
     /// The Android navigation icons, outlined and (selected) filled.
     var icon: String { "nav.\(rawValue)" }
+
+    /// Library and More always show, so the app can always be got around (Android 0.25).
+    var canHide: Bool { self != .library && self != .more }
+
+    /// The tabs shown, in the order chosen in Settings → Appearance → Navigation bar.
+    @MainActor
+    static func visible(_ preferences: AppPreferences) -> [HomeTab] {
+        let ordered = preferences.tabOrder.compactMap(HomeTab.init(rawValue:))
+        let all = ordered + allCases.filter { !ordered.contains($0) }
+        return all.filter { tab in
+            switch tab {
+            case .updates: preferences.showUpdatesTab
+            case .history: preferences.showHistoryTab
+            case .browse: preferences.showBrowseTab
+            default: true
+            }
+        }
+    }
 }
 
 /// Where a tab's navigation stack can go.
@@ -34,6 +52,7 @@ enum Route: Hashable {
     case settingsPage(SettingsPage)
     case about
     case acknowledgements
+    case customThemes
 }
 
 /// The app's root: the current tab's screen with a navigation bar below it (iPhone) or a
@@ -48,33 +67,36 @@ struct HomeView: View {
     @State private var queueCount = 0
     @State private var updatesCount = 0
 
-    private var tabs: [HomeTab] {
-        HomeTab.allCases.filter { tab in
-            switch tab {
-            case .updates: app.preferences.showUpdatesTab
-            case .history: app.preferences.showHistoryTab
-            case .browse: app.preferences.showBrowseTab
-            default: true
-            }
-        }
+    private var tabs: [HomeTab] { HomeTab.visible(app.preferences) }
+
+    /// Where the bar sits: the setting, or a bottom bar on iPhone and a left rail on iPad.
+    private var position: AppPreferences.NavPosition {
+        let chosen = app.preferences.navPosition
+        guard chosen == .automatic else { return chosen }
+        return sizeClass == .regular ? .left : .bottom
     }
 
     var body: some View {
+        let bar = NavBar(
+            tabs: tabs, position: position, alignment: app.preferences.navAlignment,
+            current: selection, badge: badge, selection: select
+        )
         Group {
-            if sizeClass == .regular {
+            switch position {
+            case .left, .automatic:
                 HStack(spacing: 0) {
-                    NavigationRail(tabs: tabs, selection: select, current: selection, badge: badge)
-                    VStack(spacing: 0) {
-                        content
-                        DownloadBar(onOpen: openDownloads)
-                    }
+                    bar
+                    VStack(spacing: 0) { content; DownloadBar(onOpen: openDownloads) }
                 }
-            } else {
-                VStack(spacing: 0) {
-                    content
-                    DownloadBar(onOpen: openDownloads)
-                    NavigationBar(tabs: tabs, selection: select, current: selection, badge: badge)
+            case .right:
+                HStack(spacing: 0) {
+                    VStack(spacing: 0) { content; DownloadBar(onOpen: openDownloads) }
+                    bar
                 }
+            case .top:
+                VStack(spacing: 0) { bar; content; DownloadBar(onOpen: openDownloads) }
+            case .bottom:
+                VStack(spacing: 0) { content; DownloadBar(onOpen: openDownloads); bar }
             }
         }
         .background(m3.surface.ignoresSafeArea())
@@ -201,51 +223,65 @@ struct HomeView: View {
         case .settingsPage(let page): SettingsPageView(page: page)
         case .about: AboutView()
         case .acknowledgements: AcknowledgementsView()
+        case .customThemes: CustomThemesView()
         }
     }
 }
 
-/// Material 3's navigation bar: 80 pt, a pill behind the selected icon, and labels.
-private struct NavigationBar: View {
+/// Material 3's navigation bar (top or bottom: 80 pt, with labels) or navigation rail (left
+/// or right: 80 pt wide). Tabs keep the size they have when all five show, and sit at the start,
+/// centre or end as Android's "Tab position" says.
+struct NavBar: View {
     @Environment(\.m3) private var m3
     let tabs: [HomeTab]
-    let selection: (HomeTab) -> Void
+    let position: AppPreferences.NavPosition
+    let alignment: AppPreferences.NavAlignment
     let current: HomeTab
     let badge: (HomeTab) -> String?
+    let selection: (HomeTab) -> Void
+
+    private var isRail: Bool { position == .left || position == .right }
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(tabs) { tab in
-                NavigationItem(tab: tab, selected: tab == current, badge: badge(tab), pillWidth: 64) { selection(tab) }
-                    .frame(maxWidth: .infinity)
+        if isRail {
+            VStack(spacing: 12) {
+                if alignment != .start { Spacer(minLength: 0) }
+                items(pillWidth: 56)
+                if alignment != .end { Spacer(minLength: 0) }
             }
+            .padding(.vertical, 8)
+            .frame(width: 80)
+            .frame(maxHeight: .infinity)
+            .background(m3.surface.ignoresSafeArea())
+            .overlay(alignment: position == .left ? .trailing : .leading) {
+                Rectangle().fill(m3.outlineVariant.opacity(0.4)).frame(width: 1).ignoresSafeArea()
+            }
+        } else {
+            GeometryReader { geometry in
+                // Each tab is a fifth of the bar, as when all are shown; the group is aligned.
+                let tabWidth = (geometry.size.width - 16) / CGFloat(HomeTab.allCases.count)
+                HStack(spacing: 0) {
+                    if alignment != .start { Spacer(minLength: 0) }
+                    ForEach(tabs) { tab in
+                        NavigationItem(tab: tab, selected: tab == current, badge: badge(tab), pillWidth: 64) { selection(tab) }
+                            .frame(width: tabWidth)
+                    }
+                    if alignment != .end { Spacer(minLength: 0) }
+                }
+                .padding(.horizontal, 8)
+                .frame(maxHeight: .infinity)
+            }
+            .padding(position == .bottom ? .top : .bottom, 12)
+            .padding(position == .bottom ? .bottom : .top, 16)
+            .frame(height: 80)
+            .background(m3.surfaceContainer.ignoresSafeArea(edges: position == .bottom ? .bottom : .top))
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 12)
-        .padding(.bottom, 16)
-        .frame(minHeight: 80)
-        .background(m3.surfaceContainer.ignoresSafeArea(edges: .bottom))
     }
-}
 
-/// Material 3's navigation rail, for wide windows.
-private struct NavigationRail: View {
-    @Environment(\.m3) private var m3
-    let tabs: [HomeTab]
-    let selection: (HomeTab) -> Void
-    let current: HomeTab
-    let badge: (HomeTab) -> String?
-
-    var body: some View {
-        VStack(spacing: 12) {
-            ForEach(tabs) { tab in
-                NavigationItem(tab: tab, selected: tab == current, badge: badge(tab), pillWidth: 56) { selection(tab) }
-            }
+    private func items(pillWidth: CGFloat) -> some View {
+        ForEach(tabs) { tab in
+            NavigationItem(tab: tab, selected: tab == current, badge: badge(tab), pillWidth: pillWidth) { selection(tab) }
         }
-        .padding(.top, 8)
-        .frame(width: 80)
-        .frame(maxHeight: .infinity, alignment: .center)
-        .background(m3.surface.ignoresSafeArea())
     }
 }
 

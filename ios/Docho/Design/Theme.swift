@@ -191,10 +191,19 @@ struct ThemeRoot<Content: View>: View {
         case .light: false
         case .dark: true
         }
-        let scheme = M3ColorScheme.of(preferences.appTheme, dark: dark, pureBlack: preferences.pureBlack)
-        content
-            .environment(\.m3, scheme)
-            .tint(scheme.primary)
-            .preferredColorScheme(preferences.themeMode == .system ? nil : (dark ? .dark : .light))
+        // A custom theme is light or dark by its own background, as on Android.
+        if let custom = preferences.activeCustomTheme {
+            let scheme = custom.scheme(pureBlack: preferences.pureBlack)
+            content
+                .environment(\.m3, scheme)
+                .tint(scheme.primary)
+                .preferredColorScheme(custom.isDark ? .dark : .light)
+        } else {
+            let scheme = M3ColorScheme.of(preferences.appTheme, dark: dark, pureBlack: preferences.pureBlack)
+            content
+                .environment(\.m3, scheme)
+                .tint(scheme.primary)
+                .preferredColorScheme(preferences.themeMode == .system ? nil : (dark ? .dark : .light))
+        }
     }
 }

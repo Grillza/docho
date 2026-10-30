@@ -565,11 +565,34 @@ library filters/sort/display/badges, continue reading, global search, statistics
 downloads with pause; the bar's states; tap zones) and 4 live UI tests against Docker Kavita and
 Komga. Tests share `DochoTests/Support/TestApp.swift`, which isolates every server's settings.
 
-**Not done yet:**
-- **Extensions (milestones 16–19).** The user chose not to vendor oneechan-runtime for now
-  (2026-10-30). The `MangaSource` protocol is where an `ExtensionSource` would plug in.
-- From Android, not on iOS yet: the settings file export/import (encrypted), custom colour
-  themes, reordering the navigation tabs (hiding them works), backups, trackers, crop borders.
+**Not done yet:** see the next entry.
+
+### 2026-10-30: custom themes, the settings file, the navigation bar
+
+- **Custom themes** (Android 0.25): up to five, each from six colours (accent, secondary,
+  highlight, background, bars and cards, text) and a contrast; the rest of the scheme is mixed
+  as Android's `CustomColorScheme` does, in Oklab like Compose's `lerp`. The editor starts from
+  any built-in theme, warns about hard-to-see colours by Android's rules, has a colour picker
+  (standard colours, a wheel with brightness and saturation, hex, and the contrast) and a
+  full-screen preview. "Custom" is the last theme in Appearance.
+- **Settings file** (Android 0.25): export and import of the Sync / Self-hosted sources settings,
+  encrypted with a password (AES-256-GCM, PBKDF2-HMAC-SHA256, 600,000 rounds) and needed for
+  sign-in details. Same format and keys as Android, so files move between the apps; tested with a
+  file encrypted by Java's own `PBKDF2WithHmacSHA256` and `AES/GCM`.
+- **Navigation bar**: Android's settings (show Updates, History, Browse; Library and More always
+  show; "Tab position" left, centred or right; a live preview), plus two iOS additions the user
+  asked for: **where the bar sits** (automatic, bottom, top, left, right) and **the tabs' order**.
+
+**Extensions:** the user chose the embedded runtime with the size reductions (2026-10-30).
+`ios/Vendor/docho-runtime` is oneechan-runtime at `4a414a0` (a submodule on upstream until a
+`Grillza/docho-runtime` fork exists), and `scripts/build-runtime.sh` builds it (needs
+`brew install cmake autoconf openjdk@21` and Xcode's Metal toolchain,
+`xcodebuild -downloadComponent MetalToolchain`). The fetch and patches ran; the OpenJ9 builds
+were paused to continue next week. Then: the Swift bridge, extension UI and milestones 16–19.
+Size reductions planned: jlink `--compress zip-6` (in the script), English-only message
+catalogues (in the script), and a shrunk host jar (ProGuard/R8, not done yet).
+
+**Still not on iOS:** backups of the library, trackers, crop borders.
 - SwiftLint reports about 150 violations, mostly lines of 141–160 characters and some long
   views; `check.sh` (which fails on compiler warnings) passes.
 - Not tried on a device: the reader's gestures, background downloads and refresh, the Live
