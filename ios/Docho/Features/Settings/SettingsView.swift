@@ -2,7 +2,7 @@ import Nuke
 import SwiftUI
 
 enum SettingsPage: String, Hashable, CaseIterable {
-    case appearance, library, reader, downloads, sync, browse, advanced
+    case appearance, library, reader, downloads, sync, tracking, browse, advanced
 
     var title: String {
         switch self {
@@ -11,6 +11,7 @@ enum SettingsPage: String, Hashable, CaseIterable {
         case .reader: String(localized: "Reader")
         case .downloads: String(localized: "Downloads")
         case .sync: String(localized: "Sync / Self-hosted sources")
+        case .tracking: String(localized: "Tracking")
         case .browse: String(localized: "Browse")
         case .advanced: String(localized: "Advanced")
         }
@@ -23,6 +24,7 @@ enum SettingsPage: String, Hashable, CaseIterable {
         case .reader: String(localized: "Reading mode, display, navigation")
         case .downloads: String(localized: "Automatic download, download ahead")
         case .sync: String(localized: "Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes")
+        case .tracking: String(localized: "AniList, MyAnimeList, Kitsu, MangaUpdates")
         case .browse: String(localized: "Sources, global search")
         case .advanced: String(localized: "Clear caches, reset settings")
         }
@@ -35,6 +37,7 @@ enum SettingsPage: String, Hashable, CaseIterable {
         case .reader: "chrome_reader_mode"
         case .downloads: "download"
         case .sync: "dns"
+        case .tracking: "sync"
         case .browse: "explore"
         case .advanced: "code"
         }
@@ -50,7 +53,7 @@ struct SettingsView: View {
             TopAppBar(title: String(localized: "Settings"), showsBack: true)
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach([SettingsPage.appearance, .library, .reader, .downloads, .sync, .browse], id: \.self) { page in
+                    ForEach([SettingsPage.appearance, .library, .reader, .downloads, .sync, .tracking, .browse], id: \.self) { page in
                         item(page)
                     }
                     NavigationLink(value: Route.dataStorage) {
@@ -95,6 +98,7 @@ struct SettingsPageView: View {
                     case .reader: ReaderSettingsPage()
                     case .downloads: DownloadSettings()
                     case .sync: SyncSettingsPage()
+                    case .tracking: TrackingSettings()
                     case .browse: BrowseSettings()
                     case .advanced: AdvancedSettings()
                     }

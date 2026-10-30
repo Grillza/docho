@@ -147,6 +147,7 @@ final class ReaderModel {
 
     /// Delete after reading, and download ahead, as on Android.
     private func chapterFinished() async {
+        if !app.preferences.incognitoMode { await app.trackers.chapterRead(seriesId: seriesId, number: chapter.number) }
         if app.preferences.deleteAfterReading, isDownloaded {
             await app.downloads.delete(seriesId: seriesId, chapterIds: [chapter.id])
         }

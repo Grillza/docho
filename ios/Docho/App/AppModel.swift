@@ -31,6 +31,7 @@ final class AppModel {
     let sync: ProgressSync
     let downloads: DownloadManager
     let library: LibraryUpdater
+    let trackers: TrackerManager
     let notifier = DownloadNotifier()
     private var triggers: SyncTriggers?
 
@@ -97,6 +98,7 @@ final class AppModel {
         sync = ProgressSync(engines: [kavitaSync, komgaSync, bookOrbitSync, koreaderSync])
         downloads = DownloadManager(database: database, sources: sources, store: downloadStore, fetcher: pageFetcher, defaults: SendableDefaults(downloadDefaults))
         library = LibraryUpdater(database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences)
+        trackers = TrackerManager(database: database, session: session, defaults: downloadDefaults)
 
         Task { [weak self, changes = kavita.connectionChanges] in
             for await connection in changes {

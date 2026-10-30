@@ -597,3 +597,28 @@ catalogues (in the script), and a shrunk host jar (ProGuard/R8, not done yet).
   views; `check.sh` (which fails on compiler warnings) passes.
 - Not tried on a device: the reader's gestures, background downloads and refresh, the Live
   Activity, cross-device sync with the Android app.
+
+### 2026-10-31: navigation bar, Local source, tracking
+
+- **Navigation bar.** Tabs reorder by touch and drag, with an eye on each to hide Updates,
+  History or Browse (Library and More always show). In a side rail the tab position reads
+  Top / Centred / Bottom. On iPhone the bar is always at the bottom and the position setting is
+  hidden; left, right and top are iPad only.
+- **Local source** (`Source/LocalSource.swift`, id 0 as on Android). Series are folders in
+  `Documents/local`, which the Files app shows as On My iPhone › Dōchō › local. Chapters are
+  CBZ/ZIP (a small ZIP reader, `Source/ZipArchive.swift`: stored and deflated entries), PDF
+  (drawn to JPEGs) or folders of images; `cover.jpg`, `ComicInfo.xml` and the old `details.json`
+  are read as on Android. Comics are added from Browse › Local source › + (Files picker, into a
+  new or existing series), by dropping files in Dōchō's folder, or with "Open in Dōchō" from Files
+  and other apps (CBZ, ZIP and PDF document types). CBR/CB7/EPUB aren't read yet: iOS has no RAR
+  or 7-Zip decoder, and EPUB needs its own reader. Local chapters can't be downloaded and count
+  as downloaded.
+- **Tracking** (`Tracking/`): MyAnimeList, AniList, Kitsu and MangaUpdates, with Android's
+  tracker ids, statuses and score scales, and Mihon's client ids. AniList and MyAnimeList sign in
+  on the web (`ASWebAuthenticationSession`, redirect `mihon://`); Kitsu and MangaUpdates with a
+  username and password. Settings › Tracking signs in and out; the series screen's Tracking
+  button links a series (search, then Track) and edits status, chapters, score and dates.
+  Reading a chapter, or marking chapters read, moves linked trackers up to it (Android's
+  `TrackChapter`; off in incognito, and switchable). Tracks are in the `track` table (v6).
+  Not yet: Bangumi, Shikimori, MangaBaka, Hikka, Comick; Android's delayed tracking queue for
+  updates made offline.

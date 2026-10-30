@@ -13,6 +13,8 @@ struct SeriesView: View {
     @State private var selection = Set<Int>()
     @State private var showSettings = false
     @State private var choosingCategories = false
+    @State private var showTracking = false
+    @State private var trackCount = 0
     @State private var confirmingRemove = false
     @State private var descriptionExpanded = false
     let seriesId: Int
@@ -90,6 +92,14 @@ struct SeriesView: View {
         }
         .sheet(isPresented: $choosingCategories) {
             CategoryPicker(seriesIds: [seriesId], addsToLibrary: model.series?.inLibrary == false) {}
+        }
+        .m3Sheet(isPresented: $showTracking) {
+            TrackingSheet(seriesId: seriesId, seriesTitle: model.series?.name ?? "")
+        }
+        .task {
+            do {
+                for try await tracks in app.database.observeTracks(seriesId: seriesId) { trackCount = tracks.count }
+            } catch {}
         }
         .m3Dialog(isPresented: $confirmingRemove, title: String(localized: "Remove from library")) {
             Text("Remove from your library?").padding(.horizontal, 24)
@@ -241,7 +251,7 @@ struct SeriesView: View {
         .foregroundStyle(m3.onSurface.opacity(0.78))
     }
 
-    /// Mihon's action row: In library and Open in browser (WebView); trackers aren't on iOS.
+    /// Mihon's action row: In library, Tracking and Open in browser (WebView).
     private func actionButtons(_ series: SeriesRecord, model: SeriesModel) -> some View {
         HStack(spacing: 0) {
             actionButton(
@@ -255,6 +265,11 @@ struct SeriesView: View {
                 }
             }
             .accessibilityIdentifier("series.library")
+            actionButton(
+                title: trackCount == 0 ? String(localized: "Tracking") : String(localized: "\(trackCount) tracked"),
+                icon: trackCount == 0 ? "sync" : "check", active: trackCount > 0
+            ) { showTracking = true }
+            .accessibilityIdentifier("series.tracking")
             if let url = model.source.webURL(series.manga) {
                 actionButton(title: String(localized: "WebView"), icon: "public", active: false) { openURL(url) }
             }

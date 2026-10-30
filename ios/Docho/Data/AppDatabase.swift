@@ -113,6 +113,26 @@ struct AppDatabase: Sendable {
         migrator.registerMigration("v5", foreignKeyChecks: .deferred) { db in
             try migrateToSources(db)
         }
+        migrator.registerMigration("v6") { db in
+            // Tracking sites linked to series (Android's manga_sync).
+            try db.create(table: "track") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("seriesId", .integer).notNull().references("series", onDelete: .cascade)
+                table.column("trackerId", .integer).notNull()
+                table.column("remoteId", .integer).notNull()
+                table.column("libraryId", .integer)
+                table.column("title", .text).notNull()
+                table.column("lastChapterRead", .double).notNull().defaults(to: 0)
+                table.column("totalChapters", .integer).notNull().defaults(to: 0)
+                table.column("status", .integer).notNull().defaults(to: 0)
+                table.column("score", .double).notNull().defaults(to: 0)
+                table.column("remoteUrl", .text).notNull().defaults(to: "")
+                table.column("startDate", .datetime)
+                table.column("finishDate", .datetime)
+                table.column("isPrivate", .boolean).notNull().defaults(to: false)
+                table.uniqueKey(["seriesId", "trackerId"])
+            }
+        }
         return migrator
     }
 

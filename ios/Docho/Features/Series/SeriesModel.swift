@@ -133,6 +133,9 @@ final class SeriesModel {
             try await app.database.setChaptersRead(ids, read: read)
             let changed = try await app.database.chapters(ids: ids)
             await app.sync.readStatusChanged(series, chapters: changed, read: read)
+            if read, !app.preferences.incognitoMode, let highest = changed.map(\.number).max() {
+                await app.trackers.chapterRead(seriesId: seriesId, number: highest)
+            }
             if read, app.preferences.deleteAfterMarkedRead {
                 let downloaded = changed.filter(\.isDownloaded).map(\.id)
                 if !downloaded.isEmpty { await deleteDownloads(downloaded) }

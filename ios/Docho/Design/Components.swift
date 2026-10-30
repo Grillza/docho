@@ -389,6 +389,14 @@ struct M3Divider: View {
     }
 }
 
+struct M3VerticalDivider: View {
+    @Environment(\.m3) private var m3
+
+    var body: some View {
+        Rectangle().fill(m3.outlineVariant).frame(width: 1)
+    }
+}
+
 /// Material 3's switch: a 52×32 track with a thumb that grows when on.
 struct M3Switch: View {
     @Environment(\.m3) private var m3
