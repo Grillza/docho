@@ -21,6 +21,6 @@ final class SkeletonTests: XCTestCase {
         XCTAssertEqual(ats["NSAllowsArbitraryLoads"] as? Bool, true)
         XCTAssertNotNil(info["NSLocalNetworkUsageDescription"])
         XCTAssertEqual(info["UIBackgroundModes"] as? [String], ["fetch"])
-        XCTAssertEqual(info["BGTaskSchedulerPermittedIdentifiers"] as? [String], ["app.mihonka.progress-sync"])
+        XCTAssertEqual(info["BGTaskSchedulerPermittedIdentifiers"] as? [String], ["app.doki.progress-sync"])
     }
 }

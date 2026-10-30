@@ -79,9 +79,9 @@ final class KavitaSyncTests: XCTestCase {
     private var defaultsSuite = ""
 
     override func setUp() async throws {
-        defaultsSuite = "app.mihonka.tests.sync.\(UUID())"
+        defaultsSuite = "app.doki.tests.sync.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "app.mihonka.tests.sync")
+        let settings = KavitaSettings(defaults: defaults, keychainService: "app.doki.tests.sync")
         settings.serverURL = "https://kavita.test"
         settings.apiKey = "key-1"
         app = AppModel(

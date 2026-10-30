@@ -8,9 +8,9 @@ final class SeriesModelTests: XCTestCase {
     private var defaultsSuite = ""
 
     override func setUp() async throws {
-        defaultsSuite = "app.mihonka.tests.series.\(UUID())"
+        defaultsSuite = "app.doki.tests.series.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "app.mihonka.tests.series")
+        let settings = KavitaSettings(defaults: defaults, keychainService: "app.doki.tests.series")
         settings.serverURL = "https://kavita.test"
         settings.apiKey = "key-1"
         app = AppModel(settings: settings, session: StubURLProtocol.session(), database: try .inMemory())

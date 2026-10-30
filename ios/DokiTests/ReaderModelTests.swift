@@ -8,9 +8,9 @@ final class ReaderModelTests: XCTestCase {
     private var defaultsSuite = ""
 
     override func setUp() async throws {
-        defaultsSuite = "app.mihonka.tests.reader.\(UUID())"
+        defaultsSuite = "app.doki.tests.reader.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "app.mihonka.tests.reader")
+        let settings = KavitaSettings(defaults: defaults, keychainService: "app.doki.tests.reader")
         settings.serverURL = "https://kavita.test"
         settings.apiKey = "key-1"
         settings.syncProgress = false // KavitaSyncTests covers what the reader sends

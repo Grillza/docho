@@ -34,7 +34,7 @@ final class KavitaClientTests: XCTestCase {
         let request = try XCTUnwrap(StubURLProtocol.requests.last)
         XCTAssertEqual(request.path, "/api/Library/libraries")
         XCTAssertEqual(request.headers["Authorization"], "Bearer t1")
-        XCTAssertEqual(request.headers["User-Agent"], "Doki-iOS v1.2.3 (app.mihonka)")
+        XCTAssertEqual(request.headers["User-Agent"], "Doki-iOS v1.2.3 (app.doki)")
         XCTAssertNil(request.query("apiKey"))
     }
 

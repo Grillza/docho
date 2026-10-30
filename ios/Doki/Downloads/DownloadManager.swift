@@ -12,7 +12,7 @@ actor DownloadManager {
     private let fetcher: any PageFetcher
     private var worker: Task<Void, Never>?
     private var current: (chapterId: Int, task: Task<Void, Never>)?
-    private let log = Logger(subsystem: "app.mihonka", category: "downloads")
+    private let log = Logger(subsystem: "app.doki", category: "downloads")
 
     init(database: AppDatabase, kavita: KavitaClient, store: DownloadStore, fetcher: any PageFetcher) {
         self.database = database

@@ -41,7 +41,7 @@ struct BackgroundFetch: PageFetcher {
 /// suspended. iOS wakes the app when they're done (`handleEventsForBackgroundURLSession`).
 /// `@unchecked`: `session` is set once in `init`; everything else is behind the mutex.
 final class BackgroundPageFetcher: NSObject, PageFetcher, URLSessionDownloadDelegate, @unchecked Sendable {
-    static let identifier = "app.mihonka.downloads"
+    static let identifier = "app.doki.downloads"
     static let shared = BackgroundPageFetcher()
 
     private struct State {

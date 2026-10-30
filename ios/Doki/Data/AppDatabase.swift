@@ -10,7 +10,7 @@ struct AppDatabase: Sendable {
         try Self.migrator.migrate(writer)
     }
 
-    /// `Application Support/mihonka.sqlite`.
+    /// `Application Support/doki.sqlite`.
     static func onDisk() throws -> AppDatabase {
         let directory = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
@@ -21,7 +21,7 @@ struct AppDatabase: Sendable {
     /// The database file in `directory`. The path is passed unencoded: `URL.path()` would turn
     /// "Application Support" into "Application%20Support".
     static func onDisk(in directory: URL) throws -> AppDatabase {
-        try AppDatabase(DatabasePool(path: directory.appending(path: "mihonka.sqlite").path(percentEncoded: false)))
+        try AppDatabase(DatabasePool(path: directory.appending(path: "doki.sqlite").path(percentEncoded: false)))
     }
 
     static func inMemory() throws -> AppDatabase {

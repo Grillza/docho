@@ -10,9 +10,9 @@ final class DownloadTests: XCTestCase {
     private var defaultsSuite = ""
 
     override func setUp() async throws {
-        defaultsSuite = "app.mihonka.tests.downloads.\(UUID())"
+        defaultsSuite = "app.doki.tests.downloads.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
-        let settings = KavitaSettings(defaults: defaults, keychainService: "app.mihonka.tests.downloads")
+        let settings = KavitaSettings(defaults: defaults, keychainService: "app.doki.tests.downloads")
         settings.serverURL = "https://kavita.test"
         settings.apiKey = "key-1"
         settings.syncProgress = false

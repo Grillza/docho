@@ -30,7 +30,7 @@ actor KavitaSync {
     private let pageDebounce: Duration
     private var debounces: [Int: Task<Void, Never>] = [:]
     private var waitingPages: [Int: PageChange] = [:]
-    private let log = Logger(subsystem: "app.mihonka", category: "sync")
+    private let log = Logger(subsystem: "app.doki", category: "sync")
 
     init(kavita: KavitaClient, database: AppDatabase, settings: KavitaSettings, pageDebounce: Duration = KavitaSync.pageDebounce) {
         self.kavita = kavita

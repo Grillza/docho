@@ -14,7 +14,7 @@ final class KavitaSettings: Sendable {
     /// The Keychain is read once; every request needs the key.
     private let apiKeyCache = Mutex<String?>(nil)
 
-    init(defaults: UserDefaults = .standard, keychainService: String = "app.mihonka") {
+    init(defaults: UserDefaults = .standard, keychainService: String = "app.doki") {
         self.defaults = defaults
         self.keychain = KeychainItem(service: keychainService, account: "kavita_api_key")
     }

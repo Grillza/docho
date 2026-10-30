@@ -2,8 +2,8 @@ import XCTest
 @testable import Doki
 
 final class KavitaSettingsTests: XCTestCase {
-    private let suite = "app.mihonka.tests.settings"
-    private let service = "app.mihonka.tests"
+    private let suite = "app.doki.tests.settings"
+    private let service = "app.doki.tests"
 
     override func tearDown() {
         UserDefaults().removePersistentDomain(forName: suite)

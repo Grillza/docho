@@ -17,9 +17,9 @@ final class KavitaSyncLiveTests: XCTestCase {
             throw XCTSkip("Set KAVITA_LIVE_URL and KAVITA_LIVE_KEY to run against a real server")
         }
         serverURL = url
-        defaultsSuite = "app.mihonka.tests.synclive.\(UUID())"
+        defaultsSuite = "app.doki.tests.synclive.\(UUID())"
         let settings = KavitaSettings(
-            defaults: try XCTUnwrap(UserDefaults(suiteName: defaultsSuite)), keychainService: "app.mihonka.tests.synclive"
+            defaults: try XCTUnwrap(UserDefaults(suiteName: defaultsSuite)), keychainService: "app.doki.tests.synclive"
         )
         settings.serverURL = url
         settings.apiKey = key

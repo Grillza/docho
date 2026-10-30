@@ -64,7 +64,7 @@ actor KavitaClient {
     ) {
         self.session = session
         self.credentials = credentials
-        self.userAgent = "Doki-iOS v\(appVersion) (app.mihonka)"
+        self.userAgent = "Doki-iOS v\(appVersion) (app.doki)"
         (connectionChanges, connectionContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 

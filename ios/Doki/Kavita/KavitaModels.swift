@@ -1,7 +1,7 @@
 import Foundation
 
 /*
- * Port of app/src/main/java/mihonka/kavita/KavitaModels.kt.
+ * Port of app/src/main/java/doki/kavita/KavitaModels.kt.
  * Only the fields Doki reads are declared, and unknown keys are ignored. Every field has a
  * default and a value of the wrong type falls back to it, so older servers that lack some
  * fields still decode.

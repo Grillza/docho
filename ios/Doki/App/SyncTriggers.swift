@@ -9,7 +9,7 @@ import UIKit
 /// - in a `BGAppRefreshTask`, which iOS runs opportunistically while the app is suspended.
 @MainActor
 final class SyncTriggers {
-    static let refreshTaskIdentifier = "app.mihonka.progress-sync"
+    static let refreshTaskIdentifier = "app.doki.progress-sync"
     private static let firstRetry: Duration = .seconds(60)
     private static let longestRetry: Duration = .seconds(30 * 60)
 

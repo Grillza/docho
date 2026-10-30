@@ -81,6 +81,6 @@ final class AppDatabaseTests: XCTestCase {
 
         _ = try AppDatabase.onDisk(in: directory)
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appending(path: "mihonka.sqlite").path(percentEncoded: false)))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appending(path: "doki.sqlite").path(percentEncoded: false)))
     }
 }

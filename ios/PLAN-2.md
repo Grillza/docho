@@ -82,7 +82,7 @@ own notifications, and tapping one opens the manga.
    launches. While paused, finish the current page and start no new ones.
 3. **System progress on iOS/iPadOS 26+.** When the user starts downloads (a chapter, a selection,
    or "Download unread"), submit a `BGContinuedProcessingTaskRequest`:
-   - Use the identifier `app.mihonka.downloads.<uuid>`, permitted as `app.mihonka.downloads.*` in
+   - Use the identifier `app.doki.downloads.<uuid>`, permitted as `app.doki.downloads.*` in
      `BGTaskSchedulerPermittedIdentifiers`.
    - The title is "Downloading", and the subtitle is "Series - Chapter". Its `progress` counts the
      pages of everything queued.
@@ -354,7 +354,7 @@ the licences generated from the runtime's `NOTICE` at build time.
 
 - Join the **Apple Developer Program** ($99 a year). A free Apple ID can't publish. With a paid
   account the 7-day re-signing goes away too, and TestFlight becomes available.
-- Change the bundle id if `app.mihonka` is taken, and fill in the App Privacy details (no
+- Change the bundle id if `app.doki` is taken, and fill in the App Privacy details (no
   tracking; server addresses and credentials stay on the device, in the Keychain).
 - Archive with Xcode's distribution signing instead of `build-ipa.sh`.
 - Check the app size: the JVM and class library add tens of MB, which is fine but should be
