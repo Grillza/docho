@@ -190,17 +190,17 @@ class BookOrbitSync(
             )
             !local.read && serverRead -> Decision(localUpdate = ChapterUpdate(local.id) { read = true })
             local.read -> null
-            serverPercentage <= 0.0 && local.lastPageRead <= 0L -> null
+            serverPercentage <= 0.0 && local.lastPageRead <= 0 -> null
             else -> {
                 // Part read on at least one side: compare exact pages.
                 val serverPage = if (serverPercentage > 0.0) api.getProgress(fileId).pageNumber ?: 0 else 0
-                val serverLastPageRead = (serverPage - 1).coerceAtLeast(0).toLong()
+                val serverLastPageRead = (serverPage - 1).coerceAtLeast(0)
                 when {
                     serverLastPageRead > local.lastPageRead ->
                         Decision(localUpdate = ChapterUpdate(local.id) { lastPageRead = serverLastPageRead })
                     local.lastPageRead > serverLastPageRead -> {
                         val pages = pageCount(fileId)
-                        val page = (local.lastPageRead.toInt() + 1).coerceAtMost(pages)
+                        val page = (local.lastPageRead + 1).coerceAtMost(pages)
                         Decision(
                             push =
                             BookOrbitPendingProgress(seriesId, book.id, fileId, page, pages) to serverPercentage,

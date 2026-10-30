@@ -135,9 +135,9 @@ fun NavBarPreview(modifier: Modifier = Modifier) {
 
 /** Each tab's icon and name, for drawing the bar where the tabs themselves can't be asked. */
 internal val navBarTabLooks: Map<Tab, Pair<Int, StringResource>> = mapOf(
-    LibraryTab to (R.drawable.anim_library_enter to MR.strings.label_library),
-    UpdatesTab to (R.drawable.anim_updates_enter to MR.strings.label_recent_updates),
-    HistoryTab to (R.drawable.anim_history_enter to MR.strings.label_recent_manga),
-    BrowseTab to (R.drawable.anim_browse_enter to MR.strings.browse),
-    MoreTab to (R.drawable.anim_more_enter to MR.strings.label_more),
+    LibraryTab to (R.drawable.animated_library to MR.strings.label_library),
+    UpdatesTab to (R.drawable.animated_updates to MR.strings.label_recent_updates),
+    HistoryTab to (R.drawable.animated_history to MR.strings.label_recent_manga),
+    BrowseTab to (R.drawable.animated_browse_enter to MR.strings.browse),
+    MoreTab to (R.drawable.animated_more_enter to MR.strings.label_more),
 )

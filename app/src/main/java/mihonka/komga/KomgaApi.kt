@@ -12,9 +12,11 @@ import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.jsonMime
 import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -30,7 +32,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import tachiyomi.core.common.util.lang.withIOContext
 import java.io.IOException
 
 /**
@@ -146,7 +147,7 @@ class KomgaApi(
      * KOReader's hash of a book's file. Komga only sends whole files, so this downloads the book
      * up to the last sample KOReader takes (most of the file) and keeps none of it.
      */
-    suspend fun koreaderHash(bookId: String): String = withIOContext {
+    suspend fun koreaderHash(bookId: String): String = withContext(Dispatchers.IO) {
         client.newCall(GET("${apiUrl()}/v1/books/$bookId/file")).awaitSuccess().use { response ->
             val size = response.body.contentLength().takeIf { it >= 0 }
             KoreaderHash.compute(response.body.byteStream(), size)

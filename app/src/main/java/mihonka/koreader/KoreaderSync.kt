@@ -199,7 +199,7 @@ class KoreaderSync(
 
         val server = position(api.getProgress(target.hash), target.pages)
         val serverRead = server >= target.pages
-        val serverLastPageRead = (server - 1).coerceAtLeast(0).toLong()
+        val serverLastPageRead = (server - 1).coerceAtLeast(0)
         return when {
             local.read && !serverRead ->
                 Decision(push = target.toPending(manga.id, target.pages) to server)
@@ -208,7 +208,7 @@ class KoreaderSync(
             !local.read && serverLastPageRead > local.lastPageRead ->
                 Decision(localUpdate = ChapterUpdate(local.id) { lastPageRead = serverLastPageRead })
             !local.read && local.lastPageRead > serverLastPageRead ->
-                Decision(push = target.toPending(manga.id, local.lastPageRead.toInt() + 1) to server)
+                Decision(push = target.toPending(manga.id, local.lastPageRead + 1) to server)
             else -> null
         }
     }

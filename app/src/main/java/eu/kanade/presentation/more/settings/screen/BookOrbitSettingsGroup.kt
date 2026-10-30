@@ -25,14 +25,15 @@ import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mihon.app.di.appGraph
 import mihonka.bookorbit.BookOrbitApi
 import mihonka.bookorbit.BookOrbitConnection
 import mihonka.bookorbit.BookOrbitSource
 import tachiyomi.core.common.i18n.stringResource
-import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.source.interactor.GetRemoteManga
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -72,7 +73,7 @@ object BookOrbitSettingsGroup {
         val connection by api.connection.collectAsState()
 
         suspend fun checkConnection() {
-            val result = withIOContext { api.checkConnection() }
+            val result = withContext(Dispatchers.IO) { api.checkConnection() }
             if (result is BookOrbitConnection.Connected) graph.bookOrbitSource.refreshLibraries()
         }
 
@@ -191,7 +192,7 @@ object BookOrbitSettingsGroup {
                     if (syncing) return@TextPreference
                     syncing = true
                     scope.launch {
-                        val count = withIOContext { sync.syncLibrary() }
+                        val count = withContext(Dispatchers.IO) { sync.syncLibrary() }
                         syncing = false
                         context.toast(context.stringResource(MR.strings.bookorbit_sync_done, count))
                     }

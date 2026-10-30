@@ -4,7 +4,6 @@ import dev.zacsweers.metro.Inject
 import eu.kanade.domain.download.interactor.DeleteDownload
 import logcat.LogPriority
 import mihonka.sync.ProgressSync
-import tachiyomi.core.common.util.lang.withNonCancellableContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
@@ -29,7 +28,7 @@ class SetReadStatus(
         }
     }
 
-    suspend fun await(read: Boolean, vararg chapters: Chapter): Result = withNonCancellableContext {
+    suspend fun await(read: Boolean, vararg chapters: Chapter): Result {
         val chaptersToUpdate = chapters.filter {
             when (read) {
                 true -> !it.read
@@ -37,7 +36,7 @@ class SetReadStatus(
             }
         }
         if (chaptersToUpdate.isEmpty()) {
-            return@withNonCancellableContext Result.NoChapters
+            return Result.NoChapters
         }
 
         try {
@@ -46,7 +45,7 @@ class SetReadStatus(
             )
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e)
-            return@withNonCancellableContext Result.InternalError(e)
+            return Result.InternalError(e)
         }
 
         if (progressSync.isEnabled()) {
@@ -60,6 +59,9 @@ class SetReadStatus(
 
         if (read && downloadPreferences.removeAfterMarkedAsRead.get()) {
             chaptersToUpdate
+                // Chapters here still carry their pre-update read state; downstream
+                // deletion filtering (excluded categories) relies on the new state.
+                .map { it.copy(read = true) }
                 .groupBy { it.mangaId }
                 .forEach { (mangaId, chapters) ->
                     deleteDownload.awaitAll(
@@ -69,17 +71,16 @@ class SetReadStatus(
                 }
         }
 
-        Result.Success
+        return Result.Success
     }
 
-    suspend fun await(mangaId: Long, read: Boolean): Result = withNonCancellableContext {
+    suspend fun await(mangaId: Long, read: Boolean): Result =
         await(
             read = read,
             chapters = chapterRepository
                 .getChapterByMangaId(mangaId)
                 .toTypedArray(),
         )
-    }
 
     suspend fun await(manga: Manga, read: Boolean) =
         await(manga.id, read)

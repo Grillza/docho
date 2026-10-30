@@ -22,13 +22,14 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mihon.app.di.appGraph
 import mihonka.koreader.KoreaderApi
 import mihonka.koreader.KoreaderConnection
 import tachiyomi.core.common.i18n.stringResource
-import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
@@ -67,7 +68,7 @@ object KoreaderSettingsGroup {
         // Check on opening, and again shortly after the settings are edited.
         LaunchedEffect(serverUrl, username, password) {
             if (configured) delay(300)
-            withIOContext { api.checkConnection() }
+            withContext(Dispatchers.IO) { api.checkConnection() }
         }
 
         return listOf(
@@ -117,7 +118,7 @@ object KoreaderSettingsGroup {
                     if (!configured) {
                         context.toast(MR.strings.koreader_not_configured)
                     } else if (connection != KoreaderConnection.Checking) {
-                        scope.launch { withIOContext { api.checkConnection() } }
+                        scope.launch { withContext(Dispatchers.IO) { api.checkConnection() } }
                     }
                 },
             ),
@@ -161,7 +162,7 @@ object KoreaderSettingsGroup {
                     if (syncing) return@TextPreference
                     syncing = true
                     scope.launch {
-                        val count = withIOContext { sync.syncLibrary() }
+                        val count = withContext(Dispatchers.IO) { sync.syncLibrary() }
                         syncing = false
                         context.toast(context.stringResource(MR.strings.koreader_sync_done, count))
                     }

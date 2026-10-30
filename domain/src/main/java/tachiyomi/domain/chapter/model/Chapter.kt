@@ -4,18 +4,19 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import mihon.core.common.extensions.EMPTY
+import kotlin.time.Instant
 
 data class Chapter(
     val id: Long,
     val mangaId: Long,
     val read: Boolean,
     val bookmark: Boolean,
-    val lastPageRead: Long,
-    val dateFetch: Long,
+    val lastPageRead: Int,
+    val dateFetch: Instant,
     val sourceOrder: Long,
     val url: String,
     val name: String,
-    val dateUpload: Long,
+    val dateUpload: Instant?,
     val chapterNumber: Double,
     val scanlator: String?,
     val memo: JsonObject,
@@ -47,11 +48,11 @@ data class Chapter(
             read = false,
             bookmark = false,
             lastPageRead = 0,
-            dateFetch = 0,
+            dateFetch = Instant.fromEpochMilliseconds(0),
             sourceOrder = 0,
             url = "",
             name = "",
-            dateUpload = -1,
+            dateUpload = null,
             chapterNumber = -1.0,
             scanlator = null,
             memo = JsonObject.EMPTY,

@@ -37,7 +37,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mihon.app.di.appGraph
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Visibility
@@ -48,7 +50,6 @@ import mihonka.sync.SyncSettingsFile
 import mihonka.sync.WrongPasswordException
 import tachiyomi.core.common.i18n.pluralStringResource
 import tachiyomi.core.common.i18n.stringResource
-import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
@@ -104,7 +105,7 @@ object SettingsSyncScreen : SearchableSettings {
             pendingExport = null
             if (uri == null) return@rememberLauncherForActivityResult
             scope.launch {
-                val saved = withIOContext {
+                val saved = withContext(Dispatchers.IO) {
                     runCatching {
                         val text = settingsFile.export(includeSignIn, password)
                         context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(text.toByteArray()) }
@@ -122,7 +123,7 @@ object SettingsSyncScreen : SearchableSettings {
         val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
             scope.launch {
-                val text = withIOContext {
+                val text = withContext(Dispatchers.IO) {
                     runCatching { context.contentResolver.openInputStream(uri)!!.use { it.reader().readText() } }
                 }.getOrNull()
                 if (text != null && settingsFile.isEncrypted(text)) {
@@ -131,7 +132,7 @@ object SettingsSyncScreen : SearchableSettings {
                     return@launch
                 }
                 reportImport(
-                    withIOContext {
+                    withContext(Dispatchers.IO) {
                         runCatching { settingsFile.import(text ?: throw InvalidSyncSettingsFileException()) }
                     },
                 )
@@ -156,7 +157,7 @@ object SettingsSyncScreen : SearchableSettings {
                 onImport = { password ->
                     decrypting = true
                     scope.launch {
-                        val result = withIOContext { runCatching { settingsFile.import(text, password) } }
+                        val result = withContext(Dispatchers.IO) { runCatching { settingsFile.import(text, password) } }
                         decrypting = false
                         if (result.exceptionOrNull() is WrongPasswordException) {
                             wrongPassword = true

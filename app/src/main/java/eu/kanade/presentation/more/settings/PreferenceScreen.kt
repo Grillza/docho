@@ -86,7 +86,10 @@ fun PreferenceScreen(
                                     summaryWidget = preference.summaryWidget,
                                 )
                             } else {
-                                PreferenceGroupHeader(title = preference.title)
+                                PreferenceGroupHeader(
+                                    title = preference.title,
+                                    highlighted = preference.title == highlightKey,
+                                )
                             }
                         }
                     }
@@ -123,7 +126,7 @@ private fun List<Preference>.findHighlightedIndex(highlightKey: String, expanded
         if (it is Preference.PreferenceGroup) {
             if (!it.visible) return@flatMap emptyList()
             buildList<String?> {
-                add(null) // Header
+                add(it.title) // Header
                 if (!it.collapsible || it.title in expandedGroups) {
                     addAll(it.preferenceItems.map { groupItem -> groupItem.title })
                 }

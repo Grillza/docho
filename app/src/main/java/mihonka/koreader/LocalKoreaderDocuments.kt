@@ -7,9 +7,10 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.source.model.SChapter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import mihon.core.archive.archiveReader
-import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.manga.model.Manga
@@ -35,7 +36,7 @@ class LocalKoreaderDocuments(
     override val sourceId: Long = LocalSource.ID
 
     override suspend fun documents(manga: Manga, chapters: List<KoreaderChapterRef>): Map<String, KoreaderDocument> =
-        withIOContext {
+        withContext(Dispatchers.IO) {
             chapters.mapNotNull { ref ->
                 try {
                     val format = localSource.getFormat(SChapter.create().apply { url = ref.url })

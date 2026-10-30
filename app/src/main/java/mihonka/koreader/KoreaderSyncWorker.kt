@@ -9,9 +9,10 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkerParameters
 import eu.kanade.tachiyomi.util.system.workManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import mihon.app.di.AppGraph
 import mihon.core.metro.metroGraph
-import tachiyomi.core.common.util.lang.withIOContext
 import java.util.concurrent.TimeUnit
 
 /**
@@ -24,7 +25,7 @@ class KoreaderSyncWorker(context: Context, workerParams: WorkerParameters) :
     private val graph: AppGraph = context.metroGraph()
 
     override suspend fun doWork(): Result {
-        val done = withIOContext { graph.koreaderSync.syncQueued() }
+        val done = withContext(Dispatchers.IO) { graph.koreaderSync.syncQueued() }
         return if (done) Result.success() else Result.retry()
     }
 

@@ -161,9 +161,9 @@ class KavitaSync(
                     local.read && !serverRead -> readOnServer += target
                     !local.read && serverRead -> localUpdates += ChapterUpdate(local.id) { read = true }
                     !local.read && server.pagesRead > local.lastPageRead ->
-                        localUpdates += ChapterUpdate(local.id) { lastPageRead = server.pagesRead.toLong() }
+                        localUpdates += ChapterUpdate(local.id) { lastPageRead = server.pagesRead }
                     !local.read && local.lastPageRead > server.pagesRead ->
-                        partialPushes += target.toDto(local.lastPageRead.toInt().coerceAtMost(server.pages - 1))
+                        partialPushes += target.toDto(local.lastPageRead.coerceAtMost(server.pages - 1))
                 }
             }
 

@@ -169,14 +169,14 @@ class KomgaSync(
             )
             !local.read && book.isRead -> Decision(localUpdate = ChapterUpdate(local.id) { read = true })
             local.read -> null
-            serverPage <= 0 && local.lastPageRead <= 0L -> null
+            serverPage <= 0 && local.lastPageRead <= 0 -> null
             else -> {
-                val serverLastPageRead = (serverPage - 1).coerceAtLeast(0).toLong()
+                val serverLastPageRead = (serverPage - 1).coerceAtLeast(0)
                 when {
                     serverLastPageRead > local.lastPageRead ->
                         Decision(localUpdate = ChapterUpdate(local.id) { lastPageRead = serverLastPageRead })
                     local.lastPageRead > serverLastPageRead -> {
-                        val page = (local.lastPageRead.toInt() + 1).coerceAtMost(pages)
+                        val page = (local.lastPageRead + 1).coerceAtMost(pages)
                         Decision(push = KomgaPendingProgress(seriesId, book.id, page, pages) to serverPosition(book))
                     }
                     else -> null
