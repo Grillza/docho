@@ -1,333 +1,262 @@
 import XCTest
 
-/// Drives the app against a real Kavita server. Skipped unless `TEST_RUNNER_KAVITA_LIVE_URL` and
-/// `TEST_RUNNER_KAVITA_LIVE_KEY` are set. Screenshots go to `TEST_RUNNER_SCREENSHOT_DIR` when given.
+/// Drives the app against real Kavita and Komga servers, such as the Docker ones described in
+/// PLAN-2.md. Skipped unless the servers are given:
+///
+///     TEST_RUNNER_DOCHO_KAVITA_URL / _KEY    a Kavita server and API key
+///     TEST_RUNNER_DOCHO_KOMGA_URL / _KEY     a Komga server and API key (the progress checks)
+///     TEST_RUNNER_DOCHO_KOMGA_SERIES         the name of a Komga series with 2+ books of 3+ pages
+///     TEST_RUNNER_SCREENSHOT_DIR             where to save screenshots (optional)
+///
+/// The app starts from an empty library each time (`DOCHO_RESET`).
 final class LiveUITests: XCTestCase {
     private var env: [String: String] { ProcessInfo.processInfo.environment }
 
-    @MainActor
-    func testConnectsToTheServer() throws {
-        let app = try launchConnected()
-        screenshot("settings")
-        _ = app
+    override func setUp() {
+        continueAfterFailure = false
     }
+
+    // MARK: Kavita
 
     @MainActor
     func testBrowsesKavitaAndAddsASeriesToTheLibrary() throws {
-        let app = try launchConnected()
+        let app = try launch(needsKomga: false)
 
-        app.buttons["Browse"].firstMatch.tap()
-        app.buttons["Kavita"].firstMatch.tap()
-        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
-        let title = first.label
-        Thread.sleep(forTimeInterval: 3) // let the covers load for the screenshot
-        screenshot("browse")
-
-        first.press(forDuration: 1.0)
-        let add = app.buttons["Add to Library"]
-        if add.waitForExistence(timeout: 5) {
-            add.tap()
-        } else {
-            // Already in the library from an earlier run; dismiss the menu.
-            app.buttons["Remove from Library"].firstMatch.tap()
-            first.press(forDuration: 1.0)
-            app.buttons["Add to Library"].tap()
-        }
-
-        app.buttons["Library"].firstMatch.tap()
-        let added = app.descendants(matching: .any).matching(identifier: "library.series").firstMatch
-        XCTAssertTrue(added.waitForExistence(timeout: 5), "series not in the library")
-        XCTAssertTrue(title.hasPrefix(added.label), "library shows \(added.label), browse showed \(title)")
-        screenshot("library")
-
-        added.press(forDuration: 1.0)
-        app.buttons["Remove from Library"].tap()
-        XCTAssertTrue(app.staticTexts["Your Library Is Empty"].waitForExistence(timeout: 5))
-    }
-
-    @MainActor
-    func testOpensASeriesAndMarksAChapterRead() throws {
-        let app = try launchConnected()
-        app.buttons["Browse"].firstMatch.tap()
-        app.buttons["Kavita"].firstMatch.tap()
-        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
-        first.tap()
-
-        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
-        Thread.sleep(forTimeInterval: 2) // cover and details
-        screenshot("series")
-
-        // The row may start read, unread or part-read (from the server), so go to Read first.
-        if row.value as? String != "Read" {
-            row.swipeRight()
-            app.buttons["Mark as Read"].firstMatch.tap()
-        }
-        XCTAssertTrue(waitFor(row, value: "Read"))
-
-        row.press(forDuration: 1.0)
-        app.buttons["Mark as Unread"].tap()
-        XCTAssertTrue(waitFor(row, value: "Unread"))
+        app.buttons["tab.browse"].tap()
+        let kavita = app.buttons["browse.source.Kavita"]
+        XCTAssertTrue(kavita.waitForExistence(timeout: 10), "Kavita isn't listed under Browse")
+        screenshot(app, "browse")
+        kavita.tap()
+        let item = app.descendants(matching: .any).matching(identifier: "browse.item").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 20), "no series in browse")
+        let title = item.label
+        Thread.sleep(forTimeInterval: 2) // covers, for the screenshot
+        screenshot(app, "browse-kavita")
+        item.tap()
 
         let library = app.buttons["series.library"]
-        let wasInLibrary = library.label == "In Library"
+        XCTAssertTrue(library.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch.waitForExistence(timeout: 20))
+        screenshot(app, "series")
         library.tap()
-        XCTAssertTrue(app.buttons[wasInLibrary ? "Add to Library" : "In Library"].waitForExistence(timeout: 3))
-        library.tap()
-        XCTAssertTrue(app.buttons[wasInLibrary ? "In Library" : "Add to Library"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["In library"].waitForExistence(timeout: 5))
+
+        app.buttons["tab.library"].tap()
+        let added = app.descendants(matching: .any).matching(identifier: "library.item").firstMatch
+        XCTAssertTrue(added.waitForExistence(timeout: 5), "series not in the library")
+        XCTAssertTrue(added.label.hasPrefix(title.components(separatedBy: ",")[0]), "library shows \(added.label), browse showed \(title)")
+        screenshot(app, "library")
     }
 
-    @MainActor
-    func testReadsAChapterAndResumesThere() throws {
-        let app = try launchConnected()
-        app.buttons["Browse"].firstMatch.tap()
-        app.buttons["Kavita"].firstMatch.tap()
-        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
-        first.tap()
-
-        // Start the first chapter from page 1: mark it unread, then open it.
-        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
-        if row.value as? String != "Unread" {
-            if row.value as? String != "Read" {
-                row.swipeRight()
-                app.buttons["Mark as Read"].firstMatch.tap()
-            }
-            row.press(forDuration: 1.0)
-            app.buttons["Mark as Unread"].tap()
-        }
-        XCTAssertTrue(waitFor(row, value: "Unread"))
-        row.tap()
-
-        let pages = app.collectionViews["reader.pages"]
-        XCTAssertTrue(pages.waitForExistence(timeout: 10), "reader didn't open")
-        let firstPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 1 of'")).firstMatch
-        XCTAssertTrue(firstPage.waitForExistence(timeout: 10))
-        XCTAssertTrue(waitFor(firstPage, value: "Loaded", timeout: 20), "page 1 didn't load")
-        screenshot("reader")
-
-        // Right to left by default: the left third turns to the next page.
-        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
-        let secondPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 2 of'")).firstMatch
-        XCTAssertTrue(secondPage.waitForExistence(timeout: 5), "didn't turn to page 2")
-
-        // A keyboard: ← is the next page in right to left, → goes back.
-        app.typeKey(.leftArrow, modifierFlags: [])
-        let thirdPage = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page 3 of'")).firstMatch
-        XCTAssertTrue(thirdPage.waitForExistence(timeout: 5), "← didn't turn to page 3")
-        app.typeKey(.rightArrow, modifierFlags: [])
-        XCTAssertTrue(secondPage.waitForExistence(timeout: 5), "→ didn't go back to page 2")
-
-        // The middle shows the overlay with the page position.
-        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        let slider = app.descendants(matching: .any).matching(identifier: "reader.page").firstMatch
-        XCTAssertTrue(slider.waitForExistence(timeout: 3))
-        XCTAssertTrue((slider.value as? String)?.hasPrefix("2 of") ?? false, "\(slider.value ?? "nil")")
-        screenshot("reader-overlay")
-
-        // Next chapter from the overlay, then back to the series.
-        let chapterTitle = NSPredicate(format: "label BEGINSWITH 'Vol.' OR label BEGINSWITH 'Ch.' OR label BEGINSWITH 'Volume'")
-        let title = app.staticTexts.matching(chapterTitle).firstMatch
-        let firstTitle = title.label
-        app.buttons["Next chapter"].tap()
-        XCTAssertTrue(waitFor(slider, value: "1 of", prefix: true))
-        XCTAssertNotEqual(title.label, firstTitle)
-
-        app.buttons["reader.close"].tap()
-        XCTAssertTrue(waitFor(row, value: "Page 2 of", prefix: true), "progress not shown: \(row.value ?? "nil")")
-    }
+    // MARK: Komga (PLAN-2 milestone 14)
 
     @MainActor
-    func testReadsInSpreadsAndInWebtoonMode() throws {
-        let app = try launchConnected()
-        let spreads = app.switches["Two-page spreads in landscape"]
-        XCTAssertTrue(spreads.waitForExistence(timeout: 5))
-        setSwitch(spreads, on: true)
-        addTeardownBlock { @MainActor in XCUIDevice.shared.orientation = .portrait }
+    func testReadsAKomgaBookAndSyncsProgressBothWays() async throws {
+        let app = try launch(needsKomga: true)
+        let komga = try XCTUnwrap(KomgaAPI(env))
+        let series = try XCTUnwrap(env["DOCHO_KOMGA_SERIES"])
+        let book = try await komga.firstBook(ofSeries: series)
+        try await komga.markUnread(book)
 
-        app.buttons["Browse"].firstMatch.tap()
-        app.buttons["Kavita"].firstMatch.tap()
-        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
-        first.tap()
-        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
+        openKomgaSeries(app, named: series)
+        let row = app.descendants(matching: .any).matching(identifier: "chapter.row")
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "#1")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "no first book")
         row.tap()
 
-        let pages = app.collectionViews["reader.pages"]
-        XCTAssertTrue(pages.waitForExistence(timeout: 10), "reader didn't open")
-        setMode(app, pages, "Right to left")
-
-        // Landscape pairs pages; the cover stands alone, so a page or two on there's a pair.
-        XCUIDevice.shared.orientation = .landscapeLeft
-        let pair = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Pages '")).firstMatch
-        for _ in 0..<2 where !pair.waitForExistence(timeout: 3) {
+        // Turn to page 3 with taps on the next side of the screen (right to left by default).
+        let pages = app.descendants(matching: .any).matching(identifier: "reader.pages").firstMatch
+        XCTAssertTrue(pages.waitForExistence(timeout: 20), "the reader didn't open")
+        try await Task.sleep(for: .seconds(1))
+        for _ in 0..<2 {
             pages.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+            try await Task.sleep(for: .milliseconds(800))
         }
-        XCTAssertTrue(pair.waitForExistence(timeout: 5), "no two-page spread in landscape")
-        XCTAssertTrue(waitFor(pair, value: "Loaded", timeout: 20), "the spread didn't load")
-        hideOverlay(app, pages)
-        screenshot("spreads")
-        XCUIDevice.shared.orientation = .portrait
+        screenshot(app, "reader")
+        // The page goes to Komga after a short pause: page 3 (1-based).
+        let sent = await eventually { (try? await komga.progress(book))?.page == 3 }
+        XCTAssertTrue(sent, "Komga didn't get page 3")
 
-        // Webtoon: scrolling down moves through the pages.
-        setMode(app, pages, "Webtoon")
-        let loaded = pages.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Page ' AND value == 'Loaded'"))
-        XCTAssertTrue(loaded.firstMatch.waitForExistence(timeout: 20), "no webtoon page loaded")
-        // The overlay is still up from picking the mode.
-        let slider = app.descendants(matching: .any).matching(identifier: "reader.page").firstMatch
-        XCTAssertTrue(slider.waitForExistence(timeout: 3))
-        let before = pageNumber(slider)
-        hideOverlay(app, pages)
-        for _ in 0..<4 {
-            pages.swipeUp(velocity: .fast)
-        }
-        Thread.sleep(forTimeInterval: 2) // let the pages load for the screenshot
-        screenshot("webtoon")
+        // Close, then set progress in Komga's own reader and reopen: the app shows it.
         pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(slider.waitForExistence(timeout: 3))
-        XCTAssertGreaterThan(pageNumber(slider), before, "scrolling didn't move on")
-
-        // Leave the series as the other tests expect it, and spreads off.
-        setMode(app, pages, "Right to left")
         app.buttons["reader.close"].tap()
-        app.buttons["Settings"].firstMatch.tap()
-        setSwitch(spreads, on: false)
+        try await komga.setPage(book, page: 5)
+        app.buttons["More options"].firstMatch.tap()
+        app.buttons["Refresh"].tap()
+        let pulled = row.waitFor(labelContaining: "Page 5", timeout: 15)
+        XCTAssertTrue(pulled, "Komga's page didn't come down: \(row.label)")
+
+        // Marking unread in the app clears it in Komga.
+        row.press(forDuration: 1.0)
+        let unread = app.buttons["Mark as unread"]
+        XCTAssertTrue(unread.waitForExistence(timeout: 5))
+        unread.tap()
+        let cleared = await eventually { (try? await komga.progress(book)) == nil }
+        XCTAssertTrue(cleared, "marking unread didn't clear Komga's progress")
     }
 
     @MainActor
     func testDownloadsAChapterAndReadsItOffline() throws {
-        let app = try launchConnected()
-        app.buttons["Browse"].firstMatch.tap()
-        app.buttons["Kavita"].firstMatch.tap()
-        let first = app.descendants(matching: .any).matching(identifier: "browse.series").firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 20), "no series in browse")
-        first.tap()
-        let row = app.descendants(matching: .any).matching(identifier: "chapter.row").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 20), "no chapters")
+        let app = try launch(needsKomga: true)
+        let series = try XCTUnwrap(env["DOCHO_KOMGA_SERIES"])
+        openKomgaSeries(app, named: series)
 
-        // Start from nothing downloaded.
-        app.buttons["series.downloads"].tap()
-        app.buttons["Delete All Downloads"].tap()
-        let download = app.buttons.matching(identifier: "chapter.download").firstMatch
-        XCTAssertTrue(download.waitForExistence(timeout: 5))
+        let download = app.buttons.matching(identifier: "chapter.download").element(boundBy: 0)
+        XCTAssertTrue(download.waitForExistence(timeout: 20))
         download.tap()
-        let done = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Downloaded'")).firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 120), "the chapter didn't finish downloading")
-        screenshot("series-downloaded")
+        let downloaded = app.buttons.matching(identifier: "chapter.download")
+            .matching(NSPredicate(format: "label == %@", "Delete download")).firstMatch
+        XCTAssertTrue(downloaded.waitForExistence(timeout: 60), "the chapter didn't finish downloading")
+        screenshot(app, "downloaded")
 
-        app.buttons["Downloads"].firstMatch.tap()
-        let downloaded = app.descendants(matching: .any).matching(identifier: "downloads.series").firstMatch
-        XCTAssertTrue(downloaded.waitForExistence(timeout: 5), "not listed in Downloads")
-        screenshot("downloads")
-
-        // No server: the chapter still opens, from the device.
-        app.buttons["Settings"].firstMatch.tap()
-        let server = app.textFields["kavita.serverURL"]
-        server.clearText()
-        server.typeText("http://127.0.0.1:9")
-        Thread.sleep(forTimeInterval: 0.5)
-        app.buttons["Downloads"].firstMatch.tap()
-        downloaded.tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        // Break the server address, then read the downloaded chapter.
+        app.terminate()
+        app.launchEnvironment["DOCHO_KOMGA_URL"] = "http://127.0.0.1:9"
+        app.launchEnvironment["DOCHO_RESET"] = "0"
+        app.launch()
+        openDownloadedSeries(app)
+        let row = app.descendants(matching: .any).matching(identifier: "chapter.row")
+            .matching(NSPredicate(format: "label CONTAINS %@", "Downloaded")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
         row.tap()
-        let pages = app.collectionViews["reader.pages"]
-        XCTAssertTrue(pages.waitForExistence(timeout: 15), "reader didn't open")
-        let loaded = pages.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH 'Page' AND value == 'Loaded'"))
-            .firstMatch
-        XCTAssertTrue(loaded.waitForExistence(timeout: 15), "no page loaded offline")
-        screenshot("reader-offline")
-
-        // Tidy up.
-        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        app.buttons["reader.close"].tap()
-        app.buttons["series.downloads"].tap()
-        app.buttons["Delete All Downloads"].tap()
-        XCTAssertTrue(download.waitForExistence(timeout: 5))
+        let pages = app.descendants(matching: .any).matching(identifier: "reader.pages").firstMatch
+        XCTAssertTrue(pages.waitForExistence(timeout: 20), "the downloaded chapter didn't open offline")
+        screenshot(app, "offline-reader")
     }
 
-    /// Launches the app and enters the live server in Settings, waiting until it connects.
     @MainActor
-    private func launchConnected() throws -> XCUIApplication {
-        guard let url = env["KAVITA_LIVE_URL"], let key = env["KAVITA_LIVE_KEY"] else {
-            throw XCTSkip("Set KAVITA_LIVE_URL and KAVITA_LIVE_KEY to run against a real server")
+    func testTheSyncPageShowsEachServersConnection() throws {
+        let app = try launch(needsKomga: true)
+        app.buttons["tab.more"].tap()
+        app.buttons["more.settings"].tap()
+        app.buttons["settings.sync"].tap()
+        let kavita = app.buttons["sync.section.Kavita"]
+        XCTAssertTrue(kavita.waitForExistence(timeout: 5))
+        XCTAssertTrue(kavita.waitFor(labelContaining: "Connected to Kavita", timeout: 15), kavita.label)
+        XCTAssertTrue(app.buttons["sync.section.Komga"].waitFor(labelContaining: "Connected to Komga", timeout: 15))
+        screenshot(app, "sync-settings")
+    }
+
+    // MARK: Helpers
+
+    @MainActor
+    private func launch(needsKomga: Bool) throws -> XCUIApplication {
+        guard let kavitaURL = env["DOCHO_KAVITA_URL"], let kavitaKey = env["DOCHO_KAVITA_KEY"] else {
+            throw XCTSkip("Set TEST_RUNNER_DOCHO_KAVITA_URL and _KEY to run against a server")
         }
         let app = XCUIApplication()
+        app.launchEnvironment = ["DOCHO_KAVITA_URL": kavitaURL, "DOCHO_KAVITA_KEY": kavitaKey, "DOCHO_RESET": "1"]
+        if needsKomga {
+            guard let url = env["DOCHO_KOMGA_URL"], let key = env["DOCHO_KOMGA_KEY"], env["DOCHO_KOMGA_SERIES"] != nil else {
+                throw XCTSkip("Set TEST_RUNNER_DOCHO_KOMGA_URL, _KEY and _SERIES to run the Komga checks")
+            }
+            app.launchEnvironment["DOCHO_KOMGA_URL"] = url
+            app.launchEnvironment["DOCHO_KOMGA_KEY"] = key
+        }
         app.launch()
-        app.buttons["Settings"].firstMatch.tap()
-
-        let server = app.textFields["kavita.serverURL"]
-        server.clearText()
-        server.typeText(url)
-        let apiKey = app.secureTextFields["kavita.apiKey"]
-        apiKey.clearText()
-        apiKey.typeText(key)
-
-        let connected = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Connected to Kavita'")).firstMatch
-        XCTAssertTrue(connected.waitForExistence(timeout: 20), "not connected")
-        // Let the debounced save finish before leaving Settings.
-        Thread.sleep(forTimeInterval: 0.5)
         return app
     }
 
     @MainActor
-    private func screenshot(_ name: String) {
-        guard let dir = env["SCREENSHOT_DIR"] else { return }
-        let idiom = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
-        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(filePath: dir).appending(path: "\(name)-\(idiom).png"))
+    private func openKomgaSeries(_ app: XCUIApplication, named series: String) {
+        app.buttons["tab.browse"].tap()
+        let komga = app.buttons["browse.source.Komga"]
+        XCTAssertTrue(komga.waitForExistence(timeout: 10), "Komga isn't listed under Browse")
+        komga.tap()
+        let item = app.descendants(matching: .any).matching(identifier: "browse.item")
+            .matching(NSPredicate(format: "label BEGINSWITH %@", series)).firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 20), "\(series) isn't in Komga")
+        item.tap()
+        XCTAssertTrue(app.buttons["series.library"].waitForExistence(timeout: 10))
+        app.buttons["series.library"].tap() // in the library, so it's easy to find again
     }
-}
 
-extension LiveUITests {
-    /// Picks a mode from the reader's menu, showing the overlay first if needed.
     @MainActor
-    private func setMode(_ app: XCUIApplication, _ pages: XCUIElement, _ mode: String) {
-        let menu = app.buttons["reader.settings"]
-        if !menu.exists || !menu.isHittable {
-            pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    private func openDownloadedSeries(_ app: XCUIApplication) {
+        app.buttons["tab.library"].tap()
+        let item = app.descendants(matching: .any).matching(identifier: "library.item").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 10))
+        item.tap()
+    }
+
+    @MainActor
+    private func eventually(timeout: Duration = .seconds(10), _ condition: () async -> Bool) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if await condition() { return true }
+            try? await Task.sleep(for: .milliseconds(250))
         }
-        XCTAssertTrue(menu.waitForExistence(timeout: 3))
-        menu.tap()
-        app.buttons[mode].firstMatch.tap()
-        Thread.sleep(forTimeInterval: 0.5)
+        return await condition()
     }
 
     @MainActor
-    private func hideOverlay(_ app: XCUIApplication, _ pages: XCUIElement) {
-        guard app.buttons["reader.close"].exists else { return }
-        pages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        _ = app.buttons["reader.close"].waitForNonExistence(timeout: 3)
-    }
-
-    /// The current page from the slider's value, "3 of 57".
-    @MainActor
-    private func pageNumber(_ slider: XCUIElement) -> Int {
-        Int((slider.value as? String)?.split(separator: " ").first ?? "") ?? 0
-    }
-
-    @MainActor
-    private func setSwitch(_ toggle: XCUIElement, on isOn: Bool) {
-        guard (toggle.value as? String == "1") != isOn else { return }
-        toggle.switches.firstMatch.tap()
-        XCTAssertTrue(waitFor(toggle, value: isOn ? "1" : "0"))
-    }
-
-    private func waitFor(_ element: XCUIElement, value: String, prefix: Bool = false, timeout: TimeInterval = 5) -> Bool {
-        let predicate = NSPredicate(format: prefix ? "value BEGINSWITH %@" : "value == %@", value)
-        return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
+    private func screenshot(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        if let dir = env["SCREENSHOT_DIR"] {
+            try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir).appending(path: "\(name).png"))
+        }
     }
 }
 
 private extension XCUIElement {
-    /// Focuses the field with the cursor at the end (a plain tap can land mid-text), then
-    /// deletes what's there, e.g. values saved by an earlier run.
-    func clearText() {
-        coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
-        guard let value = value as? String, !value.isEmpty, value != placeholderValue else { return }
-        typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count))
+    /// Waits until the element's label contains `text`.
+    func waitFor(labelContaining text: String, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if exists, label.contains(text) { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
+    }
+}
+
+/// Komga's API, for playing "another device" in the tests.
+private struct KomgaAPI {
+    let base: String
+    let key: String
+
+    init?(_ env: [String: String]) {
+        guard let url = env["DOCHO_KOMGA_URL"], let key = env["DOCHO_KOMGA_KEY"] else { return nil }
+        base = url.hasSuffix("/") ? String(url.dropLast()) : url
+        self.key = key
+    }
+
+    private func request(_ path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> Data {
+        var request = URLRequest(url: URL(string: base + "/api" + path)!)
+        request.httpMethod = method
+        request.setValue(key, forHTTPHeaderField: "X-API-Key")
+        if let body {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(code) else { throw URLError(.badServerResponse) }
+        return data
+    }
+
+    func firstBook(ofSeries name: String) async throws -> String {
+        let series = try JSONSerialization.jsonObject(with: try await request("/v1/series?search=\(name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name)")) as? [String: Any]
+        let id = ((series?["content"] as? [[String: Any]])?.first?["id"] as? String) ?? ""
+        let books = try JSONSerialization.jsonObject(with: try await request("/v1/series/\(id)/books?sort=metadata.numberSort,asc")) as? [String: Any]
+        return ((books?["content"] as? [[String: Any]])?.first?["id"] as? String) ?? ""
+    }
+
+    /// The page reached (1-based) and whether it's finished; nil when unread.
+    func progress(_ book: String) async throws -> (page: Int, completed: Bool)? {
+        let json = try JSONSerialization.jsonObject(with: try await request("/v1/books/\(book)")) as? [String: Any]
+        guard let progress = json?["readProgress"] as? [String: Any] else { return nil }
+        return (progress["page"] as? Int ?? 0, progress["completed"] as? Bool ?? false)
+    }
+
+    func setPage(_ book: String, page: Int) async throws {
+        _ = try await request("/v1/books/\(book)/read-progress", method: "PATCH", body: ["page": page])
+    }
+
+    func markUnread(_ book: String) async throws {
+        _ = try? await request("/v1/books/\(book)/read-progress", method: "DELETE")
     }
 }

@@ -36,37 +36,33 @@ struct SeriesView: View {
         return ZStack(alignment: .top) {
             GeometryReader { geometry in
                 let topInset = geometry.safeAreaInsets.top
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if let series = model.series {
-                        header(series, model: model, topInset: topInset)
-                    }
-                    chapterHeader(model, count: chapters.count)
-                    if let error = model.refreshError, model.chapters.isEmpty {
-                        EmptyScreen(message: error) {
-                            M3TextButton(title: String(localized: "Retry")) { Task { await model.refresh() } }
+                if geometry.size.width >= 840 {
+                    // Mihon's tablet layout: the details beside the chapter list.
+                    HStack(alignment: .top, spacing: 0) {
+                        ScrollView {
+                            if let series = model.series { header(series, model: model, topInset: topInset) }
                         }
-                        .frame(minHeight: 240)
+                        .frame(width: geometry.size.width * 0.4)
+                        .ignoresSafeArea(edges: .top)
+                        chapterList(model, chapters: chapters)
+                            .padding(.top, 64)
                     }
-                    ForEach(chapters) { chapter in
-                        ChapterRow(
-                            chapter: chapter, download: model.downloads[chapter.id], selected: selection.contains(chapter.id),
-                            showNumber: model.display.showChapterNumbers, series: model.series,
-                            onTap: { tap(chapter, model: model) },
-                            onLongPress: { toggle(chapter.id) },
-                            onDownloadAction: { downloadAction(chapter, model: model) },
-                            onSwipe: { swipe(chapter, action: $0, model: model) }
-                        )
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            if let series = model.series {
+                                header(series, model: model, topInset: topInset)
+                            }
+                            chapterRows(model, chapters: chapters)
+                        }
                     }
-                    Color.clear.frame(height: 96)
+                    .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y > 220 } action: { _, past in
+                        withAnimation(.easeOut(duration: 0.15)) { scrolledPastHeader = past }
+                    }
+                    .refreshable { await model.refresh() }
+                    .accessibilityIdentifier("series.scroll")
+                    .ignoresSafeArea(edges: .top)
                 }
-            }
-            .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y > 220 } action: { _, past in
-                withAnimation(.easeOut(duration: 0.15)) { scrolledPastHeader = past }
-            }
-            .refreshable { await model.refresh() }
-            .accessibilityIdentifier("series.scroll")
-            .ignoresSafeArea(edges: .top)
             }
 
             appBar(model)
@@ -104,6 +100,37 @@ struct SeriesView: View {
                 Task { await model.setInLibrary(false) }
             }
         }
+    }
+
+    /// The chapter list on its own, for the tablet layout.
+    private func chapterList(_ model: SeriesModel, chapters: [ChapterRecord]) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) { chapterRows(model, chapters: chapters) }
+        }
+        .refreshable { await model.refresh() }
+        .accessibilityIdentifier("series.scroll")
+    }
+
+    @ViewBuilder
+    private func chapterRows(_ model: SeriesModel, chapters: [ChapterRecord]) -> some View {
+        chapterHeader(model, count: chapters.count)
+        if let error = model.refreshError, model.chapters.isEmpty {
+            EmptyScreen(message: error) {
+                M3TextButton(title: String(localized: "Retry")) { Task { await model.refresh() } }
+            }
+            .frame(minHeight: 240)
+        }
+        ForEach(chapters) { chapter in
+            ChapterRow(
+                chapter: chapter, download: model.downloads[chapter.id], selected: selection.contains(chapter.id),
+                showNumber: model.display.showChapterNumbers, series: model.series,
+                onTap: { tap(chapter, model: model) },
+                onLongPress: { toggle(chapter.id) },
+                onDownloadAction: { downloadAction(chapter, model: model) },
+                onSwipe: { swipe(chapter, action: $0, model: model) }
+            )
+        }
+        Color.clear.frame(height: 96)
     }
 
     // MARK: App bar
@@ -196,6 +223,7 @@ struct SeriesView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, topInset + 64 + 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             actionButtons(series, model: model)
@@ -374,33 +402,34 @@ struct SeriesView: View {
         let selected = model.chapters.filter { selection.contains($0.id) }
         return HStack(spacing: 0) {
             if selected.contains(where: { !$0.bookmark }) {
-                barButton("bookmark_add", String(localized: "Bookmark")) { Task { await model.setBookmarked(selection, true) } }
+                barButton("bookmark_add", String(localized: "Bookmark")) { ids in Task { await model.setBookmarked(ids, true) } }
             } else {
-                barButton("bookmark_remove", String(localized: "Remove bookmark")) { Task { await model.setBookmarked(selection, false) } }
+                barButton("bookmark_remove", String(localized: "Remove bookmark")) { ids in Task { await model.setBookmarked(ids, false) } }
             }
             if selected.contains(where: { !$0.read }) {
-                barButton("done_all", String(localized: "Mark as read")) { Task { await model.setRead(selection, true) } }
+                barButton("done_all", String(localized: "Mark as read")) { ids in Task { await model.setRead(ids, true) } }
             }
             if selected.contains(where: { $0.read || $0.lastPageRead > 0 }) {
-                barButton("remove_done", String(localized: "Mark as unread")) { Task { await model.setRead(selection, false) } }
+                barButton("remove_done", String(localized: "Mark as unread")) { ids in Task { await model.setRead(ids, false) } }
             }
             if selected.count == 1, let chapter = selected.first {
-                barButton("done_previous", String(localized: "Mark previous as read")) { Task { await model.markPreviousRead(chapter) } }
+                barButton("done_previous", String(localized: "Mark previous as read")) { _ in Task { await model.markPreviousRead(chapter) } }
             }
             if selected.contains(where: { !$0.isDownloaded }) {
-                barButton("download", String(localized: "Download")) { Task { await model.download(selection) } }
+                barButton("download", String(localized: "Download")) { ids in Task { await model.download(ids) } }
             }
             if selected.contains(where: \.isDownloaded) {
-                barButton("delete", String(localized: "Delete")) { Task { await model.deleteDownloads(selected.filter(\.isDownloaded).map(\.id)) } }
+                barButton("delete", String(localized: "Delete")) { _ in Task { await model.deleteDownloads(selected.filter(\.isDownloaded).map(\.id)) } }
             }
         }
         .padding(.vertical, 8)
         .background(UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16).fill(m3.surfaceContainerHigh).ignoresSafeArea(edges: .bottom))
     }
 
-    private func barButton(_ icon: String, _ title: String, action: @escaping () -> Void) -> some View {
+    /// The action gets the selection as it was when tapped; the bar clears it straight away.
+    private func barButton(_ icon: String, _ title: String, action: @escaping (Set<Int>) -> Void) -> some View {
         Button {
-            action()
+            action(selection)
             selection = []
         } label: {
             VStack(spacing: 4) {

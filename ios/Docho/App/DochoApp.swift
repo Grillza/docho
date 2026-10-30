@@ -37,8 +37,14 @@ struct DochoApp: App {
     }
 }
 
-/// Hands iOS's wake-up for finished background downloads to the download session.
+/// Registers background work at launch, and hands iOS's wake-up for finished background
+/// downloads to the download session.
 final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        DownloadNotifier.registerContinuedTask()
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         handleEventsForBackgroundURLSession identifier: String,

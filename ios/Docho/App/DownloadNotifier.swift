@@ -16,6 +16,12 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
     static let taskPrefix = "io.github.grillza.docho.downloads."
     nonisolated private static let seriesKey = "seriesId"
 
+    /// The notifier the registered task handler forwards to; set by `attach`.
+    private static weak var current: DownloadNotifier?
+    /// Whether the continued-processing handler was registered at launch. Submitting without it
+    /// raises an Objective-C exception, so nothing is submitted then.
+    private static var registered = false
+
     private weak var app: AppModel?
     private var activity: AnyObject?
     private var activityObserver: Task<Void, Never>?
@@ -24,7 +30,7 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
     func attach(_ app: AppModel) {
         self.app = app
         UNUserNotificationCenter.current().delegate = self
-        registerContinuedTask()
+        Self.current = self
         Task { [weak self, events = app.downloads.events] in
             for await event in events { await self?.handle(event) }
         }
@@ -83,16 +89,22 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: Continued processing (iOS 26+)
 
-    private func registerContinuedTask() {
+    /// Registers the handler for downloads' continued-processing tasks. Called while the app
+    /// finishes launching, as BackgroundTasks requires.
+    static func registerContinuedTask() {
         guard #available(iOS 26, *) else { return }
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.taskPrefix + "*", using: .main) { [weak self] task in
-            guard let task = task as? BGContinuedProcessingTask else { return task.setTaskCompleted(success: false) }
-            MainActor.assumeIsolated { self?.run(task) }
+        registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: taskPrefix + "*", using: .main) { task in
+            MainActor.assumeIsolated {
+                guard let task = task as? BGContinuedProcessingTask, let notifier = current else {
+                    return task.setTaskCompleted(success: false)
+                }
+                notifier.run(task)
+            }
         }
     }
 
     private func startContinuedTask(subtitle: String) {
-        guard #available(iOS 26, *), activity == nil else { return }
+        guard #available(iOS 26, *), Self.registered, activity == nil else { return }
         let request = BGContinuedProcessingTaskRequest(
             identifier: Self.taskPrefix + UUID().uuidString, title: String(localized: "Downloading"), subtitle: subtitle
         )
