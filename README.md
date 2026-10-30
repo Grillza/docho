@@ -14,7 +14,7 @@ place in sync with them, or with KOReader on your e-reader.
 
 [![Download](https://img.shields.io/github/v/release/Grillza/docho?label=Download&labelColor=06599d&color=043b69)](https://github.com/Grillza/docho/releases/latest)
 
-*Requires Android 8.0 or higher.*
+*Android 8.0 or higher, or iOS / iPadOS 18 or higher with a sideloader.*
 
 </div>
 
@@ -84,8 +84,21 @@ See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps
 
 ## Download
 
-Get the latest APK from **[Releases](https://github.com/Grillza/docho/releases/latest)**. Most devices
-want the `arm64-v8a` build; `universal` runs anywhere but is larger.
+Each **[release](https://github.com/Grillza/docho/releases/latest)** has an Android section and an
+iOS section. The two apps are released together, so their version numbers match or differ by at most
+a patch number.
+
+### Android
+
+Requires Android 8.0 or higher. Most devices want the `arm64-v8a` APK; `universal` runs anywhere but
+is larger.
+
+### iOS and iPadOS
+
+Requires iOS or iPadOS 18 or higher, on iPhone or iPad. The `.ipa` isn't signed and Dōchō isn't on
+the App Store, so you need a sideloader such as [AltStore](https://altstore.io),
+[SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io) to install it. With a free
+Apple ID, sideloaded apps have to be refreshed every 7 days.
 
 ## Building
 
@@ -93,8 +106,8 @@ want the `arm64-v8a` build; `universal` runs anywhere but is larger.
 ./gradlew assembleRelease
 ```
 
-Release builds are signed with the keystore named in `keystore.properties`. An iPad version is
-being built on the [`ios`](https://github.com/Grillza/docho/tree/ios) branch.
+Release builds are signed with the keystore named in `keystore.properties`. The iOS app lives on the
+[`ios`](https://github.com/Grillza/docho/tree/ios) branch.
 
 ## Help and issues
 
