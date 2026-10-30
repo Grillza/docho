@@ -91,7 +91,7 @@ struct SourceManager: Sendable {
     }
 
     static func isBuiltIn(_ id: Int64) -> Bool {
-        [KavitaSource.id, KomgaSource.id, BookOrbitSource.id].contains(id)
+        [LocalSource.id, KavitaSource.id, KomgaSource.id, BookOrbitSource.id].contains(id)
     }
 }
 

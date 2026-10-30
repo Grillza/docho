@@ -26,7 +26,8 @@ final class SeriesModel {
 
     /// The chapter list as shown: filtered and sorted per the series' chapter settings.
     var displayedChapters: [ChapterRecord] {
-        chapters.displayed(display, downloaded: app.preferences.downloadedOnly)
+        // Local comics count as downloaded, as on Android.
+        chapters.displayed(display, downloaded: app.preferences.downloadedOnly && series?.source != LocalSource.id)
     }
 
     /// The chapter the Start/Resume button opens.

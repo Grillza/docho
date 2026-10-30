@@ -20,6 +20,8 @@ struct DochoApp: App {
                     #endif
                     await model.start()
                 }
+                // A comic opened from the Files app or shared from another app.
+                .onOpenURL { url in Task { await model.openLocalFile(url) } }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {

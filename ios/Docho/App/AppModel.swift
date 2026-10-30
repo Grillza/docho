@@ -20,6 +20,7 @@ final class AppModel {
     let readerSettings: ReaderSettings
     let preferences: AppPreferences
     let sources: SourceManager
+    let localSource: LocalSource
     let kavitaSource: KavitaSource
     let komgaSource: KomgaSource
     let bookOrbitSource: BookOrbitSource
@@ -38,6 +39,8 @@ final class AppModel {
 
     /// A series to open from outside its tab (a notification, the download bar).
     var pendingSeries: Int?
+    /// Why a comic opened from elsewhere couldn't be added.
+    var openFileError: String?
 
     init(
         settings: KavitaSettings = KavitaSettings(),
@@ -52,7 +55,8 @@ final class AppModel {
         pageDebounce: Duration = KavitaSync.pageDebounce,
         downloadStore: DownloadStore = .standard(),
         pageFetcher: any PageFetcher = BackgroundFetch(),
-        downloadDefaults: UserDefaults = .standard
+        downloadDefaults: UserDefaults = .standard,
+        localSource: LocalSource = .standard()
     ) {
         self.settings = settings
         self.komgaSettings = komgaSettings
@@ -69,10 +73,11 @@ final class AppModel {
         bookOrbit = BookOrbitClient(settings: bookOrbitSettings, session: session)
         koreader = KoreaderClient(settings: koreaderSettings, session: session)
 
+        self.localSource = localSource
         kavitaSource = KavitaSource(client: kavita, settings: settings, database: database)
         komgaSource = KomgaSource(client: komga, settings: komgaSettings)
         bookOrbitSource = BookOrbitSource(client: bookOrbit, settings: bookOrbitSettings)
-        sources = SourceManager(sources: [kavitaSource, komgaSource, bookOrbitSource])
+        sources = SourceManager(sources: [localSource, kavitaSource, komgaSource, bookOrbitSource])
 
         kavitaSync = KavitaSync(source: kavitaSource, database: database, settings: settings, syncSettings: syncSettings, pageDebounce: pageDebounce)
         komgaSync = KomgaSync(source: komgaSource, database: database, settings: komgaSettings, syncSettings: syncSettings, pageDebounce: pageDebounce)
@@ -146,6 +151,33 @@ final class AppModel {
     }
 
     /// The automatic library update iOS runs in the background (Settings → Library).
+    /// Adds a comic opened from the Files app (or shared from another app) to the Local source,
+    /// as a series named after the file, and opens it.
+    func openLocalFile(_ url: URL) async {
+        guard url.isFileURL else { return }
+        let source = localSource
+        do {
+            let rootPath = source.root.standardizedFileURL.path + "/"
+            let path = url.standardizedFileURL.path
+            let series: String
+            if path.hasPrefix(rootPath) {
+                // Already in the local folder: open the series it's in.
+                series = String(path.dropFirst(rootPath.count).split(separator: "/").first ?? "")
+            } else {
+                series = try await Task.detached { try source.add([url], series: nil) }.value.first ?? ""
+                // Files shared from other apps arrive in Documents/Inbox; the copy in local is enough.
+                if path.hasPrefix(source.documents.appending(path: "Inbox").standardizedFileURL.path) {
+                    try? FileManager.default.removeItem(at: url)
+                }
+            }
+            guard !series.isEmpty else { return }
+            let record = try await database.localSeries(source: LocalSource.id, manga: SManga(url: series, title: series))
+            pendingSeries = record.id
+        } catch {
+            openFileError = error.localizedDescription
+        }
+    }
+
     func backgroundLibraryUpdate() async {
         guard preferences.autoUpdate else { return }
         await library.update()

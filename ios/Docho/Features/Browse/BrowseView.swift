@@ -198,6 +198,7 @@ struct BrowseSourceView: View {
     @State private var showFilters = false
     @State private var libraryKeys = Set<String>()
     @State private var pendingAdd: SeriesRecord?
+    @State private var importing = false
 
     var body: some View {
         Group {
@@ -230,6 +231,10 @@ struct BrowseSourceView: View {
             let visible = app.preferences.hideInLibraryItems ? model.items.filter { !libraryKeys.contains($0.url) } : model.items
             if visible.isEmpty, model.isLoading {
                 LoadingScreen()
+            } else if visible.isEmpty, model.error == nil, sourceId == LocalSource.id, model.listing == .popular {
+                EmptyScreen(message: String(localized: "No local comics yet. Add CBZ, ZIP or PDF files, or put them in Files › On My iPhone › Dōchō › local.")) {
+                    M3TextButton(title: String(localized: "Add from Files")) { importing = true }
+                }
             } else if visible.isEmpty {
                 EmptyScreen(message: model.error ?? String(localized: "No results found")) {
                     M3TextButton(title: String(localized: "Retry")) { Task { await model.restart(model.listing) } }
@@ -269,6 +274,9 @@ struct BrowseSourceView: View {
         .sheet(item: $pendingAdd) { series in
             CategoryPicker(seriesIds: [series.id], addsToLibrary: true) {}
         }
+        .localImport(isPresented: $importing) { _ in
+            Task { await model.restart(model.listing) }
+        }
     }
 
     @ViewBuilder
@@ -291,6 +299,9 @@ struct BrowseSourceView: View {
             .background(m3.surface)
         } else {
             TopAppBar(title: model.source.name, showsBack: true) {
+                if sourceId == LocalSource.id {
+                    AppBarIcon("add", label: String(localized: "Add from Files")) { importing = true }
+                }
                 AppBarIcon("search", label: String(localized: "Search")) { searching = true }
                 Menu {
                     ForEach(AppPreferences.DisplayMode.allCases, id: \.self) { mode in

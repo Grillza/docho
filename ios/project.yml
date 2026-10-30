@@ -72,6 +72,30 @@ targets:
         # automatic library updates (Settings → Library), which iOS runs when it decides.
         UIBackgroundModes:
           - fetch
+        # The Local source: Documents shows in the Files app (On My iPhone › Dōchō), and comic
+        # files can be opened in Dōchō from Files or shared to it.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: io.github.grillza.docho.cbz
+            UTTypeDescription: Comic book archive
+            UTTypeConformsTo: [public.zip-archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [cbz]
+              public.mime-type: [application/vnd.comicbook+zip]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Comic book archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Default
+            LSItemContentTypes: [io.github.grillza.docho.cbz]
+          - CFBundleTypeName: ZIP archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.zip-archive]
+          - CFBundleTypeName: PDF document
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.adobe.pdf]
         BGTaskSchedulerPermittedIdentifiers:
           - io.github.grillza.docho.progress-sync
           - io.github.grillza.docho.library-update

@@ -146,19 +146,21 @@ struct SeriesView: View {
             }
         } else {
             TopAppBar(title: scrolledPastHeader ? model.series?.name ?? "" : "", showsBack: true, elevated: scrolledPastHeader, transparent: true) {
-                Menu {
-                    Button(String(localized: "Next chapter")) { Task { await model.downloadNext(1) } }
-                    Button(String(localized: "Next 5 chapters")) { Task { await model.downloadNext(5) } }
-                    Button(String(localized: "Next 10 chapters")) { Task { await model.downloadNext(10) } }
-                    Button(String(localized: "Unread")) { Task { await model.downloadNext(nil) } }
-                    Button(String(localized: "All")) { Task { await model.downloadAll() } }
-                    Divider()
-                    Button(String(localized: "Delete read downloads"), role: .destructive) { Task { await model.deleteAllDownloads(readOnly: true) } }
-                    Button(String(localized: "Delete all downloads"), role: .destructive) { Task { await model.deleteAllDownloads(readOnly: false) } }
-                } label: {
-                    MIcon("download").frame(width: 48, height: 48).contentShape(Rectangle())
+                if model.series?.source != LocalSource.id {
+                    Menu {
+                        Button(String(localized: "Next chapter")) { Task { await model.downloadNext(1) } }
+                        Button(String(localized: "Next 5 chapters")) { Task { await model.downloadNext(5) } }
+                        Button(String(localized: "Next 10 chapters")) { Task { await model.downloadNext(10) } }
+                        Button(String(localized: "Unread")) { Task { await model.downloadNext(nil) } }
+                        Button(String(localized: "All")) { Task { await model.downloadAll() } }
+                        Divider()
+                        Button(String(localized: "Delete read downloads"), role: .destructive) { Task { await model.deleteAllDownloads(readOnly: true) } }
+                        Button(String(localized: "Delete all downloads"), role: .destructive) { Task { await model.deleteAllDownloads(readOnly: false) } }
+                    } label: {
+                        MIcon("download").frame(width: 48, height: 48).contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(String(localized: "Download"))
                 }
-                .accessibilityLabel(String(localized: "Download"))
                 AppBarIcon("filter_list", label: String(localized: "Filter")) { showSettings = true }
                     .foregroundStyle(model.display.hasFilter ? Color(hex: 0xFFC107) : m3.onSurfaceVariant)
                 OverflowMenu {
@@ -415,7 +417,7 @@ struct SeriesView: View {
             if selected.count == 1, let chapter = selected.first {
                 barButton("done_previous", String(localized: "Mark previous as read")) { _ in Task { await model.markPreviousRead(chapter) } }
             }
-            if selected.contains(where: { !$0.isDownloaded }) {
+            if model.series?.source != LocalSource.id, selected.contains(where: { !$0.isDownloaded }) {
                 barButton("download", String(localized: "Download")) { ids in Task { await model.download(ids) } }
             }
             if selected.contains(where: \.isDownloaded) {
@@ -510,8 +512,11 @@ struct ChapterRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, 16)
             .padding(.vertical, 12)
-            ChapterDownloadIndicator(chapter: chapter, download: download, action: onDownloadAction)
-                .padding(.trailing, 8)
+            // Local comics are on the device already; Android shows no download button for them.
+            if series?.source != LocalSource.id {
+                ChapterDownloadIndicator(chapter: chapter, download: download, action: onDownloadAction)
+                    .padding(.trailing, 8)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)

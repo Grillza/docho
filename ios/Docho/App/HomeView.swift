@@ -127,6 +127,16 @@ struct HomeView: View {
             selection = .library
             paths[.library, default: []].append(.series(seriesId))
         }
+        .m3Dialog(
+            isPresented: Binding(get: { app.openFileError != nil }, set: { if !$0 { app.openFileError = nil } }),
+            title: String(localized: "Couldn't open the file")
+        ) {
+            Text(app.openFileError ?? "").font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "OK")) { app.openFileError = nil }
+        }
     }
 
     private var content: some View {
@@ -175,7 +185,7 @@ struct HomeView: View {
         let parts = target.split(separator: ":", maxSplits: 1).map(String.init)
         if let tab = HomeTab(rawValue: parts[0]) {
             selection = tab
-        } else if let source = ["kavita": KavitaSource.id, "komga": KomgaSource.id, "bookorbit": BookOrbitSource.id][parts[0]] {
+        } else if let source = ["local": LocalSource.id, "kavita": KavitaSource.id, "komga": KomgaSource.id, "bookorbit": BookOrbitSource.id][parts[0]] {
             selection = .browse
             paths[.browse] = [.source(source, listing: .popular)]
         } else if parts[0] == "series", let id = parts.last.flatMap(Int.init) {

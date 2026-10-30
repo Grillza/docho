@@ -58,7 +58,9 @@ extension AppDatabase {
     func queueDownloads(_ chapters: [ChapterRecord]) async throws -> Int {
         try await writer.write { db in
             var added = 0
-            for chapter in chapters where !chapter.isDownloaded {
+            // Local comics are on the device already (Android never downloads them either).
+            let local = Set(try Int.fetchAll(db, sql: "SELECT id FROM series WHERE source = ?", arguments: [LocalSource.id]))
+            for chapter in chapters where !chapter.isDownloaded && !local.contains(chapter.seriesId) {
                 guard try DownloadRecord.fetchOne(db, key: chapter.id) == nil else { continue }
                 try DownloadRecord(chapterId: chapter.id, seriesId: chapter.seriesId, state: .queued, pagesTotal: chapter.pages)
                     .insert(db)
