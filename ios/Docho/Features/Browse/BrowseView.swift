@@ -232,7 +232,7 @@ struct BrowseSourceView: View {
             if visible.isEmpty, model.isLoading {
                 LoadingScreen()
             } else if visible.isEmpty, model.error == nil, sourceId == LocalSource.id, model.listing == .popular {
-                EmptyScreen(message: String(localized: "No local comics yet. Add CBZ, ZIP or PDF files, or put them in Files › On My iPhone › Dōchō › local.")) {
+                EmptyScreen(message: String(localized: "No local comics yet. Add CBZ, CBR, CB7, EPUB or PDF files, or put them in Files › On My iPhone › Dōchō › local.")) {
                     M3TextButton(title: String(localized: "Add from Files")) { importing = true }
                 }
             } else if visible.isEmpty {

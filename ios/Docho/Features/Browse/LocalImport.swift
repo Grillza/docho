@@ -4,6 +4,13 @@ import UniformTypeIdentifiers
 extension UTType {
     /// Comic book ZIPs; declared in Info.plist so the Files app offers them to Dōchō.
     static let cbz = UTType(importedAs: "io.github.grillza.docho.cbz", conformingTo: .zip)
+    static let cbr = UTType(importedAs: "io.github.grillza.docho.cbr", conformingTo: .archive)
+    static let cb7 = UTType(importedAs: "io.github.grillza.docho.cb7", conformingTo: .archive)
+    static let rar = UTType(importedAs: "com.rarlab.rar-archive", conformingTo: .archive)
+    static let sevenZip = UTType(importedAs: "org.7-zip.7-zip-archive", conformingTo: .archive)
+
+    /// Everything the Local source reads.
+    static let comics: [UTType] = [.cbz, .cbr, .cb7, .zip, .rar, .sevenZip, .epub, .pdf, .folder]
 }
 
 /// Adding comics to the Local source from the Files app: pick files or folders, then choose the
@@ -23,7 +30,7 @@ struct LocalImportModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .fileImporter(isPresented: $isPresented, allowedContentTypes: [.cbz, .zip, .pdf, .folder], allowsMultipleSelection: true) { outcome in
+            .fileImporter(isPresented: $isPresented, allowedContentTypes: UTType.comics, allowsMultipleSelection: true) { outcome in
                 guard case .success(let urls) = outcome, !urls.isEmpty else { return }
                 picked = urls
                 series = nil

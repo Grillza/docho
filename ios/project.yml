@@ -39,6 +39,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho
         PRODUCT_NAME: Docho
+        # The system libarchive, for RAR and 7-Zip comics (Vendor/CLibArchive).
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Vendor/CLibArchive
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -83,15 +85,46 @@ targets:
             UTTypeTagSpecification:
               public.filename-extension: [cbz]
               public.mime-type: [application/vnd.comicbook+zip]
+          - UTTypeIdentifier: io.github.grillza.docho.cbr
+            UTTypeDescription: Comic book archive (RAR)
+            UTTypeConformsTo: [public.archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [cbr]
+              public.mime-type: [application/vnd.comicbook-rar]
+          - UTTypeIdentifier: io.github.grillza.docho.cb7
+            UTTypeDescription: Comic book archive (7-Zip)
+            UTTypeConformsTo: [public.archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [cb7]
+          - UTTypeIdentifier: com.rarlab.rar-archive
+            UTTypeDescription: RAR archive
+            UTTypeConformsTo: [public.archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [rar]
+              public.mime-type: [application/vnd.rar, application/x-rar-compressed]
+          - UTTypeIdentifier: org.7-zip.7-zip-archive
+            UTTypeDescription: 7-Zip archive
+            UTTypeConformsTo: [public.archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [7z]
+              public.mime-type: [application/x-7z-compressed]
         CFBundleDocumentTypes:
           - CFBundleTypeName: Comic book archive
             CFBundleTypeRole: Viewer
             LSHandlerRank: Default
-            LSItemContentTypes: [io.github.grillza.docho.cbz]
+            LSItemContentTypes: [io.github.grillza.docho.cbz, io.github.grillza.docho.cbr, io.github.grillza.docho.cb7]
           - CFBundleTypeName: ZIP archive
             CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate
             LSItemContentTypes: [public.zip-archive]
+          - CFBundleTypeName: RAR or 7-Zip archive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.rarlab.rar-archive, org.7-zip.7-zip-archive]
+          - CFBundleTypeName: EPUB book
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [org.idpf.epub-container]
           - CFBundleTypeName: PDF document
             CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate
@@ -118,6 +151,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho.tests
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Vendor/CLibArchive
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
 

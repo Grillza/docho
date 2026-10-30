@@ -610,9 +610,11 @@ catalogues (in the script), and a shrunk host jar (ProGuard/R8, not done yet).
   (drawn to JPEGs) or folders of images; `cover.jpg`, `ComicInfo.xml` and the old `details.json`
   are read as on Android. Comics are added from Browse › Local source › + (Files picker, into a
   new or existing series), by dropping files in Dōchō's folder, or with "Open in Dōchō" from Files
-  and other apps (CBZ, ZIP and PDF document types). CBR/CB7/EPUB aren't read yet: iOS has no RAR
-  or 7-Zip decoder, and EPUB needs its own reader. Local chapters can't be downloaded and count
-  as downloaded.
+  and other apps. CBR/RAR (RAR 4 and 5) and CB7/7Z are read with the libarchive that ships in
+  iOS (`/usr/lib/libarchive.2.dylib`; the SDK has its `.tbd` but no headers, so
+  `Vendor/CLibArchive` declares the calls used). EPUBs are read as Android does: the images of
+  their pages in spine order (`Source/ComicArchive.swift`). Local chapters can't be downloaded
+  and count as downloaded.
 - **Tracking** (`Tracking/`): MyAnimeList, AniList, Kitsu and MangaUpdates, with Android's
   tracker ids, statuses and score scales, and Mihon's client ids. AniList and MyAnimeList sign in
   on the web (`ASWebAuthenticationSession`, redirect `mihon://`); Kitsu and MangaUpdates with a

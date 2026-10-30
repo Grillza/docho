@@ -4,7 +4,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// Mihon's Local source: comics kept on the device, in `Documents/local` (shown in the Files app
-/// as On My iPhone › Dōchō › local). Each folder there is a series; inside, each CBZ/ZIP, PDF or
+/// as On My iPhone › Dōchō › local). Each folder there is a series; inside, each CBZ, CBR, CB7, EPUB, PDF or
 /// folder of images is a chapter. A `cover.jpg` and `ComicInfo.xml` in the series folder are used
 /// as on Android. Files put straight into `local` (or into Dōchō's top folder) get a folder of
 /// their own when the source is next listed.
@@ -35,10 +35,8 @@ struct LocalSource: MangaSource {
     }
 
     static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "webp", "gif", "avif", "heic", "heif", "bmp", "jxl"]
-    static let archiveExtensions: Set<String> = ["cbz", "zip"]
-    static let chapterExtensions = archiveExtensions.union(["pdf"])
-    /// Comic formats Android reads that iOS can't yet: RAR and 7-Zip need decoders iOS lacks.
-    static let unsupportedExtensions: Set<String> = ["cbr", "rar", "cb7", "7z", "epub"]
+    /// CBZ/ZIP, CBR/RAR, CB7/7Z and EPUB (`ComicArchive`), and PDF.
+    static let chapterExtensions = ComicArchive.extensions.union(["pdf"])
     private static let latestThreshold: TimeInterval = 7 * 24 * 60 * 60
 
     // MARK: Listing
@@ -183,14 +181,7 @@ struct LocalSource: MangaSource {
     }
 
     private static func unpack(_ file: URL, into directory: URL) throws {
-        let archive = try ZipArchive(url: file)
-        let images = archive.entries
-            .filter { !$0.isDirectory && isImage($0.name) && !($0.name as NSString).lastPathComponent.hasPrefix(".") && !$0.name.hasPrefix("__MACOSX") }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        for (index, entry) in images.enumerated() {
-            let ext = (entry.name as NSString).pathExtension.lowercased()
-            try archive.extract(entry).write(to: directory.appending(path: String(format: "%04d.%@", index, ext)))
-        }
+        try ComicArchive(url: file).unpackPages(into: directory)
     }
 
     /// Draws each PDF page as a JPEG about 1600 pixels across, about what a tablet shows.
@@ -251,12 +242,8 @@ struct LocalSource: MangaSource {
             guard let jpeg = image.jpegData(compressionQuality: 0.85) else { return }
             data = jpeg
         } else {
-            let archive = try ZipArchive(url: chapter)
-            guard let first = archive.entries
-                .filter({ !$0.isDirectory && Self.isImage($0.name) && !$0.name.hasPrefix("__MACOSX") })
-                .min(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
-            else { return }
-            data = try archive.extract(first)
+            guard let first = try ComicArchive(url: chapter).firstPage() else { return }
+            data = first
         }
         // Android always names it cover.jpg, whatever the image's format.
         try data.write(to: folder.appending(path: "cover.jpg"))
@@ -286,11 +273,8 @@ struct LocalSource: MangaSource {
         if isDirectory(chapter) {
             return try? Data(contentsOf: chapter.appending(path: ComicInfo.fileName))
         }
-        guard Self.archiveExtensions.contains(chapter.pathExtension.lowercased()),
-              let archive = try? ZipArchive(url: chapter),
-              let entry = archive.entry(named: ComicInfo.fileName)
-        else { return nil }
-        return try? archive.extract(entry)
+        guard ComicArchive.isArchive(chapter), chapter.pathExtension.lowercased() != "epub" else { return nil }
+        return try? ComicArchive(url: chapter).data(named: ComicInfo.fileName)
     }
 
     // MARK: Files
@@ -339,13 +323,11 @@ struct LocalSource: MangaSource {
 
     enum LocalError: LocalizedError {
         case missing
-        case unsupported(String)
         case nothingToAdd
 
         var errorDescription: String? {
             switch self {
             case .missing: String(localized: "The file isn't in the local folder any more")
-            case .unsupported(let ext): String(localized: "\(ext.uppercased()) files can't be opened yet. Use CBZ, ZIP, PDF or a folder of images.")
             case .nothingToAdd: String(localized: "No comics found to add")
             }
         }
@@ -384,7 +366,6 @@ struct LocalSource: MangaSource {
                 }
             } else {
                 let ext = url.pathExtension.lowercased()
-                if Self.unsupportedExtensions.contains(ext) { throw LocalError.unsupported(ext) }
                 guard Self.chapterExtensions.contains(ext) else { continue }
                 target = series.map(Self.folderName) ?? Self.folderName(url.deletingPathExtension().lastPathComponent)
                 try copy(url, toSeries: target)

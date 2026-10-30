@@ -117,10 +117,67 @@ final class LocalSourceTests: XCTestCase {
         XCTAssertEqual(try source.add([outside.appending(path: "Whole Series")], series: "One Shot"), ["Whole Series"], "a folder of chapters is its own series")
         XCTAssertEqual(source.seriesNames(), ["One Shot", "Whole Series"])
         XCTAssertTrue(FileManager.default.fileExists(atPath: source.root.appending(path: "One Shot/Extra.pdf").path))
-        XCTAssertThrowsError(try source.add([outside.appending(path: "Thing.cbr")], series: nil)) { error in
-            guard case LocalSource.LocalError.unsupported("cbr") = error else { return XCTFail("\(error)") }
-        }
+        XCTAssertEqual(try source.add([outside.appending(path: "Thing.cbr")], series: nil), ["Thing"])
+        try Data().write(to: outside.appending(path: "notes.txt"))
+        XCTAssertThrowsError(try source.add([outside.appending(path: "notes.txt")], series: nil))
         XCTAssertTrue(FileManager.default.fileExists(atPath: outside.appending(path: "One Shot.cbz").path), "copied, not moved")
+    }
+
+    private func fixture(_ name: String) throws -> URL {
+        try XCTUnwrap(Bundle(for: Self.self).url(forResource: name, withExtension: nil), "\(name) in the test bundle")
+    }
+
+    func testReadsRARAndRAR5WithTheSystemLibarchive() throws {
+        // libarchive's own test archives: RAR 4 with a folder and a link, RAR 5 compressed.
+        let rar4 = ComicArchive(url: try fixture("rar4.cbr"))
+        XCTAssertEqual(try rar4.data(named: "test.txt"), Data("test text document\r\n".utf8))
+        XCTAssertEqual(try rar4.data(named: "testdir/test.txt")?.count, 20)
+        XCTAssertEqual(try rar4.imageNames(), [], "no pages, and the link and folders are skipped")
+        let rar5 = try XCTUnwrap(ComicArchive(url: try fixture("rar5.cbr")).data(named: "test.bin"))
+        XCTAssertEqual(rar5.count, 1200)
+    }
+
+    func testReadsA7ZipComicAsAChapter() async throws {
+        let folder = source.root.appending(path: "Seven")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: try fixture("Seven.cb7"), to: folder.appending(path: "Seven 01.cb7"))
+        let (manga, chapters) = try await source.update(SManga(url: "Seven", title: "Seven"), details: true, chapters: true)
+        let chapter = try XCTUnwrap(chapters?.first)
+        XCTAssertEqual(chapter.name, "Packed", "ComicInfo.xml read from inside the 7-Zip")
+        XCTAssertEqual(chapter.number, 3)
+        XCTAssertEqual(manga.title, "Seven")
+        XCTAssertNotNil(source.coverRequest(manga))
+        let pages = try await source.pages(chapter)
+        XCTAssertEqual(pages.map { $0.imageURL.lastPathComponent }, ["0000.jpg", "0001.jpg"])
+        // 2.jpg comes first in reading order though it's second in the archive.
+        let first = try XCTUnwrap(UIImage(contentsOfFile: pages[0].imageURL.path))
+        XCTAssertGreaterThan(first.size.width, 0)
+    }
+
+    func testReadsAnEpubsImagesInSpineOrder() throws {
+        let container = """
+        <?xml version="1.0"?><container><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>
+        """
+        let package = """
+        <package><manifest>
+        <item id="p1" href="text/one.xhtml" media-type="application/xhtml+xml"/>
+        <item id="p2" href="text/two.xhtml" media-type="application/xhtml+xml"/>
+        <item id="cover" href="images/z-cover.png" media-type="image/png"/>
+        </manifest><spine><itemref idref="cover"/><itemref idref="p1"/><itemref idref="p2"/></spine></package>
+        """
+        let one = #"<html><body>&nbsp;<img src="../images/b%20page.png" alt="b"/></body></html>"#
+        let two = #"<html><body><svg><image width="1" height="1" xlink:href="../images/a.png"/></svg></body></html>"#
+        let data = Self.zip([
+            ("mimetype", Data("application/epub+zip".utf8), false), ("META-INF/container.xml", Data(container.utf8), false),
+            ("OEBPS/content.opf", Data(package.utf8), true), ("OEBPS/text/one.xhtml", Data(one.utf8), true),
+            ("OEBPS/text/two.xhtml", Data(two.utf8), true), ("OEBPS/images/a.png", Self.png(.red), false),
+            ("OEBPS/images/b page.png", Self.png(.blue), false), ("OEBPS/images/z-cover.png", Self.png(), false),
+        ])
+        let file = base.appending(path: "book.epub")
+        try data.write(to: file)
+        let archive = ComicArchive(url: file)
+        XCTAssertEqual(try archive.imageNames(), ["OEBPS/images/z-cover.png", "OEBPS/images/b page.png", "OEBPS/images/a.png"])
+        XCTAssertEqual(try archive.firstPage(), Self.png())
     }
 
     // MARK: Fixtures

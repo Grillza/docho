@@ -1,0 +1,7 @@
+// The libarchive that ships with iOS (libarchive.tbd in the SDK). The SDK has no headers for it,
+// so archive_shim.h declares the few calls Dōchō makes, as libarchive 3's archive.h does.
+module CLibArchive [system] {
+    header "archive_shim.h"
+    link "archive"
+    export *
+}
