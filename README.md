@@ -12,6 +12,8 @@ place in sync with them, or with KOReader on your e-reader.
 [![Based on Mihon v0.21.3](https://img.shields.io/badge/based_on-Mihon_v0.21.3-0877d2?labelColor=27303D)](https://github.com/mihonapp/mihon/releases/tag/v0.21.3)
 [![License: Apache-2.0](https://img.shields.io/github/license/Grillza/doki?labelColor=27303D&color=0877d2)](/LICENSE)
 
+[![Download](https://img.shields.io/github/v/release/Grillza/doki?label=Download&labelColor=06599d&color=043b69)](https://github.com/Grillza/doki/releases/latest)
+
 *Requires Android 8.0 or higher.*
 
 </div>
@@ -71,6 +73,11 @@ See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps
   [Comick](https://comick.dev/).
 * Categories to organise your library, and scheduled library updates.
 * Backups, kept locally or on your cloud service.
+
+## Download
+
+Get the latest APK from **[Releases](https://github.com/Grillza/doki/releases/latest)**. Most devices
+want the `arm64-v8a` build; `universal` runs anywhere but is larger.
 
 ## Building
 
