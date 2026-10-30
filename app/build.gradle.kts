@@ -37,8 +37,8 @@ android {
     defaultConfig {
         applicationId = "app.mihonka"
 
-        versionCode = 40
-        versionName = "0.25.0"
+        versionCode = 41
+        versionName = "0.26.0"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
