@@ -6,20 +6,26 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
 import docho.BuiltInSources
 import eu.kanade.presentation.util.rememberResourceBitmapPainter
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.coil.InstalledExtensionIcon
 import eu.kanade.tachiyomi.data.coil.InstalledSourceIcon
 import eu.kanade.tachiyomi.extension.model.Extension
+import mihon.app.di.appGraph
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.roundedfilled.Dangerous
 import mihon.icons.materialsymbols.roundedfilled.Warning
@@ -36,6 +42,8 @@ fun SourceIcon(
     modifier: Modifier = Modifier,
 ) {
     val builtInIcon = BuiltInSources.iconRes(source.id)
+    val context = LocalContext.current
+    val serverIcon = remember(source.id) { context.appGraph.suwayomiSources.iconUrl(source.id) }
 
     when {
         builtInIcon != null -> {
@@ -57,6 +65,25 @@ fun SourceIcon(
             Image(
                 painter = painterResource(R.mipmap.ic_local_source),
                 contentDescription = null,
+                modifier = modifier.then(defaultModifier),
+            )
+        }
+        serverIcon != null -> {
+            // A source run by the Suwayomi server; its icon comes from there, with the sign-in.
+            val defaultIcon = painterResource(R.mipmap.ic_default_source)
+            val authorization = remember { context.appGraph.suwayomiApi.authorization() }
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(serverIcon)
+                    .apply {
+                        if (authorization != null) {
+                            httpHeaders(NetworkHeaders.Builder().set("Authorization", authorization).build())
+                        }
+                    }
+                    .build(),
+                contentDescription = null,
+                placeholder = defaultIcon,
+                error = defaultIcon,
                 modifier = modifier.then(defaultModifier),
             )
         }

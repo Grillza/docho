@@ -29,6 +29,10 @@ import eu.kanade.presentation.more.settings.widget.AppThemeModePreferenceWidget
 import eu.kanade.presentation.more.settings.widget.AppThemePreferenceWidget
 import eu.kanade.presentation.util.rememberIs24HourSystem
 import eu.kanade.tachiyomi.ui.home.NavBarPreview
+import eu.kanade.tachiyomi.ui.home.NavBarTabsEditor
+import eu.kanade.tachiyomi.ui.home.navBarTabLooks
+import eu.kanade.tachiyomi.ui.home.navBarTabShown
+import eu.kanade.tachiyomi.ui.home.orderedNavBarTabs
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
@@ -65,14 +69,12 @@ object SettingsAppearanceScreen : SearchableSettings {
         val showHistory by uiPreferences.showHistoryTab.collectAsState()
         val showBrowse by uiPreferences.showBrowseTab.collectAsState()
         val alignment by uiPreferences.navBarAlignment.collectAsState()
+        val order by uiPreferences.navBarOrder.collectAsState()
         val allShown = showUpdates && showHistory && showBrowse
-        val shownTabs = listOfNotNull(
-            stringResource(MR.strings.label_library),
-            stringResource(MR.strings.label_recent_updates).takeIf { showUpdates },
-            stringResource(MR.strings.label_recent_manga).takeIf { showHistory },
-            stringResource(MR.strings.browse).takeIf { showBrowse },
-            stringResource(MR.strings.label_more),
-        ).joinToString()
+        val shownTabs = orderedNavBarTabs(order)
+            .filter { tab -> uiPreferences.navBarTabShown(tab)?.let { it.get() } ?: true }
+            .map { stringResource(navBarTabLooks.getValue(it).second) }
+            .joinToString()
         val alignmentName = stringResource(alignment.titleRes)
 
         return Preference.PreferenceGroup(
@@ -92,18 +94,11 @@ object SettingsAppearanceScreen : SearchableSettings {
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 },
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = uiPreferences.showUpdatesTab,
-                    title = stringResource(MR.strings.label_recent_updates),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = uiPreferences.showHistoryTab,
-                    title = stringResource(MR.strings.label_recent_manga),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = uiPreferences.showBrowseTab,
-                    title = stringResource(MR.strings.browse),
-                ),
+                Preference.PreferenceItem.CustomPreference(
+                    title = stringResource(MR.strings.pref_nav_bar_tabs),
+                ) {
+                    NavBarTabsEditor(modifier = Modifier.fillMaxWidth())
+                },
                 Preference.PreferenceItem.ListPreference(
                     preference = uiPreferences.navBarAlignment,
                     entries = NavBarAlignment.entries.associateWith { stringResource(it.titleRes) },

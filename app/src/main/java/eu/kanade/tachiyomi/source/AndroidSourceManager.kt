@@ -10,6 +10,7 @@ import docho.kavita.KavitaPreferences
 import docho.kavita.KavitaSource
 import docho.komga.KomgaPreferences
 import docho.komga.KomgaSource
+import docho.suwayomi.SuwayomiSources
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -44,6 +45,7 @@ class AndroidSourceManager(
     private val bookOrbitPreferences: BookOrbitPreferences,
     private val komgaSource: KomgaSource,
     private val komgaPreferences: KomgaPreferences,
+    private val suwayomiSources: SuwayomiSources,
     private val downloadManager: Lazy<DownloadManager>,
 ) : SourceManager {
 
@@ -80,8 +82,11 @@ class AndroidSourceManager(
                 .distinctUntilChanged()
             val builtInsConfigured = combine(kavitaConfigured, bookOrbitConfigured, komgaConfigured, ::Triple)
 
-            combine(extensionManager.loadedExtensionsFlow, builtInsConfigured, ::Pair)
-                .collectLatest { (extensions, builtIns) ->
+            // The Suwayomi server's sources are known from the last launch; ask it for changes.
+            launch { suwayomiSources.refresh() }
+
+            combine(extensionManager.loadedExtensionsFlow, builtInsConfigured, suwayomiSources.sources, ::Triple)
+                .collectLatest { (extensions, builtIns, serverSources) ->
                     val (kavitaEnabled, bookOrbitEnabled, komgaEnabled) = builtIns
                     val mutableMap = ConcurrentHashMap<Long, Source>(
                         mapOf(LocalSource.ID to localSource),
@@ -101,12 +106,17 @@ class AndroidSourceManager(
                         mutableMap[KomgaSource.ID] = komgaSource
                         komgaSource.refreshLibraries()
                     }
+                    // Sources run by a Suwayomi server, unless the same extension is on the device.
+                    serverSources.forEach { mutableMap[it.id] = it }
                     extensions.forEach { extension ->
                         extension.sources.forEach {
                             mutableMap[it.id] = it
                             registerStubSource(StubSource.from(it))
                         }
                     }
+                    val activeServerSources = serverSources.filter { mutableMap[it.id] === it }
+                    activeServerSources.forEach { registerStubSource(StubSource.from(it)) }
+                    suwayomiSources.activeIds = activeServerSources.map { it.id }.toSet()
                     sourcesMapFlow.value = mutableMap
                 }
         }

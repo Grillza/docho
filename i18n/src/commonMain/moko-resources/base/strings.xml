@@ -70,9 +70,14 @@
     <string name="sync_settings_export_failed">Couldn\'t save the settings file</string>
     <string name="sync_settings_import_failed">That isn\'t a Dōchō settings file</string>
     <string name="pref_category_nav_bar">Navigation bar</string>
-    <string name="pref_nav_bar_info">Choose which tabs show in the navigation bar. Library and More always show, so you can always get around the app.</string>
+    <string name="pref_nav_bar_info">Drag tabs to change their order, and tap the eye to show or hide one. Library and More always show, so you can always get around the app.</string>
     <string name="pref_nav_bar_alignment">Tab position</string>
     <string name="pref_nav_bar_preview">Preview</string>
+    <string name="pref_nav_bar_tabs">Tabs</string>
+    <string name="nav_bar_tab_hide">Hide %1$s</string>
+    <string name="nav_bar_tab_show">Show %1$s</string>
+    <string name="nav_bar_tab_always_shown">Always shown</string>
+    <string name="nav_bar_tab_reorder">Drag to reorder %1$s</string>
     <string name="nav_bar_alignment_left">Left</string>
     <string name="nav_bar_alignment_center">Centred</string>
     <string name="nav_bar_alignment_right">Right</string>
@@ -250,7 +255,7 @@
     <string name="onboarding_permission_action_grant">Grant</string>
     <string name="onboarding_permission_granted">Granted</string>
     <string name="onboarding_guides_new_user">New to %s? It\'s built on Mihon, so it shares Mihon\'s getting started guide. We recommend checking it out.</string>
-    <string name="onboarding_guides_self_hosted">Reading from your own Kavita, BookOrbit or Komga server, or syncing with KOReader?</string>
+    <string name="onboarding_guides_self_hosted">Reading from your own Kavita, BookOrbit, Komga or Suwayomi server, or syncing with KOReader?</string>
     <string name="onboarding_guides_self_hosted_action">Learn about setting up sync with self-hosted servers</string>
     <string name="onboarding_guides_returning_user">Reinstalling %s?</string>
 
@@ -1205,7 +1210,7 @@
 
     <!-- Docho: Sync settings -->
     <string name="pref_category_sync">Sync / Self-hosted sources</string>
-    <string name="pref_sync_summary">Kavita, BookOrbit, Komga, KOReader sync and where reading progress goes</string>
+    <string name="pref_sync_summary">Kavita, BookOrbit, Komga, Suwayomi, KOReader sync and where reading progress goes</string>
     <string name="pref_progress_sync">Reading progress</string>
     <string name="pref_progress_sync_mode">Sync progress with</string>
     <string name="pref_progress_sync_mode_source">Default - Sync with source</string>
@@ -1243,6 +1248,19 @@
     <string name="komga_koreader_notice_deny">Don\'t sync Komga</string>
     <string name="pref_koreader_komga_downloads">Match Komga books</string>
     <string name="pref_koreader_komga_downloads_summary">Downloads each Komga book once to work out the fingerprint KOReader matches it by. Large books can use a lot of data.</string>
+
+    <!-- Docho: Suwayomi -->
+    <string name="pref_category_suwayomi" translatable="false">Suwayomi</string>
+    <string name="pref_suwayomi_server_url_hint">The address you open Suwayomi at, e.g. http://192.168.1.20:4567</string>
+    <string name="pref_suwayomi_credentials_summary">Only needed if your server has basic authentication turned on</string>
+    <string name="suwayomi_not_configured">Enter the server address first</string>
+    <string name="suwayomi_test_success">Connected to %1$s</string>
+    <string name="suwayomi_sources_failed">Couldn\'t load the server\'s sources</string>
+    <string name="pref_suwayomi_sources_info">The extensions installed on your Suwayomi server appear under Browse → Sources beside the ones on this device, so you can read from them without installing them here. If an extension is on both, this device\'s copy is used.</string>
+    <string name="pref_suwayomi_show_nsfw">Show NSFW sources</string>
+    <string name="pref_suwayomi_show_nsfw_summary">Lists the server\'s sources that are marked NSFW</string>
+    <string name="pref_suwayomi_open">Manage extensions</string>
+    <string name="pref_suwayomi_open_summary">Opens Suwayomi in your browser to install, update or remove extensions on the server</string>
 
     <!-- Docho: KOReader sync -->
     <string name="pref_category_koreader">KOReader sync</string>

@@ -8,6 +8,7 @@ import docho.bookorbit.BookOrbitPreferences
 import docho.kavita.KavitaPreferences
 import docho.komga.KomgaPreferences
 import docho.koreader.KoreaderPreferences
+import docho.suwayomi.SuwayomiPreferences
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -37,6 +38,7 @@ class SyncSettingsFile(
     private val bookOrbitApi: BookOrbitApi,
     komga: KomgaPreferences,
     koreader: KoreaderPreferences,
+    suwayomi: SuwayomiPreferences,
     progressSync: ProgressSyncPreferences,
     backup: BackupPreferences,
     private val json: Json,
@@ -54,6 +56,10 @@ class SyncSettingsFile(
         Entry.Text(komga.apiKey, secret = true),
         Entry.Flag(komga.syncProgress),
         Entry.Flag(komga.koreaderDownloads),
+        Entry.Text(suwayomi.serverUrl),
+        Entry.Text(suwayomi.username),
+        Entry.Text(suwayomi.password, secret = true),
+        Entry.Flag(suwayomi.showNsfw),
         Entry.Text(koreader.serverUrl),
         Entry.Text(koreader.username),
         Entry.Text(koreader.password, secret = true),
