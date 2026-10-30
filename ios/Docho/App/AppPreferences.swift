@@ -76,6 +76,10 @@ final class AppPreferences {
     /// The tabs in the order the bar shows them.
     var tabOrder: [String] { didSet { save(tabOrder, "nav_bar_order") } }
 
+    /// The languages whose sources and extensions Browse lists (Mihon's `source_languages`):
+    /// the device's language and multi-language ones to start with.
+    var sourceLanguages: [String] { didSet { save(sourceLanguages, "source_languages") } }
+
     // MARK: Library
 
     enum DisplayMode: String, CaseIterable, Sendable {
@@ -197,6 +201,7 @@ final class AppPreferences {
         navPosition = string("nav_bar_position").flatMap(NavPosition.init) ?? .automatic
         navAlignment = string("nav_bar_alignment").flatMap(NavAlignment.init) ?? .center
         tabOrder = defaults.stringArray(forKey: "nav_bar_order") ?? ["library", "updates", "history", "browse", "more"]
+        sourceLanguages = defaults.stringArray(forKey: "source_languages") ?? ["all", Locale.current.language.languageCode?.identifier ?? "en"]
 
         displayMode = string("pref_display_mode_library").flatMap(DisplayMode.init) ?? .compactGrid
         gridColumnsPortrait = int("pref_library_columns_portrait_key", 0)

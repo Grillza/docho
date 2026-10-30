@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Where series come from (Tachiyomi's `CatalogueSource`). Kavita, Komga and BookOrbit are built
 /// in; extensions would be further implementations.
@@ -77,9 +78,23 @@ enum SourceError: LocalizedError {
     }
 }
 
-/// The sources the app knows, by id (Mihon's `SourceManager`).
-struct SourceManager: Sendable {
-    let sources: [any MangaSource]
+/// The sources the app knows, by id (Mihon's `SourceManager`): the built-in ones, and those a
+/// Suwayomi server offers, which come and go as extensions are installed.
+final class SourceManager: Sendable {
+    private let builtIn: [any MangaSource]
+    private let dynamic = Mutex<[any MangaSource]>([])
+
+    init(sources: [any MangaSource]) {
+        builtIn = sources
+    }
+
+    var sources: [any MangaSource] {
+        builtIn + dynamic.withLock { $0 }
+    }
+
+    func setDynamic(_ sources: [any MangaSource]) {
+        dynamic.withLock { $0 = sources.filter { source in !builtIn.contains { $0.id == source.id } } }
+    }
 
     func source(_ id: Int64) -> any MangaSource {
         sources.first { $0.id == id } ?? StubSource(id: id)

@@ -624,3 +624,17 @@ catalogues (in the script), and a shrunk host jar (ProGuard/R8, not done yet).
   `TrackChapter`; off in incognito, and switchable). Tracks are in the `track` table (v6).
   Not yet: Bangumi, Shikimori, MangaBaka, Hikka, Comick; Android's delayed tracking queue for
   updates made offline.
+
+### 2026-10-31: extensions through Suwayomi
+
+For now, extensions run on a Suwayomi server (`Suwayomi/`), not on the device; the embedded
+runtime (milestones 16–19) is still planned. Settings › Sync / Self-hosted sources › Suwayomi
+takes the server address (and basic-auth sign-in if the server uses it), the NSFW switch and the
+extension repos. Browse gets Sources / Extensions tabs: extensions install, update and uninstall
+on the server, and each installed source is listed by language (Mihon's language filter, under
+the filter icon). A server source keeps the extension's own source id and URLs, so its series
+are the same as Mihon's; Suwayomi's manga and chapter ids are looked up as needed (the chapter's
+is kept in its memo). Pages and covers come from the server with the sign-in attached, so
+reading, downloads and library updates work as for the other sources. Suwayomi's own Local
+source is left out (Dōchō has its own). `SuwayomiLiveTests` runs against a real server
+(`scripts/test-servers.sh` starts one) and is skipped otherwise.

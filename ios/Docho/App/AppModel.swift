@@ -32,6 +32,8 @@ final class AppModel {
     let downloads: DownloadManager
     let library: LibraryUpdater
     let trackers: TrackerManager
+    let suwayomiSettings: SuwayomiSettings
+    let suwayomi: SuwayomiModel
     let notifier = DownloadNotifier()
     private var triggers: SyncTriggers?
 
@@ -57,7 +59,8 @@ final class AppModel {
         downloadStore: DownloadStore = .standard(),
         pageFetcher: any PageFetcher = BackgroundFetch(),
         downloadDefaults: UserDefaults = .standard,
-        localSource: LocalSource = .standard()
+        localSource: LocalSource = .standard(),
+        suwayomiSettings: SuwayomiSettings = SuwayomiSettings()
     ) {
         self.settings = settings
         self.komgaSettings = komgaSettings
@@ -99,6 +102,8 @@ final class AppModel {
         downloads = DownloadManager(database: database, sources: sources, store: downloadStore, fetcher: pageFetcher, defaults: SendableDefaults(downloadDefaults))
         library = LibraryUpdater(database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences)
         trackers = TrackerManager(database: database, session: session, defaults: downloadDefaults)
+        self.suwayomiSettings = suwayomiSettings
+        suwayomi = SuwayomiModel(client: SuwayomiClient(settings: suwayomiSettings, session: session), sources: sources, defaults: downloadDefaults)
 
         Task { [weak self, changes = kavita.connectionChanges] in
             for await connection in changes {
@@ -115,6 +120,7 @@ final class AppModel {
         self.triggers = triggers
         triggers.start()
         notifier.attach(self)
+        Task { await suwayomi.refreshSources() }
         await downloads.resume()
         await sync.syncLibrary()
         if preferences.updateOnLaunch { await library.update() }
@@ -133,6 +139,9 @@ final class AppModel {
         if let url = environment["DOCHO_KAVITA_URL"], let key = environment["DOCHO_KAVITA_KEY"] {
             settings.serverURL = url
             settings.apiKey = key
+        }
+        if let url = environment["DOCHO_SUWAYOMI_URL"] {
+            suwayomiSettings.serverURL = url
         }
         if let url = environment["DOCHO_KOMGA_URL"], let key = environment["DOCHO_KOMGA_KEY"] {
             komgaSettings.serverURL = url

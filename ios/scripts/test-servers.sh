@@ -1,13 +1,13 @@
 #!/bin/zsh
-# Starts local Kavita and Komga servers in Docker with a few generated test comics, for the
+# Starts local Kavita, Komga and Suwayomi servers in Docker with a few generated test comics, for the
 # live tests (PLAN-2.md, Part H). Prints the environment variables check.sh needs.
 #
 # usage: ios/scripts/test-servers.sh [work-dir]     (default: ios/build/test-servers)
-# stop:  docker rm -f docho-kavita docho-komga
+# stop:  docker rm -f docho-kavita docho-komga docho-suwayomi
 set -euo pipefail
 cd "$(dirname "$0")"
 WORK="${1:-$PWD/../build/test-servers}"
-mkdir -p "$WORK/bin" "$WORK/library/Comics" "$WORK/kavita-config" "$WORK/komga-config"
+mkdir -p "$WORK/bin" "$WORK/library/Comics" "$WORK/kavita-config" "$WORK/komga-config" "$WORK/suwayomi/local"
 
 # Test comics: numbered pages, so a test can see which page is shown.
 swiftc -O -o "$WORK/bin/make-test-pages" make-test-pages.swift
@@ -25,13 +25,19 @@ if [ -z "$(ls -A "$WORK/library/Comics")" ]; then
   make_cbz "Spread Test" "Spread Test v01" 10 "Spread" 0.95 1600 1200
 fi
 
-docker rm -f docho-komga docho-kavita >/dev/null 2>&1 || true
+docker rm -f docho-komga docho-kavita docho-suwayomi >/dev/null 2>&1 || true
+# Suwayomi's own Local source reads its local folder; the live tests read the test comic there.
+mkdir -p "$WORK/suwayomi/local/Docho Test"
+cp "$WORK/library/Comics/Docho Test/"*.cbz "$WORK/suwayomi/local/Docho Test/" 2>/dev/null || true
+docker run -d --name docho-suwayomi -p 4567:4567 \
+  -v "$WORK/suwayomi:/home/suwayomi/.local/share/Tachidesk" ghcr.io/suwayomi/suwayomi-server:stable >/dev/null
 docker run -d --name docho-komga -p 25600:25600 -e JAVA_TOOL_OPTIONS=-Xmx512m \
   -v "$WORK/komga-config:/config" -v "$WORK/library:/data:ro" gotson/komga:latest >/dev/null
 docker run -d --name docho-kavita -p 5005:5000 \
   -v "$WORK/kavita-config:/kavita/config" -v "$WORK/library:/manga:ro" jvmilazz0/kavita:latest >/dev/null
 until curl -s -o /dev/null -w '%{http_code}' http://localhost:25600/api/v1/libraries | grep -q 401; do sleep 3; done
 until curl -s -o /dev/null -w '%{http_code}' http://localhost:5005/api/health | grep -q 200; do sleep 3; done
+until curl -sf -o /dev/null http://localhost:4567/api/v1/settings/about; do sleep 3; done
 
 # Komga: claim the server, add the library, make an API key (first run only).
 if [ ! -s "$WORK/komga.key" ]; then
@@ -56,4 +62,5 @@ fi
 echo "Servers are up. For the live tests:"
 echo "  TEST_RUNNER_DOCHO_KAVITA_URL=http://localhost:5005 TEST_RUNNER_DOCHO_KAVITA_KEY=$(cat "$WORK/kavita.key") \\"
 echo "  TEST_RUNNER_DOCHO_KOMGA_URL=http://localhost:25600 TEST_RUNNER_DOCHO_KOMGA_KEY=$(cat "$WORK/komga.key") \\"
+echo "  TEST_RUNNER_DOCHO_SUWAYOMI_URL=http://localhost:4567 \\"
 echo "  TEST_RUNNER_DOCHO_KOMGA_SERIES='Docho Test' ios/scripts/check.sh"

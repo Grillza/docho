@@ -25,6 +25,7 @@ struct SyncSettingsPage: View {
             BookOrbitSection(waiting: counts[BookOrbitSync.engine] ?? 0)
             KomgaSection(waiting: counts[KomgaSync.engine] ?? 0)
             KoreaderSection(waiting: counts[KoreaderSync.engine] ?? 0)
+            SuwayomiSection()
             SettingsFileSection()
         }
         .onAppear { mode = app.syncSettings.mode }
@@ -194,7 +195,7 @@ private struct ServerCommonRows: View {
 }
 
 /// Checks the connection 300 ms after the last edit, as Android does.
-private struct DebouncedCheck: ViewModifier {
+struct DebouncedCheck: ViewModifier {
     let key: String
     let check: () async -> Void
 
@@ -502,7 +503,7 @@ private struct KoreaderSection: View {
     }
 }
 
-private func connectionText(_ status: ServerConnection, configured: Bool) -> String {
+func connectionText(_ status: ServerConnection, configured: Bool) -> String {
     guard configured else { return String(localized: "Enter the server address and sign-in details first") }
     return switch status {
     case .unknown: String(localized: "Tap to check the connection")

@@ -53,6 +53,7 @@ struct SettingsFile {
         let bookOrbit = app.bookOrbitSettings
         let koreader = app.koreaderSettings
         let sync = app.syncSettings
+        let suwayomi = app.suwayomiSettings
         func text(_ key: String, secret: Bool = false, _ get: @escaping () -> String, _ set: @escaping (String) -> Void) -> Entry {
             Entry(key: key, secret: secret, read: get) { value in
                 guard let value = value as? String else { return false }
@@ -79,6 +80,10 @@ struct SettingsFile {
             text("__PRIVATE_komga_api_key", secret: true, { komga.apiKey }, { komga.apiKey = $0 }),
             flag("komga_sync_progress", { komga.syncProgress }, { komga.syncProgress = $0 }),
             flag("komga_koreader_downloads", { komga.koreaderDownloads }, { komga.koreaderDownloads = $0 }),
+            // iOS only (Android runs extensions itself); Android skips keys it doesn't know.
+            text("suwayomi_server_url", { suwayomi.serverURL }, { suwayomi.serverURL = $0 }),
+            text("suwayomi_username", { suwayomi.username }, { suwayomi.username = $0 }),
+            text("__PRIVATE_suwayomi_password", secret: true, { suwayomi.password }, { suwayomi.password = $0 }),
             text("koreader_server_url", { koreader.serverURL }, { koreader.serverURL = $0 }),
             text("koreader_username", { koreader.username }, { koreader.username = $0 }),
             text("__PRIVATE_koreader_password", secret: true, { koreader.password }, { koreader.password = $0 }),

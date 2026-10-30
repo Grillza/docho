@@ -1,3 +1,4 @@
+import NukeUI
 import SwiftUI
 
 /// What a source's listing shows.
@@ -16,6 +17,8 @@ struct BrowseView: View {
     @Environment(\.navigate) private var navigate
     @State private var searching = false
     @State private var query = ""
+    @State private var tab = BrowseTab.sources
+    @State private var choosingLanguages = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,33 +42,94 @@ struct BrowseView: View {
                 .background(m3.surface)
             } else {
                 TopAppBar(title: String(localized: "Browse")) {
-                    AppBarIcon("travel_explore", label: String(localized: "Global search")) { searching = true }
-                }
-            }
-            let sources = app.sources.available
-            if sources.isEmpty {
-                EmptyScreen(message: String(localized: "No sources set up. Add Kavita, Komga or BookOrbit in Settings → Sync.")) {
-                    NavigationLink(value: Route.settingsPage(.sync)) {
-                        Text("Set up a server").font(M3Type.labelLarge).foregroundStyle(m3.primary)
+                    if tab == .extensions {
+                        AppBarIcon("refresh", label: String(localized: "Check for updates")) {
+                            Task { await app.suwayomi.loadExtensions(refresh: true) }
+                        }
+                    } else {
+                        AppBarIcon("travel_explore", label: String(localized: "Global search")) { searching = true }
+                    }
+                    if app.suwayomi.isConfigured {
+                        AppBarIcon("filter_list", label: String(localized: "Languages")) { choosingLanguages = true }
                     }
                 }
+            }
+            if app.suwayomi.isConfigured {
+                M3Tabs(tabs: BrowseTab.allCases, selection: $tab, title: \.title, badge: { tab in
+                    let updates = app.suwayomi.extensions.filter { $0.isInstalled && $0.hasUpdate }.count
+                    return tab == .extensions && updates > 0 ? String(updates) : nil
+                })
+            }
+            if tab == .extensions, app.suwayomi.isConfigured {
+                ExtensionsView(query: "")
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        Text("Other")
+                sourceList
+            }
+        }
+        .background(m3.surface)
+        .m3Sheet(isPresented: $choosingLanguages) { LanguagesSheet() }
+        #if DEBUG
+        .onAppear { if ProcessInfo.processInfo.environment["DOCHO_OPEN"] == "extensions" { tab = .extensions } }
+        #endif
+    }
+
+    enum BrowseTab: CaseIterable {
+        case sources, extensions
+
+        var title: String {
+            switch self {
+            case .sources: String(localized: "Sources")
+            case .extensions: String(localized: "Extensions")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sourceList: some View {
+        let groups = sourceGroups
+        if groups.isEmpty {
+            EmptyScreen(message: String(localized: "No sources set up. Add Kavita, Komga, BookOrbit or a Suwayomi server for extensions in Settings → Sync.")) {
+                NavigationLink(value: Route.settingsPage(.sync)) {
+                    Text("Set up a server").font(M3Type.labelLarge).foregroundStyle(m3.primary)
+                }
+            }
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(groups, id: \.title) { group in
+                        Text(group.title)
                             .font(M3Type.bodyMedium)
                             .foregroundStyle(m3.onSurfaceVariant)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .accessibilityAddTraits(.isHeader)
-                        ForEach(sources, id: \.id) { source in
+                        ForEach(group.sources, id: \.id) { source in
                             SourceRow(source: source)
                         }
                     }
                 }
             }
         }
-        .background(m3.surface)
+    }
+
+    /// The built-in sources under "Other", then the server's by language, as Mihon groups them.
+    private var sourceGroups: [(title: String, sources: [any MangaSource])] {
+        _ = app.suwayomi.sourceInfos
+        let showNSFW = app.suwayomiSettings.showNSFW
+        let languages = Set(app.preferences.sourceLanguages)
+        let sources = app.sources.available.filter { source in
+            guard let remote = source as? SuwayomiSource else { return true }
+            return (showNSFW || !remote.info.isNSFW) && languages.contains(remote.lang)
+        }
+        let builtIn = sources.filter { !($0 is SuwayomiSource) }
+        let remote = Dictionary(grouping: sources.filter { $0 is SuwayomiSource }, by: \.lang)
+        var groups: [(title: String, sources: [any MangaSource])] = []
+        if !builtIn.isEmpty { groups.append((String(localized: "Other"), builtIn)) }
+        for lang in remote.keys.sorted(by: { ExtensionsView.languageName($0) < ExtensionsView.languageName($1) }) {
+            let list = remote[lang, default: []].sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            groups.append((ExtensionsView.languageName(lang), list))
+        }
+        return groups
     }
 }
 
@@ -80,7 +144,7 @@ private struct SourceRow: View {
                 SourceIcon(source: source).frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(source.name).font(M3Type.bodyMedium).foregroundStyle(m3.onSurface)
-                    Text("Other").font(M3Type.bodySmall).foregroundStyle(m3.onSurfaceVariant)
+                    Text(ExtensionsView.languageName(source.lang)).font(M3Type.bodySmall).foregroundStyle(m3.onSurfaceVariant)
                 }
                 .padding(.horizontal, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,7 +170,13 @@ struct SourceIcon: View {
     let source: any MangaSource
 
     var body: some View {
-        if let asset = source.iconAsset, UIImage(named: asset) != nil {
+        if let remote = source as? SuwayomiSource, let request = remote.client.request(remote.info.iconPath) {
+            LazyImage(request: ImageRequest(urlRequest: request)) { state in
+                if let image = state.image { image.resizable().scaledToFit() } else { m3.surfaceContainerHighest }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .accessibilityHidden(true)
+        } else if let asset = source.iconAsset, UIImage(named: asset) != nil {
             Image(asset).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 8)).accessibilityHidden(true)
         } else {
             Text(source.name.prefix(1))

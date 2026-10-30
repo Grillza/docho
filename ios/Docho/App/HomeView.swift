@@ -183,11 +183,16 @@ struct HomeView: View {
     private func openFromLaunchEnvironment() {
         guard let target = ProcessInfo.processInfo.environment["DOCHO_OPEN"] else { return }
         let parts = target.split(separator: ":", maxSplits: 1).map(String.init)
-        if let tab = HomeTab(rawValue: parts[0]) {
+        if parts[0] == "extensions" {
+            selection = .browse
+        } else if let tab = HomeTab(rawValue: parts[0]) {
             selection = tab
         } else if let source = ["local": LocalSource.id, "kavita": KavitaSource.id, "komga": KomgaSource.id, "bookorbit": BookOrbitSource.id][parts[0]] {
             selection = .browse
             paths[.browse] = [.source(source, listing: .popular)]
+        } else if parts[0] == "source", let id = parts.last.flatMap(Int64.init) {
+            selection = .browse
+            paths[.browse] = [.source(id, listing: .popular)]
         } else if parts[0] == "series", let id = parts.last.flatMap(Int.init) {
             paths[.library] = [.series(id)]
         } else if parts[0] == "settings", let page = parts.last.flatMap(SettingsPage.init) {
