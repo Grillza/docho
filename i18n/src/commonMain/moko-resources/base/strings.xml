@@ -42,7 +42,7 @@
     <string name="action_collapsed">Collapsed</string>
     <string name="about_general_help">For general help: refer to Mihon troubleshooting page</string>
     <string name="about_contact">Contact us</string>
-    <string name="about_contact_summary">For further help or app suggestions, email us at %1$s. Tap to copy the address.</string>
+    <string name="about_contact_summary">Report a bug or suggest a feature on GitHub</string>
     <string name="pref_server_delete_summary">Erase the %1$s settings on this device</string>
     <string name="pref_server_delete_title">Delete %1$s settings?</string>
     <string name="pref_server_delete_text">This erases the %1$s server address, sign-in details, sync options and any progress not yet sent. Nothing is deleted on the server, and your other settings stay as they are.</string>

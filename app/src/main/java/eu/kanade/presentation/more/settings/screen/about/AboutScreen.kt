@@ -67,8 +67,7 @@ object AboutScreen : Screen() {
 
     private const val PRIVACY_POLICY_URL = "$REPO_URL/blob/main/docs/privacy-policy.md"
 
-    /** GitHub's relay address for the repository owner. */
-    private const val CONTACT_EMAIL = "174673301+Grillza@users.noreply.github.com"
+    private const val ISSUES_URL = "$REPO_URL/issues"
 
     @Composable
     override fun Content() {
@@ -185,8 +184,8 @@ object AboutScreen : Screen() {
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.about_contact),
-                        subtitle = stringResource(MR.strings.about_contact_summary, CONTACT_EMAIL),
-                        onPreferenceClick = { context.copyToClipboard(CONTACT_EMAIL, CONTACT_EMAIL) },
+                        subtitle = stringResource(MR.strings.about_contact_summary),
+                        onPreferenceClick = { uriHandler.openUri(ISSUES_URL) },
                     )
                 }
 
