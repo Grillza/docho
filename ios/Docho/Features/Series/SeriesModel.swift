@@ -88,6 +88,35 @@ final class SeriesModel {
         await app.downloads.deleteSeries(seriesId, readOnly: readOnly)
     }
 
+    var isLocal: Bool { series?.source == LocalSource.id }
+
+    /// Deletes Local source chapters' files from the device; the refresh then drops them from
+    /// the list. Returns why it failed, if it did.
+    func deleteLocalFiles(_ chapterIds: some Collection<Int>) async -> String? {
+        let ids = Set(chapterIds)
+        do {
+            try app.localSource.deleteChapters(chapters.filter { ids.contains($0.id) }.map(\.url))
+        } catch {
+            await refresh()
+            return error.localizedDescription
+        }
+        await refresh()
+        return nil
+    }
+
+    /// Deletes a Local source series' folder from the device and takes it out of the library.
+    func deleteLocalSeries() async -> String? {
+        guard let series else { return nil }
+        do {
+            try app.localSource.deleteSeries(series.url)
+        } catch {
+            return error.localizedDescription
+        }
+        try? await app.database.setInLibrary(seriesId: seriesId, false)
+        _ = try? await app.database.saveFromSource(seriesId: seriesId, manga: nil, chapters: [])
+        return nil
+    }
+
     func retryDownloads() async {
         await app.downloads.retryFailed()
     }

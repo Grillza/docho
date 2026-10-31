@@ -335,6 +335,25 @@ struct LocalSource: MangaSource {
 
     // MARK: Adding
 
+    /// Deletes chapters' files (or folders of images) from the device, with the pages unpacked
+    /// from them. Chapters already gone are skipped.
+    func deleteChapters(_ urls: [String]) throws {
+        for url in urls {
+            guard let file = try? chapterURL(url) else { continue }
+            if let unpacked = try? unpackDirectory(for: file) { try? FileManager.default.removeItem(at: unpacked) }
+            try FileManager.default.removeItem(at: file)
+        }
+    }
+
+    /// Deletes a series' folder from the device: its chapters, cover and ComicInfo.xml.
+    func deleteSeries(_ name: String) throws {
+        guard let folder = try? seriesFolder(name) else { return }
+        for chapter in (try? chapterFiles(folder)) ?? [] {
+            if let unpacked = try? unpackDirectory(for: chapter) { try? FileManager.default.removeItem(at: unpacked) }
+        }
+        try FileManager.default.removeItem(at: folder)
+    }
+
     /// The names of the series folders, for picking where to add files.
     func seriesNames() -> [String] {
         ((try? seriesFolders()) ?? [])

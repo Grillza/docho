@@ -64,7 +64,6 @@ struct HomeView: View {
     @State private var selection: HomeTab = .library
     @State private var paths: [HomeTab: [Route]] = [:]
     @State private var reader: ReaderLaunch?
-    @State private var queueCount = 0
     @State private var updatesCount = 0
 
     private var tabs: [HomeTab] { HomeTab.visible(app.preferences) }
@@ -129,11 +128,6 @@ struct HomeView: View {
         }
         .task {
             do {
-                for try await queue in app.database.downloadQueue() { queueCount = queue.count }
-            } catch {}
-        }
-        .task {
-            do {
                 for try await updates in app.database.updates(limit: 200) { updatesCount = updates.filter { !$0.chapter.read }.count }
             } catch {}
         }
@@ -190,8 +184,8 @@ struct HomeView: View {
 
     private func badge(_ tab: HomeTab) -> String? {
         switch tab {
+        // Only Updates: the download bar already shows the queue, so More has no count.
         case .updates: updatesCount > 0 ? String(updatesCount) : nil
-        case .more: queueCount > 0 ? String(queueCount) : nil
         default: nil
         }
     }

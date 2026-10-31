@@ -8,6 +8,7 @@ struct SeriesView: View {
     @Environment(\.m3) private var m3
     @Environment(\.openReader) private var openReader
     @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
     @State private var model: SeriesModel?
     @State private var scrolledPastHeader = false
     @State private var selection = Set<Int>()
@@ -16,6 +17,10 @@ struct SeriesView: View {
     @State private var showTracking = false
     @State private var trackCount = 0
     @State private var confirmingRemove = false
+    /// Local source chapters waiting on "Delete from device?".
+    @State private var deletingFiles: Set<Int>?
+    @State private var deletingSeriesFiles = false
+    @State private var fileError: String?
     @State private var descriptionExpanded = false
     let seriesId: Int
 
@@ -110,6 +115,40 @@ struct SeriesView: View {
                 Task { await model.setInLibrary(false) }
             }
         }
+        .m3Dialog(isPresented: Binding(get: { deletingFiles != nil }, set: { if !$0 { deletingFiles = nil } }), title: String(localized: "Delete from device?")) {
+            Text("The selected chapters' files are deleted from Dōchō's folder on this device. This can't be undone.")
+                .font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "Cancel")) { deletingFiles = nil }
+            M3TextButton(title: String(localized: "Delete")) {
+                let ids = deletingFiles ?? []
+                deletingFiles = nil
+                Task { fileError = await model.deleteLocalFiles(ids) }
+            }
+        }
+        .m3Dialog(isPresented: $deletingSeriesFiles, title: String(localized: "Delete from device?")) {
+            Text("This series' folder and every chapter in it are deleted from this device, and it leaves your library. This can't be undone.")
+                .font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "Cancel")) { deletingSeriesFiles = false }
+            M3TextButton(title: String(localized: "Delete")) {
+                deletingSeriesFiles = false
+                Task {
+                    if let error = await model.deleteLocalSeries() { fileError = error } else { dismiss() }
+                }
+            }
+        }
+        .m3Dialog(isPresented: Binding(get: { fileError != nil }, set: { if !$0 { fileError = nil } }), title: String(localized: "Couldn't delete")) {
+            Text(fileError ?? "").font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "OK")) { fileError = nil }
+        }
     }
 
     /// The chapter list on its own, for the tablet layout.
@@ -181,6 +220,9 @@ struct SeriesView: View {
                     if let url = model.series.flatMap({ model.source.webURL($0.manga) }) {
                         Button(String(localized: "Open in browser")) { openURL(url) }
                         ShareLink(String(localized: "Share"), item: url)
+                    }
+                    if model.isLocal {
+                        Button(String(localized: "Delete from device"), role: .destructive) { deletingSeriesFiles = true }
                     }
                 }
             }
@@ -435,7 +477,9 @@ struct SeriesView: View {
             if model.series?.source != LocalSource.id, selected.contains(where: { !$0.isDownloaded }) {
                 barButton("download", String(localized: "Download")) { ids in Task { await model.download(ids) } }
             }
-            if selected.contains(where: \.isDownloaded) {
+            if model.isLocal {
+                barButton("delete", String(localized: "Delete from device")) { ids in deletingFiles = ids }
+            } else if selected.contains(where: \.isDownloaded) {
                 barButton("delete", String(localized: "Delete")) { _ in Task { await model.deleteDownloads(selected.filter(\.isDownloaded).map(\.id)) } }
             }
         }

@@ -24,6 +24,8 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
 
     private weak var app: AppModel?
     private var activity: AnyObject?
+    /// A task submitted that the system hasn't started yet, so a second tap doesn't submit another.
+    private var submitted = false
     private var activityObserver: Task<Void, Never>?
     private let log = Logger(subsystem: "io.github.grillza.docho", category: "download-notifier")
 
@@ -36,11 +38,12 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    /// Called when the user starts downloads: asks for notification permission once, and
-    /// starts the system progress activity.
+    /// Called when the user starts downloads: starts the system progress activity, then asks for
+    /// notification permission once. The task goes first: it has to be submitted while the app is
+    /// in front, which it no longer is while the permission alert is up.
     func userStartedDownloads(title: String) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         startContinuedTask(subtitle: title)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     // MARK: Notifications
@@ -104,13 +107,17 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func startContinuedTask(subtitle: String) {
-        guard #available(iOS 26, *), Self.registered, activity == nil else { return }
+        guard #available(iOS 26, *), Self.registered, activity == nil, !submitted else { return }
         let request = BGContinuedProcessingTaskRequest(
             identifier: Self.taskPrefix + UUID().uuidString, title: String(localized: "Downloading"), subtitle: subtitle
         )
-        request.strategy = .queue
+        // Run now or not at all. A queued request (the default) can wait behind other apps' tasks
+        // and only show its progress once the downloads are well under way; the download bar
+        // covers the app either way.
+        request.strategy = .fail
         do {
             try BGTaskScheduler.shared.submit(request)
+            submitted = true
         } catch {
             log.info("Continued processing unavailable: \(error)")
         }
@@ -118,6 +125,7 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
 
     @available(iOS 26, *)
     private func run(_ task: BGContinuedProcessingTask) {
+        submitted = false
         guard let app else { return task.setTaskCompleted(success: false) }
         activity = task
         task.progress.totalUnitCount = 1
@@ -130,8 +138,12 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
             }
         }
         activityObserver = Task { [weak self] in
+            // The task can start before the chapters are queued; an empty queue only ends it once
+            // there has been something in it.
+            var started = false
             do {
                 for try await queue in app.database.downloadQueue() {
+                    started = started || !queue.isEmpty
                     let total = queue.reduce(0) { $0 + max($1.download.pagesTotal, 1) }
                     let done = queue.reduce(0) { $0 + $1.download.pagesDone }
                     task.progress.totalUnitCount = Int64(max(total, 1))
@@ -139,7 +151,7 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
                     if let current = queue.first {
                         task.updateTitle(String(localized: "Downloading"), subtitle: "\(current.seriesName) - \(current.chapterName)")
                     }
-                    if queue.isEmpty || app.preferences.downloadsPaused {
+                    if (started && queue.isEmpty) || app.preferences.downloadsPaused {
                         self?.finishContinuedTask(success: queue.isEmpty)
                         return
                     }
@@ -164,8 +176,9 @@ extension AppModel {
     func userDownload(_ chapters: [ChapterRecord]) async {
         let chapters = chapters.filter { !$0.isDownloaded }
         guard !chapters.isEmpty else { return }
-        await downloads.download(chapters)
+        // The activity starts before the chapters are queued, so it shows as soon as they're tapped.
         let series = try? await database.seriesRecord(id: chapters[0].seriesId)
         notifier.userStartedDownloads(title: [series?.name, chapters.count == 1 ? chapters[0].name : nil].compactMap { $0 }.joined(separator: " - "))
+        await downloads.download(chapters)
     }
 }
