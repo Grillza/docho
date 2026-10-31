@@ -344,6 +344,9 @@ struct AboutView: View {
                     PreferenceRow(title: String(localized: "Help"), subtitle: String(localized: "Self-hosted sync guide"), action: {
                         openURL(Self.repository.appending(path: "blob/main/docs/self-hosted-sync.md"))
                     })
+                    PreferenceRow(title: String(localized: "Contact us"), subtitle: String(localized: "Report a bug or suggest a feature on GitHub"), action: {
+                        openURL(Self.repository.appending(path: "issues"))
+                    })
                     PreferenceRow(title: String(localized: "Getting started"), subtitle: String(localized: "Mihon's guides and troubleshooting"), action: {
                         openURL(URL(string: "https://mihon.app/docs/guides/troubleshooting/")!)
                     })
