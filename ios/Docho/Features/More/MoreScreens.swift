@@ -1,5 +1,6 @@
 import Nuke
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Categories
 
@@ -192,19 +193,35 @@ extension AppDatabase {
 
 // MARK: - Data and storage
 
-/// Mihon's Data and storage: storage used by downloads and the image cache.
+/// Mihon's Data and storage: backups, and storage used by downloads and the image cache.
 struct DataStorageView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
     @State private var downloadsSize: Int64 = 0
     @State private var cacheSize = 0
     @State private var message: String?
+    @State private var backup: BackupDocument?
+    @State private var restoring = false
+    @State private var busy = false
+    @State private var backupResult: String?
 
     var body: some View {
         VStack(spacing: 0) {
             TopAppBar(title: String(localized: "Data and storage"), showsBack: true)
             ScrollView {
                 VStack(spacing: 0) {
+                    PreferenceHeader(title: String(localized: "Backup and restore"))
+                    PreferenceRow(
+                        title: String(localized: "Create backup"),
+                        subtitle: String(localized: "Can be used to restore the current library in Dōchō or Mihon"), icon: "save",
+                        action: { if !busy { createBackup() } }
+                    )
+                    PreferenceRow(
+                        title: String(localized: "Restore backup"),
+                        subtitle: String(localized: "Restore library from backup file"), icon: "autorenew",
+                        action: { if !busy { restoring = true } }
+                    )
+                    InfoPreference(text: String(localized: "Backups hold your library, categories, reading progress, history, tracking and settings, as Mihon's do. Server details and tracker sign-ins are left out, as they can't be password protected; to move your servers to another device, use Export settings in Settings → Sync / Self-hosted sources."))
                     PreferenceHeader(title: String(localized: "Storage usage"))
                     PreferenceRow(
                         title: String(localized: "Downloads"),
@@ -221,14 +238,60 @@ struct DataStorageView: View {
                             message = String(localized: "Cache cleared")
                         }
                     )
-                    InfoPreference(text: String(localized: "Backups aren't on iOS yet. Library, progress and settings stay on the device, and reading progress syncs with your servers. To move your servers to another device, use Export settings in Settings → Sync / Self-hosted sources."))
                 }
             }
         }
         .background(m3.surface)
+        .fileExporter(
+            isPresented: Binding(get: { backup != nil }, set: { if !$0 { backup = nil } }),
+            document: backup, contentType: BackupDocument.type, defaultFilename: BackupManager.fileName()
+        ) { outcome in
+            switch outcome {
+            case .success: backupResult = String(localized: "Backup created")
+            case .failure(let error): backupResult = error.localizedDescription
+            }
+        }
+        .fileImporter(isPresented: $restoring, allowedContentTypes: [BackupDocument.type, .gzip, .data]) { outcome in
+            guard case .success(let url) = outcome else { return }
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else {
+                backupResult = MihonBackup.BackupError.invalid.localizedDescription
+                return
+            }
+            busy = true
+            Task {
+                defer { busy = false }
+                do {
+                    let restored = try await BackupManager(app: app).restore(data)
+                    backupResult = String(localized: "Restored \(restored.series) series and \(restored.settings) settings. Restart Dōchō for the settings to take effect.")
+                } catch {
+                    backupResult = error.localizedDescription
+                }
+            }
+        }
+        .m3Dialog(isPresented: Binding(get: { backupResult != nil }, set: { if !$0 { backupResult = nil } }), title: String(localized: "Backup and restore")) {
+            Text(backupResult ?? "").font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "OK")) { backupResult = nil }
+        }
         .task {
             downloadsSize = Self.size(of: app.downloads.store.root)
             cacheSize = (ImagePipeline.shared.configuration.dataCache as? DataCache)?.totalSize ?? 0
+        }
+    }
+
+    private func createBackup() {
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                backup = BackupDocument(data: try await BackupManager(app: app).create())
+            } catch {
+                backupResult = error.localizedDescription
+            }
         }
     }
 
@@ -358,5 +421,25 @@ struct AcknowledgementsView: View {
             }
         }
         .background(m3.surface)
+    }
+}
+
+/// A Mihon backup, for the system's save panel.
+struct BackupDocument: FileDocument {
+    /// `.tachibk`, declared in Info.plist.
+    static let type = UTType(importedAs: "io.github.grillza.docho.tachibk", conformingTo: .data)
+    static let readableContentTypes: [UTType] = [type]
+    let data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }

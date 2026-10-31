@@ -102,6 +102,12 @@ targets:
             UTTypeTagSpecification:
               public.filename-extension: [rar]
               public.mime-type: [application/vnd.rar, application/x-rar-compressed]
+          # Mihon's backups (Settings → Data and storage).
+          - UTTypeIdentifier: io.github.grillza.docho.tachibk
+            UTTypeDescription: Mihon backup
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [tachibk]
           - UTTypeIdentifier: org.7-zip.7-zip-archive
             UTTypeDescription: 7-Zip archive
             UTTypeConformsTo: [public.archive, public.data]
