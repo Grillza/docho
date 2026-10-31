@@ -44,6 +44,10 @@ final class AppModel {
     var pendingSeries: Int?
     /// Why a comic opened from elsewhere couldn't be added.
     var openFileError: String?
+    /// A newer release to offer (HomeView shows it).
+    var availableUpdate: AppRelease?
+    var updateChecker = AppUpdateChecker()
+    @ObservationIgnored private var lastUpdateCheck: Date?
 
     init(
         settings: KavitaSettings = KavitaSettings(),
@@ -120,6 +124,7 @@ final class AppModel {
         self.triggers = triggers
         triggers.start()
         notifier.attach(self)
+        Task { _ = try? await checkForAppUpdate() }
         Task { await suwayomi.refreshSources() }
         await downloads.resume()
         await sync.syncLibrary()
@@ -162,7 +167,39 @@ final class AppModel {
 
     func sceneChanged(to phase: SyncTriggers.ScenePhaseChange) {
         triggers?.sceneChanged(to: phase)
+        // The app can stay open for days, so returning to it checks again, at most every 6 hours (as on Android).
+        if phase == .active, triggers != nil, let last = lastUpdateCheck, Date.now.timeIntervalSince(last) > 6 * 3600 {
+            Task { _ = try? await checkForAppUpdate() }
+        }
         if phase == .background, preferences.autoUpdate { LibraryUpdater.scheduleBackgroundUpdate() }
+    }
+
+    static var installedVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    }
+
+    /// Checks GitHub for a newer release. The automatic check offers it in a dialog and respects
+    /// the skipped version and "Skip bug-fix updates"; a manual one (About) ignores both and
+    /// returns the result instead. Debug builds don't check on their own.
+    @discardableResult
+    func checkForAppUpdate(manual: Bool = false) async throws -> AppUpdateChecker.Result {
+        #if DEBUG
+        if !manual { return .noNewUpdate }
+        #endif
+        lastUpdateCheck = .now
+        let result: AppUpdateChecker.Result
+        do {
+            result = try await updateChecker.check(
+                current: Self.installedVersion,
+                skipped: manual ? nil : preferences.skippedAppUpdate,
+                skipPatchUpdates: !manual && preferences.skipPatchAppUpdates
+            )
+        } catch {
+            if manual { throw error }
+            return .noNewUpdate
+        }
+        if !manual, case .newUpdate(let release) = result { availableUpdate = release }
+        return result
     }
 
     /// The automatic library update iOS runs in the background (Settings → Library).

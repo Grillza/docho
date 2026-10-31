@@ -311,6 +311,9 @@ struct DataStorageView: View {
 struct AboutView: View {
     @Environment(\.m3) private var m3
     @Environment(\.openURL) private var openURL
+    @Environment(AppModel.self) private var app
+    @State private var checkingForUpdates = false
+    @State private var updateMessage: String?
 
     static let repository = URL(string: "https://github.com/Grillza/docho")!
     static var version: String {
@@ -326,6 +329,14 @@ struct AboutView: View {
                 VStack(spacing: 0) {
                     LogoHeader()
                     PreferenceRow(title: String(localized: "Version"), subtitle: "iOS \(Self.version)")
+                    PreferenceRow(title: String(localized: "Check for updates"), action: checkForUpdates) {
+                        if checkingForUpdates { ProgressView().tint(m3.primary) }
+                    }
+                    SwitchPreference(
+                        title: String(localized: "Skip bug-fix updates"),
+                        subtitle: String(localized: "Only remind me about 0.x.0 releases. Checking manually still shows bug-fix updates."),
+                        isOn: Binding(get: { app.preferences.skipPatchAppUpdates }, set: { app.preferences.skipPatchAppUpdates = $0 })
+                    )
                     PreferenceRow(title: String(localized: "What's new"), action: { openURL(Self.repository.appending(path: "releases")) })
                     PreferenceRow(title: String(localized: "Privacy policy"), action: {
                         openURL(Self.repository.appending(path: "blob/main/docs/privacy-policy.md"))
@@ -347,6 +358,31 @@ struct AboutView: View {
             }
         }
         .background(m3.surface)
+        .m3Dialog(
+            isPresented: Binding(get: { updateMessage != nil }, set: { if !$0 { updateMessage = nil } }),
+            title: String(localized: "Check for updates")
+        ) {
+            Text(updateMessage ?? "").padding(.horizontal, 24).frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "OK")) { updateMessage = nil }
+        }
+    }
+
+    /// A manual check: offers any newer release, even a skipped or bug-fix one.
+    private func checkForUpdates() {
+        guard !checkingForUpdates else { return }
+        checkingForUpdates = true
+        Task {
+            defer { checkingForUpdates = false }
+            do {
+                switch try await app.checkForAppUpdate(manual: true) {
+                case .newUpdate(let release): app.availableUpdate = release
+                case .noNewUpdate: updateMessage = String(localized: "No new updates available")
+                }
+            } catch {
+                updateMessage = error.localizedDescription
+            }
+        }
     }
 }
 

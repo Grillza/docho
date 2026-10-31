@@ -150,6 +150,14 @@ struct HomeView: View {
         } buttons: {
             M3TextButton(title: String(localized: "OK")) { app.openFileError = nil }
         }
+        .m3Dialog(
+            isPresented: Binding(get: { app.availableUpdate != nil && app.openFileError == nil }, set: { if !$0 { app.availableUpdate = nil } }),
+            title: String(localized: "New version available!")
+        ) {
+            if let release = app.availableUpdate { AppUpdateContent(release: release) }
+        } buttons: {
+            AppUpdateButtons()
+        }
     }
 
     private var content: some View {
@@ -446,5 +454,57 @@ extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
 
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         viewControllers.count > 1
+    }
+}
+
+// MARK: - App update
+
+/// The release's version and iOS notes, and the "skip bug-fix updates" choice.
+private struct AppUpdateContent: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.m3) private var m3
+    let release: AppRelease
+
+    var body: some View {
+        @Bindable var preferences = app.preferences
+        VStack(alignment: .leading, spacing: 12) {
+            Text(verbatim: "v\(release.version)")
+                .font(M3Type.titleMedium)
+                .foregroundStyle(m3.onSurface)
+                .padding(.horizontal, 24)
+            Text(Self.markdown(release.notes))
+                .font(M3Type.bodyMedium)
+                .foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            CheckboxRow(title: String(localized: "Skip bug-fix updates (0.0.x)"), isOn: $preferences.skipPatchAppUpdates)
+        }
+    }
+
+    /// GitHub's Markdown, keeping line breaks; headings and lists show as plain lines.
+    static func markdown(_ text: String) -> AttributedString {
+        let cleaned = text.components(separatedBy: "\n")
+            .map { $0.replacing(#/^#+\s*/#, with: "").replacing(#/^- /#, with: "• ") }
+            .joined(separator: "\n")
+        return (try? AttributedString(markdown: cleaned, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(cleaned)
+    }
+}
+
+/// Skip this version, Not now, and Download (the release page, since the IPA needs a sideloader).
+private struct AppUpdateButtons: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        M3TextButton(title: String(localized: "Skip this version")) {
+            if let release = app.availableUpdate { app.preferences.skippedAppUpdate = release.version }
+            app.availableUpdate = nil
+        }
+        M3TextButton(title: String(localized: "Not now")) { app.availableUpdate = nil }
+        M3TextButton(title: String(localized: "Download")) {
+            if let release = app.availableUpdate { openURL(release.page) }
+            app.availableUpdate = nil
+        }
     }
 }

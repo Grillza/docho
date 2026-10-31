@@ -182,6 +182,13 @@ final class AppPreferences {
     /// Whether the welcome guide has been shown (Mihon's `onboarding_complete`).
     var shownWelcome: Bool { didSet { save(shownWelcome, "onboarding_complete") } }
 
+    // MARK: App updates
+
+    /// A release the user chose to skip; it isn't offered again, but newer ones are.
+    var skippedAppUpdate: String { didSet { save(skippedAppUpdate, "skipped_app_update") } }
+    /// Only offer releases that change the major or minor version, not bug-fix (patch) ones.
+    var skipPatchAppUpdates: Bool { didSet { save(skipPatchAppUpdates, "pref_skip_patch_app_updates") } }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         func string(_ key: String) -> String? { defaults.string(forKey: key) }
@@ -245,6 +252,8 @@ final class AppPreferences {
         downloadedOnly = bool("pref_downloaded_only", false)
         incognitoMode = bool("incognito_mode", false)
         shownWelcome = bool("onboarding_complete", false)
+        skippedAppUpdate = string("skipped_app_update") ?? ""
+        skipPatchAppUpdates = bool("pref_skip_patch_app_updates", false)
     }
 
     /// Whether any library filter is on (the filter icon shows as active).
