@@ -25,6 +25,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.LogoHeader
+import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
@@ -54,6 +55,7 @@ import tachiyomi.presentation.core.components.LinkIcon
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
@@ -78,6 +80,8 @@ object AboutScreen : Screen() {
         var isCheckingUpdates by remember { mutableStateOf(false) }
         val crashLogUtil = remember { context.appGraph.crashLogUtil }
         val is24HourSystem = rememberIs24HourSystem()
+        val basePreferences = remember { context.appGraph.basePreferences }
+        val skipPatchUpdates by basePreferences.skipPatchAppUpdates.collectAsState()
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -145,6 +149,14 @@ object AboutScreen : Screen() {
                                     }
                                 }
                             },
+                        )
+                    }
+                    item {
+                        SwitchPreferenceWidget(
+                            title = stringResource(MR.strings.pref_skip_patch_app_updates),
+                            subtitle = stringResource(MR.strings.pref_skip_patch_app_updates_summary),
+                            checked = skipPatchUpdates,
+                            onCheckedChanged = basePreferences.skipPatchAppUpdates::set,
                         )
                     }
                 }

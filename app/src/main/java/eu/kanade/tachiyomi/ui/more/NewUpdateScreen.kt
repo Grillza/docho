@@ -43,8 +43,9 @@ class NewUpdateScreen(
                 }
             },
             onRejectUpdate = navigator::pop,
-            onSkipUpdate = {
-                viewModel.skipUpdate(versionName)
+            skipPatchUpdates = viewModel.skipPatchUpdates,
+            onSkipUpdate = { skipPatches ->
+                viewModel.skipUpdate(versionName, skipPatches)
                 navigator.pop()
             },
         )

@@ -1065,6 +1065,9 @@
     <string name="update_check_skip">Skip this version</string>
     <string name="update_check_skip_title">Skip %s?</string>
     <string name="update_check_skip_message">Updates often contain bug fixes and security improvements. You won\'t be reminded about this version again, but you\'ll still be notified when a newer one is released.</string>
+    <string name="update_check_skip_patches">Also skip bug-fix updates (0.0.x) from now on</string>
+    <string name="pref_skip_patch_app_updates">Skip bug-fix updates</string>
+    <string name="pref_skip_patch_app_updates_summary">Only remind me about 0.x.0 releases. Checking manually still shows bug-fix updates.</string>
     <!-- reserved for future use -->
     <string name="update_check_eol">This Android version is no longer supported</string>
     <string name="update_check_no_new_updates">No new updates available</string>

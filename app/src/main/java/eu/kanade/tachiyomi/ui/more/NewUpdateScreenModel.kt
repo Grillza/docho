@@ -98,9 +98,13 @@ class NewUpdateScreenModel(
         response.body.source().saveTo(apkFile)
     }
 
-    fun skipUpdate(versionName: String) {
+    val skipPatchUpdates: Boolean
+        get() = preferences.skipPatchAppUpdates.get()
+
+    fun skipUpdate(versionName: String, skipPatchUpdates: Boolean) {
         downloadJob?.cancel()
         preferences.skippedAppUpdate.set(versionName)
+        preferences.skipPatchAppUpdates.set(skipPatchUpdates)
     }
 
     fun installUpdate() {

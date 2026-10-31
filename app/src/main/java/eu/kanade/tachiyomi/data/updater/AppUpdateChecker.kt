@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.data.updater
 
 import dev.zacsweers.metro.Inject
+import eu.kanade.domain.base.BasePreferences
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.util.system.isFossBuildType
 import eu.kanade.tachiyomi.util.system.isNightlyBuildType
@@ -11,6 +12,7 @@ import tachiyomi.domain.release.interactor.GetApplicationRelease
 @Inject
 class AppUpdateChecker(
     private val getApplicationRelease: GetApplicationRelease,
+    private val preferences: BasePreferences,
 ) {
 
     suspend fun checkForUpdate(forceCheck: Boolean = false): GetApplicationRelease.Result {
@@ -23,11 +25,14 @@ class AppUpdateChecker(
             val result = getApplicationRelease.await(
                 GetApplicationRelease.Arguments(
                     isFossBuildType,
-                    isNightlyBuildType,
+                    // Dōchō has no nightly channel, so every build compares against the releases.
+                    false,
                     BuildConfig.COMMIT_COUNT.toInt(),
                     BuildConfig.VERSION_NAME,
                     GITHUB_REPO,
                     forceCheck,
+                    // A manual check from About always shows what's out.
+                    skipPatchUpdates = !forceCheck && preferences.skipPatchAppUpdates.get(),
                 ),
             )
 
@@ -36,13 +41,7 @@ class AppUpdateChecker(
     }
 }
 
-val GITHUB_REPO: String by lazy {
-    if (isNightlyBuildType) {
-        "mihonapp/mihon-preview"
-    } else {
-        "mihonapp/mihon"
-    }
-}
+const val GITHUB_REPO = "Grillza/docho"
 
 val RELEASE_TAG: String by lazy {
     if (isNightlyBuildType) {
