@@ -28,6 +28,8 @@ def ios_section(notes: str) -> str:
     rest = lines[start + 1:]
     end = next((i for i, line in enumerate(rest) if line.startswith("## ")), len(rest))
     text = "\n".join(rest[:end])
+    # The "add this source" paragraph and its URL are for readers of the GitHub release, not AltStore's.
+    text = re.sub(r"\*\*Updates through AltStore.*?\n\n```\n[^`]*```\n?", "", text, flags=re.DOTALL)
     # AltStore shows plain text: drop Markdown emphasis, code and link syntax.
     text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
