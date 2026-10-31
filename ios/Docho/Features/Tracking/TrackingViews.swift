@@ -53,7 +53,7 @@ struct TrackingSettings: View {
                 switch tracker.signIn {
                 case .oauth(let url):
                     run(tracker) {
-                        let callback = try await webSignIn.start(url)
+                        let callback = try await webSignIn.start(url, scheme: tracker.callbackScheme)
                         try await app.trackers.signIn(tracker, callback: callback)
                     }
                 case .password:
@@ -112,17 +112,24 @@ struct TrackerBox: Identifiable {
     }
 }
 
-/// The site's initial on its brand colour.
+/// The site's logo, as Android's `TrackLogoIcon`; its initial on its brand colour if there's none.
 struct TrackerLogo: View {
     let tracker: any Tracker
 
     var body: some View {
-        Text(tracker.name.prefix(1))
-            .font(.system(size: 18, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(hex: tracker.brandColor)))
-            .accessibilityHidden(true)
+        Group {
+            if UIImage(named: tracker.logo) != nil {
+                Image(tracker.logo).resizable().scaledToFit()
+            } else {
+                Text(tracker.name.prefix(1))
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(hex: tracker.brandColor))
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityHidden(true)
     }
 }
 
@@ -213,7 +220,9 @@ struct TrackingSheet: View {
         } buttons: {
             M3TextButton(title: String(localized: "Cancel")) { removing = nil }
             if let track = removing {
-                M3TextButton(title: String(localized: "Also on the site")) { unlink(track, fromSite: true) }
+                if app.trackers.tracker(track.trackerId)?.supportsDelete == true {
+                    M3TextButton(title: String(localized: "Also on the site")) { unlink(track, fromSite: true) }
+                }
                 M3TextButton(title: String(localized: "Remove")) { unlink(track, fromSite: false) }
             }
         }

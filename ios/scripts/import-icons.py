@@ -6,6 +6,7 @@
 - The bottom navigation's animated vectors (`res/drawable/animated_*.xml`) become `nav.<tab>` in
   their unselected state and `nav.<tab>.fill` in their selected state (each animation's end values).
 - `ic_docho_wordmark.xml` becomes `wordmark` (the logo at the top of More).
+- The server and tracker logos (`brand_*`) become `brand.<name>`, in their own colours.
 
 Run from anywhere: `ios/scripts/import-icons.py`. The output is committed; rerun after the Android
 icons change.
@@ -15,6 +16,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -22,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RES = ROOT / "app/src/main/res/drawable"
 OUT = ROOT / "ios/Docho/Resources/Assets.xcassets/Icons"
 A = "{http://schemas.android.com/apk/res/android}"
+AAPT = "{http://schemas.android.com/aapt}"
 
 CONTENTS = {
     "images": [{"filename": None, "idiom": "universal"}],
@@ -102,7 +105,19 @@ def render(el: ET.Element, overrides: dict) -> str:
         data = overrides.get((name, "pathData"), el.get(A + "pathData"))
         if data:
             attrs = [f'd="{data.strip()}"']
-            if el.get(A + "fillColor"):
+            gradient = el.find(f"{AAPT}attr[@name='android:fillColor']/gradient")
+            if gradient is not None:
+                gradient_id = f"gradient{next(CLIP_IDS)}"
+                stops = "".join(
+                    f'<stop offset="{item.get(A + "offset")}" stop-color="{color(item.get(A + "color"))}"/>'
+                    for item in gradient.findall("item")
+                )
+                coords = " ".join(f'{svg}="{gradient.get(A + android)}"' for svg, android in
+                                  [("x1", "startX"), ("y1", "startY"), ("x2", "endX"), ("y2", "endY")])
+                out.append(f'<defs><linearGradient id="{gradient_id}" gradientUnits="userSpaceOnUse" {coords}>'
+                           f"{stops}</linearGradient></defs>")
+                attrs.append(f'fill="url(#{gradient_id})"')
+            elif el.get(A + "fillColor"):
                 attrs.append(f'fill="{color(el.get(A + "fillColor"))}"')
             else:
                 attrs.append('fill="none"')
@@ -161,6 +176,24 @@ def static(name: str, file: str, template: bool = True) -> None:
     write_imageset(name, vector_svg(ET.parse(RES / file).getroot(), {}), template)
 
 
+TRACKER_VECTORS = ["anilist", "myanimelist", "kitsu", "mangaupdates", "shikimori", "bangumi", "hikka"]
+TRACKER_BITMAPS = ["comick", "mangabaka"]
+
+
+def bitmap(name: str, webp: Path) -> None:
+    """A WebP logo as a PNG (sips converts it), shown as is."""
+    folder = OUT / f"{name}.imageset"
+    folder.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["sips", "-s", "format", "png", str(webp), "--out", str(folder / f"{name}.png")],
+                   check=True, capture_output=True)
+    contents = {
+        "images": [{"filename": f"{name}.png", "idiom": "universal"}],
+        "info": {"author": "xcode", "version": 1},
+        "properties": {"template-rendering-intent": "original"},
+    }
+    (folder / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n")
+
+
 def main() -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -178,7 +211,12 @@ def main() -> None:
     static("wordmark", "ic_docho_wordmark.xml")
     for server in ["kavita", "komga", "bookorbit", "koreader", "suwayomi"]:
         static(f"brand.{server}", f"brand_{server}.xml", template=False)
-    print(f"{count} symbols, 5 navigation icons, the wordmark and 5 server logos written to {OUT.relative_to(ROOT)}")
+    for tracker in TRACKER_VECTORS:
+        static(f"brand.{tracker}", f"brand_{tracker}.xml", template=False)
+    for tracker in TRACKER_BITMAPS:
+        bitmap(f"brand.{tracker}", ROOT / f"app/src/main/res/drawable-nodpi/brand_{tracker}.webp")
+    logos = 5 + len(TRACKER_VECTORS) + len(TRACKER_BITMAPS)
+    print(f"{count} symbols, 5 navigation icons, the wordmark and {logos} server and tracker logos written to {OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import AuthenticationServices
+import CryptoKit
 import Foundation
 import GRDB
 import UIKit
@@ -74,11 +75,17 @@ enum TrackerError: LocalizedError {
 protocol Tracker: AnyObject, Sendable {
     var id: Int64 { get }
     var name: String { get }
-    /// The site's brand colour, behind its initial (Android shows the logo).
+    /// The site's brand colour, behind its initial when there's no logo.
     var brandColor: UInt32 { get }
+    /// The logo's image name, `brand.<name>` from Android's `brand_<name>` (ios/scripts/import-icons.py).
+    var logo: String { get }
     var signIn: TrackerSignIn { get }
     var supportsReadingDates: Bool { get }
     var supportsPrivate: Bool { get }
+    /// Whether an entry can be taken off the user's list on the site (Android's `DeletableTracker`).
+    var supportsDelete: Bool { get }
+    /// The scheme the site's sign-in page returns to: `mihon`, or `app.mihon` for Comick.
+    var callbackScheme: String { get }
 
     /// Status ids in Android's order, with their names.
     var statuses: [(id: Int, title: String)] { get }
@@ -114,7 +121,10 @@ enum TrackerSignIn {
 extension Tracker {
     var supportsReadingDates: Bool { true }
     var supportsPrivate: Bool { false }
+    var supportsDelete: Bool { true }
+    var callbackScheme: String { "mihon" }
     var rereadingStatus: Int? { nil }
+    var logo: String { "brand." + name.lowercased() }
 
     func signIn(callback: URL) async throws {}
     func signIn(username: String, password: String) async throws {}
@@ -193,15 +203,28 @@ struct OAuthToken: Codable, Sendable {
     var isExpired: Bool { expiresAt.timeIntervalSinceNow < 60 }
 
     init(accessToken: String, refreshToken: String?, expiresIn: Double) {
-        self.accessToken = accessToken
-        self.refreshToken = refreshToken
-        expiresAt = Date.now.addingTimeInterval(expiresIn)
+        self.init(accessToken: accessToken, refreshToken: refreshToken, expiresAt: Date.now.addingTimeInterval(expiresIn))
     }
 
-    /// From a token endpoint's JSON reply.
+    init(accessToken: String, refreshToken: String?, expiresAt: Date) {
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.expiresAt = expiresAt
+    }
+
+    /// From a token endpoint's JSON reply: `expires_at` in seconds since 1970 (Comick, MangaBaka),
+    /// or `expires_in` from `created_at` (Shikimori, Bangumi) or from now.
     init?(json: [String: Any]) {
         guard let access = json["access_token"] as? String else { return nil }
-        self.init(accessToken: access, refreshToken: json["refresh_token"] as? String, expiresIn: json.double("expires_in") ?? 3600)
+        let refresh = json["refresh_token"] as? String
+        if let expiresAt = json.double("expires_at") {
+            self.init(accessToken: access, refreshToken: refresh, expiresAt: Date(timeIntervalSince1970: expiresAt))
+        } else if let created = json.double("created_at") {
+            let expiresAt = Date(timeIntervalSince1970: created + (json.double("expires_in") ?? 3600))
+            self.init(accessToken: access, refreshToken: refresh, expiresAt: expiresAt)
+        } else {
+            self.init(accessToken: access, refreshToken: refresh, expiresIn: json.double("expires_in") ?? 3600)
+        }
     }
 
     static func load(_ text: String) -> OAuthToken? {
@@ -213,11 +236,69 @@ struct OAuthToken: Codable, Sendable {
     }
 }
 
+/// An S256 PKCE pair and an OAuth `state`, for the sites that check them (Comick, MangaBaka).
+struct PKCE: Sendable {
+    let verifier: String
+    let challenge: String
+    let state: String
+
+    init() {
+        verifier = Self.randomURLSafe(byteCount: 48)
+        challenge = Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
+        state = Self.randomURLSafe(byteCount: 16)
+    }
+
+    private static func randomURLSafe(byteCount: Int) -> String {
+        var generator = SystemRandomNumberGenerator()
+        return base64URL(Data((0..<byteCount).map { _ in UInt8.random(in: .min ... .max, using: &generator) }))
+    }
+
+    static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    /// The `code` from a sign-in redirect, after checking its `state`.
+    func code(from callback: URL) throws -> String {
+        let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        guard let code = items.first(where: { $0.name == "code" })?.value else { throw TrackerError.cancelled }
+        guard items.first(where: { $0.name == "state" })?.value == state else {
+            throw TrackerError.server(String(localized: "The sign-in reply didn't match; try again"))
+        }
+        return code
+    }
+}
+
+extension TrackerCredentials {
+    /// A current access token, refreshed with `refresh` (the token endpoint's reply for a refresh
+    /// token) when it has run out.
+    func accessToken(refresh: (String) async throws -> [String: Any]) async throws -> String {
+        guard var token = OAuthToken.load(self.token) else { throw TrackerError.notSignedIn }
+        if token.isExpired {
+            guard let refreshToken = token.refreshToken, let renewed = OAuthToken(json: try await refresh(refreshToken)) else {
+                throw TrackerError.notSignedIn
+            }
+            token = renewed
+            if token.refreshToken == nil { token.refreshToken = refreshToken }
+            self.token = token.encoded
+        }
+        return token.accessToken
+    }
+}
+
 // MARK: - HTTP
 
 /// JSON requests for the trackers, which all speak JSON (or GraphQL over it).
 struct TrackerHTTP: Sendable {
     let session: URLSession
+
+    /// For the sites that ask apps to identify themselves (Comick, MangaBaka, Shikimori, Bangumi).
+    static let userAgent: String = {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        return "Docho/v\(version) (iOS) (https://github.com/Grillza/docho)"
+    }()
 
     func json(_ request: URLRequest) async throws -> Any {
         var request = request
@@ -313,9 +394,9 @@ extension Dictionary where Key == String, Value == Any {
 final class WebSignIn: NSObject, ASWebAuthenticationPresentationContextProviding {
     private var session: ASWebAuthenticationSession?
 
-    func start(_ url: URL) async throws -> URL {
+    func start(_ url: URL, scheme: String = "mihon") async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callback: .customScheme("mihon")) { callback, error in
+            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(scheme)) { callback, error in
                 if let callback {
                     continuation.resume(returning: callback)
                 } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {

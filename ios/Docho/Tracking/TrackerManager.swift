@@ -14,9 +14,13 @@ final class TrackerManager {
     init(database: AppDatabase, session: URLSession = .shared, defaults: UserDefaults = .standard, trackers: [any Tracker]? = nil) {
         self.database = database
         self.defaults = defaults
+        // Android's order. Its Komga, Kavita and Suwayomi trackers are sources here, synced by them.
         self.trackers = trackers ?? [
-            MyAnimeList(session: session, defaults: defaults), AniList(session: session, defaults: defaults),
-            Kitsu(session: session, defaults: defaults), MangaUpdates(session: session, defaults: defaults),
+            MangaBaka(session: session, defaults: defaults), MyAnimeList(session: session, defaults: defaults),
+            AniList(session: session, defaults: defaults), Kitsu(session: session, defaults: defaults),
+            Shikimori(session: session, defaults: defaults), Bangumi(session: session, defaults: defaults),
+            MangaUpdates(session: session, defaults: defaults), Hikka(session: session, defaults: defaults),
+            Comick(session: session, defaults: defaults),
         ]
     }
 
