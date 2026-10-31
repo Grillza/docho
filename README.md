@@ -100,6 +100,12 @@ the App Store, so you need a sideloader such as [AltStore](https://altstore.io),
 [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io) to install it. With a free
 Apple ID, sideloaded apps have to be refreshed every 7 days.
 
+In AltStore or SideStore you can add Dōchō's source instead, so the app updates from there:
+
+```
+https://raw.githubusercontent.com/Grillza/docho/main/altstore/source.json
+```
+
 ## Building
 
 ```sh
