@@ -71,7 +71,7 @@
     <string name="sync_settings_import_failed">That isn\'t a Dōchō settings file</string>
     <string name="pref_category_nav_bar">Navigation bar</string>
     <string name="pref_nav_bar_reset">Reset to default</string>
-    <string name="pref_nav_bar_reset_summary">Shows every tab again, in the original order and centred</string>
+    <string name="pref_nav_bar_reset_summary">Shows every tab again, in the original order and position</string>
     <string name="pref_nav_bar_reset_done">Navigation bar reset</string>
     <string name="pref_category_series">Series</string>
     <string name="pref_show_release_prediction">Show release prediction</string>
@@ -99,6 +99,17 @@
     <string name="nav_bar_alignment_left">Left</string>
     <string name="nav_bar_alignment_center">Centred</string>
     <string name="nav_bar_alignment_right">Right</string>
+    <string name="nav_bar_alignment_top">Top</string>
+    <string name="nav_bar_alignment_bottom">Bottom</string>
+    <string name="nav_bar_position_left">Left</string>
+    <string name="nav_bar_position_bottom">Bottom</string>
+    <string name="pref_nav_bar_position">Bar position</string>
+    <string name="pref_nav_bar_position_portrait">Bar position in portrait</string>
+    <string name="pref_nav_bar_position_landscape">Bar position in landscape</string>
+    <string name="pref_nav_bar_alignment_portrait">Tab position in portrait</string>
+    <string name="pref_nav_bar_alignment_landscape">Tab position in landscape</string>
+    <string name="pref_nav_bar_split_orientation">Different position in landscape</string>
+    <string name="pref_nav_bar_split_orientation_summary">For example at the bottom in portrait and on the left in landscape</string>
     <string name="acknowledgements_intro">Dōchō is built on the work of these open source projects. Tap one to open its source code.</string>
     <string name="acknowledgements_built_on">Built on</string>
     <string name="acknowledgements_servers">Servers and sync</string>

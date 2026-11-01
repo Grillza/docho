@@ -32,6 +32,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
+import eu.kanade.domain.ui.model.NavBarAlignment
+import eu.kanade.domain.ui.model.NavBarPosition
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -74,17 +76,19 @@ object HomeScreen : Screen() {
         ) { tabNavigator ->
             // Provide usable navigator to content screen
             CompositionLocalProvider(LocalNavigator provides navigator) {
-                val tabletUi = isTabletUi()
-                val navigationSuiteType = if (tabletUi) {
+                val (navPosition, navAlignment) = currentNavBarLayout(tabletUi = isTabletUi())
+                val isRail = navPosition == NavBarPosition.LEFT
+                val navigationSuiteType = if (isRail) {
                     NavigationSuiteType.NavigationRail
                 } else {
                     NavigationSuiteType.NavigationBar
                 }
                 val navigationSuiteState = rememberNavigationSuiteScaffoldState()
-                LaunchedEffect(navigationSuiteState, tabletUi) {
-                    if (tabletUi) navigationSuiteState.show()
+                LaunchedEffect(navigationSuiteState, isRail) {
+                    // The rail always shows; a bottom bar hides while scrolling, as on phones
+                    navigationSuiteState.show()
                     showBottomNavEvent.receiveAsFlow().collectLatest { show ->
-                        if (tabletUi || show) {
+                        if (isRail || show) {
                             navigationSuiteState.show()
                         } else {
                             navigationSuiteState.hide()
@@ -99,9 +103,13 @@ object HomeScreen : Screen() {
                         navigationRailContainerColor = MaterialTheme.colorScheme
                             .surfaceColorAtElevation(3.dp),
                     ),
-                    navigationItemVerticalArrangement = Arrangement.Center,
+                    navigationItemVerticalArrangement = when (navAlignment) {
+                        NavBarAlignment.START -> Arrangement.Top
+                        NavBarAlignment.CENTER -> Arrangement.Center
+                        NavBarAlignment.END -> Arrangement.Bottom
+                    },
                     navigationItems = {
-                        NavigationItems(navigationSuiteType)
+                        NavigationItems(navigationSuiteType, navAlignment)
                     },
                 ) {
                     AnimatedContent(
@@ -161,13 +169,12 @@ object HomeScreen : Screen() {
 
     /** The tabs the user hasn't hidden; on the bottom bar, placed as chosen in Appearance. */
     @Composable
-    private fun NavigationItems(navigationSuiteType: NavigationSuiteType) {
+    private fun NavigationItems(navigationSuiteType: NavigationSuiteType, alignment: NavBarAlignment) {
         val tabs = visibleNavBarTabs()
         if (navigationSuiteType != NavigationSuiteType.NavigationBar) {
             tabs.fastForEach { key(it) { NavigationSuiteItem(it, navigationSuiteType) } }
             return
         }
-        val alignment by LocalContext.current.appGraph.uiPreferences.navBarAlignment.collectAsState()
         // The bar spreads its items evenly, so give it one child that places the tabs itself.
         // Keyed, so each tab keeps its own icon as others are shown or hidden.
         NavBarTabsLayout(alignment = alignment) {

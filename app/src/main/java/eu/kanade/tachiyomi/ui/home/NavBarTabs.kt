@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.home
 
+import android.content.res.Configuration
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +35,7 @@ import androidx.compose.ui.util.fastForEach
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.NavBarAlignment
+import eu.kanade.domain.ui.model.NavBarPosition
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -210,6 +213,26 @@ fun NavBarTabsEditor(modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+}
+
+/**
+ * The bar's position and tab position right now. Phones always have a bar at the bottom; the tablet layout follows
+ * its settings, landscape's own when the user set them apart.
+ */
+@Composable
+internal fun currentNavBarLayout(tabletUi: Boolean): Pair<NavBarPosition, NavBarAlignment> {
+    val preferences = LocalContext.current.appGraph.uiPreferences
+    val split by preferences.navBarSplitOrientation.collectAsState()
+    val position by preferences.navBarPosition.collectAsState()
+    val alignment by preferences.navBarAlignment.collectAsState()
+    val positionLandscape by preferences.navBarPositionLandscape.collectAsState()
+    val alignmentLandscape by preferences.navBarAlignmentLandscape.collectAsState()
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    return when {
+        !tabletUi -> NavBarPosition.BOTTOM to alignment
+        split && landscape -> positionLandscape to alignmentLandscape
+        else -> position to alignment
     }
 }
 

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.SingleIn
 import eu.kanade.domain.ui.model.AppTheme
 import eu.kanade.domain.ui.model.CustomTheme
 import eu.kanade.domain.ui.model.NavBarAlignment
+import eu.kanade.domain.ui.model.NavBarPosition
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.domain.ui.model.TimeFormat
@@ -81,6 +82,22 @@ class UiPreferences(
 
     val navBarAlignment: Preference<NavBarAlignment> = preferenceStore.getEnum(
         "nav_bar_alignment",
+        NavBarAlignment.CENTER,
+    )
+
+    /** Tablet layout: a rail on the left or a bar at the bottom. Portrait's when landscape has its own. */
+    val navBarPosition: Preference<NavBarPosition> = preferenceStore.getEnum("nav_bar_position", NavBarPosition.LEFT)
+
+    /** Tablet layout: whether landscape has its own bar and tab position. */
+    val navBarSplitOrientation: Preference<Boolean> = preferenceStore.getBoolean("nav_bar_split_orientation", false)
+
+    val navBarPositionLandscape: Preference<NavBarPosition> = preferenceStore.getEnum(
+        "nav_bar_position_landscape",
+        NavBarPosition.LEFT,
+    )
+
+    val navBarAlignmentLandscape: Preference<NavBarAlignment> = preferenceStore.getEnum(
+        "nav_bar_alignment_landscape",
         NavBarAlignment.CENTER,
     )
 

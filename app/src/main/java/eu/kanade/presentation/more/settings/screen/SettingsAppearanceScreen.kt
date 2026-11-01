@@ -17,6 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.NavBarAlignment
+import eu.kanade.domain.ui.model.NavBarPosition
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.domain.ui.model.TimeFormat
@@ -27,6 +28,7 @@ import eu.kanade.presentation.more.settings.screen.appearance.CustomThemeEditorS
 import eu.kanade.presentation.more.settings.screen.appearance.CustomThemesScreen
 import eu.kanade.presentation.more.settings.widget.AppThemeModePreferenceWidget
 import eu.kanade.presentation.more.settings.widget.AppThemePreferenceWidget
+import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.presentation.util.rememberIs24HourSystem
 import eu.kanade.tachiyomi.ui.home.NavBarPreview
 import eu.kanade.tachiyomi.ui.home.NavBarTabsEditor
@@ -108,6 +110,20 @@ object SettingsAppearanceScreen : SearchableSettings {
             .joinToString()
         val alignmentName = stringResource(alignment.titleRes)
         val context = LocalContext.current
+        val tabletUi = isTabletUi()
+        val split by uiPreferences.navBarSplitOrientation.collectAsState()
+        val position by uiPreferences.navBarPosition.collectAsState()
+        val positionLandscape by uiPreferences.navBarPositionLandscape.collectAsState()
+        val isSplit = tabletUi && split
+        val positionEntries = NavBarPosition.entries.associateWith { stringResource(it.titleRes) }
+
+        /** Tab positions are left to right along a bar, and top to bottom down the rail. */
+        @Composable
+        fun alignmentEntries(rail: Boolean) = NavBarAlignment.entries.associateWith {
+            stringResource(if (rail) it.railTitleRes else it.titleRes)
+        }
+        val isRail = tabletUi && position == NavBarPosition.LEFT
+        val isRailLandscape = positionLandscape == NavBarPosition.LEFT
 
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_category_nav_bar),
@@ -131,11 +147,40 @@ object SettingsAppearanceScreen : SearchableSettings {
                 ) {
                     NavBarTabsEditor(modifier = Modifier.fillMaxWidth())
                 },
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.navBarSplitOrientation,
+                    title = stringResource(MR.strings.pref_nav_bar_split_orientation),
+                    subtitle = stringResource(MR.strings.pref_nav_bar_split_orientation_summary),
+                    visible = tabletUi,
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = uiPreferences.navBarPosition,
+                    entries = positionEntries,
+                    title = stringResource(
+                        if (isSplit) MR.strings.pref_nav_bar_position_portrait else MR.strings.pref_nav_bar_position,
+                    ),
+                    visible = tabletUi,
+                ),
                 Preference.PreferenceItem.ListPreference(
                     preference = uiPreferences.navBarAlignment,
-                    entries = NavBarAlignment.entries.associateWith { stringResource(it.titleRes) },
-                    title = stringResource(MR.strings.pref_nav_bar_alignment),
-                    visible = !allShown,
+                    entries = alignmentEntries(rail = isRail),
+                    title = stringResource(
+                        if (isSplit) MR.strings.pref_nav_bar_alignment_portrait else MR.strings.pref_nav_bar_alignment,
+                    ),
+                    // A full bar spreads its tabs across, but the rail always places them
+                    visible = !allShown || isRail,
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = uiPreferences.navBarPositionLandscape,
+                    entries = positionEntries,
+                    title = stringResource(MR.strings.pref_nav_bar_position_landscape),
+                    visible = isSplit,
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = uiPreferences.navBarAlignmentLandscape,
+                    entries = alignmentEntries(rail = isRailLandscape),
+                    title = stringResource(MR.strings.pref_nav_bar_alignment_landscape),
+                    visible = isSplit && (!allShown || isRailLandscape),
                 ),
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.pref_nav_bar_reset),
@@ -146,6 +191,10 @@ object SettingsAppearanceScreen : SearchableSettings {
                         uiPreferences.showBrowseTab.delete()
                         uiPreferences.navBarOrder.delete()
                         uiPreferences.navBarAlignment.delete()
+                        uiPreferences.navBarPosition.delete()
+                        uiPreferences.navBarSplitOrientation.delete()
+                        uiPreferences.navBarPositionLandscape.delete()
+                        uiPreferences.navBarAlignmentLandscape.delete()
                         context.toast(MR.strings.pref_nav_bar_reset_done)
                     },
                 ),
