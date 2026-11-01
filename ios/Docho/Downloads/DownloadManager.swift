@@ -110,14 +110,18 @@ actor DownloadManager {
     private func startWorker() {
         guard worker == nil, !preferences.paused else { return }
         worker = Task {
+            // Only a run that downloaded something announces the end of the queue. Resuming an
+            // empty queue at launch used to post "Download completed" for nothing.
+            var downloadedAny = false
             while !preferences.paused, let next = try? await database.nextQueuedDownload() {
                 let task = Task { await download(next) }
                 current = (next.chapterId, task)
                 await task.value
                 current = nil
+                downloadedAny = true
             }
             worker = nil
-            if !preferences.paused, (try? await database.queuedDownloads().isEmpty) == true {
+            if downloadedAny, !preferences.paused, (try? await database.queuedDownloads().isEmpty) == true {
                 eventContinuation.yield(.queueFinished)
             }
         }

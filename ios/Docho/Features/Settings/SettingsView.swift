@@ -167,6 +167,19 @@ private struct AppearanceSettings: View {
         }
         SwitchPreference(title: String(localized: "Pure black dark mode"), isOn: $preferences.pureBlack)
         NavigationBarSettings()
+        PreferenceHeader(title: String(localized: "Series"))
+        SwitchPreference(
+            title: String(localized: "Show release prediction"),
+            subtitle: String(localized: "The hourglass next to In library, with when Mihon expects the next chapter"),
+            isOn: $preferences.showReleasePrediction
+        )
+        if preferences.showReleasePrediction, !preferences.hiddenReleasePrediction.isEmpty {
+            PreferenceRow(
+                title: String(localized: "Show it on hidden series again"),
+                subtitle: String(localized: "Hidden on \(preferences.hiddenReleasePrediction.count) series"),
+                action: { preferences.hiddenReleasePrediction = [] }
+            )
+        }
         PreferenceHeader(title: String(localized: "Display"))
         ListPreference(
             title: String(localized: "Date format"), selection: $preferences.dateFormat,
@@ -453,6 +466,11 @@ private struct NavigationBarSettings: View {
         .environment(\.defaultMinListRowHeight, 56)
         .frame(height: CGFloat(HomeTab.allCases.count) * 56)
         .tint(m3.onSurfaceVariant)
+        PreferenceRow(
+            title: String(localized: "Reset to default"),
+            subtitle: String(localized: "Shows every tab again, in the original order and position"),
+            action: { withAnimation(.easeOut(duration: 0.2)) { app.preferences.resetNavigationBar() } }
+        )
     }
 
     private func isShown(_ tab: HomeTab) -> Bool {

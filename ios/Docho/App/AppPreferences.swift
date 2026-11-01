@@ -182,6 +182,15 @@ final class AppPreferences {
     /// Whether the welcome guide has been shown (Mihon's `onboarding_complete`).
     var shownWelcome: Bool { didSet { save(shownWelcome, "onboarding_complete") } }
 
+    // MARK: Release prediction
+
+    /// Whether series show the next-release estimate (the hourglass next to In library).
+    var showReleasePrediction: Bool { didSet { save(showReleasePrediction, "show_release_prediction") } }
+    /// Series the estimate is hidden on, one at a time from its dialog.
+    var hiddenReleasePrediction: Set<Int> { didSet { save(hiddenReleasePrediction.sorted(), "release_prediction_hidden") } }
+    /// Series whose estimate is stopped: the button says so instead of predicting.
+    var stoppedReleasePrediction: Set<Int> { didSet { save(stoppedReleasePrediction.sorted(), "release_prediction_stopped") } }
+
     // MARK: App updates
 
     /// A release the user chose to skip; it isn't offered again, but newer ones are.
@@ -209,7 +218,7 @@ final class AppPreferences {
         showBrowseTab = bool("nav_show_browse", true)
         navPosition = string("nav_bar_position").flatMap(NavPosition.init) ?? .automatic
         navAlignment = string("nav_bar_alignment").flatMap(NavAlignment.init) ?? .center
-        tabOrder = defaults.stringArray(forKey: "nav_bar_order") ?? ["library", "updates", "history", "browse", "more"]
+        tabOrder = defaults.stringArray(forKey: "nav_bar_order") ?? Self.defaultTabOrder
         sourceLanguages = defaults.stringArray(forKey: "source_languages") ?? ["all", Locale.current.language.languageCode?.identifier ?? "en"]
 
         displayMode = string("pref_display_mode_library").flatMap(DisplayMode.init) ?? .compactGrid
@@ -252,6 +261,9 @@ final class AppPreferences {
         downloadedOnly = bool("pref_downloaded_only", false)
         incognitoMode = bool("incognito_mode", false)
         shownWelcome = bool("onboarding_complete", false)
+        showReleasePrediction = bool("show_release_prediction", true)
+        hiddenReleasePrediction = Set(defaults.array(forKey: "release_prediction_hidden") as? [Int] ?? [])
+        stoppedReleasePrediction = Set(defaults.array(forKey: "release_prediction_stopped") as? [Int] ?? [])
         skippedAppUpdate = string("skipped_app_update") ?? ""
         skipPatchAppUpdates = bool("pref_skip_patch_app_updates", false)
     }
@@ -260,6 +272,19 @@ final class AppPreferences {
     var hasLibraryFilter: Bool {
         [filterDownloaded, filterUnread, filterStarted, filterBookmarked, filterCompleted].contains { $0 != .off } || downloadedOnly
     }
+
+    /// Puts the navigation bar back as it comes: every tab shown, in Mihon's order, centred, and
+    /// in the automatic position.
+    func resetNavigationBar() {
+        showUpdatesTab = true
+        showHistoryTab = true
+        showBrowseTab = true
+        navPosition = .automatic
+        navAlignment = .center
+        tabOrder = Self.defaultTabOrder
+    }
+
+    static let defaultTabOrder = ["library", "updates", "history", "browse", "more"]
 
     private func save(_ value: Any, _ key: String) {
         defaults.set(value, forKey: key)

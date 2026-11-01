@@ -200,6 +200,28 @@ final class DownloadTests: XCTestCase {
         XCTAssertEqual(again, 0)
     }
 
+    func testResumingAnEmptyQueueDoesNotAnnounceAFinishedQueue() async throws {
+        let finishedQueues = Mutex(0)
+        let collector = Task { [events = app.downloads.events] in
+            for await event in events {
+                if case .queueFinished = event { finishedQueues.withLock { $0 += 1 } }
+            }
+        }
+        defer { collector.cancel() }
+
+        await app.downloads.resume()
+        await app.downloads.waitUntilIdle()
+        await app.downloads.retryFailed()
+        await app.downloads.waitUntilIdle()
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(finishedQueues.withLock { $0 }, 0)
+
+        await app.downloads.download([try await chapters()[0]])
+        await app.downloads.waitUntilIdle()
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(finishedQueues.withLock { $0 }, 1)
+    }
+
     func testAnInterruptedDownloadIsResumedOnLaunch() async throws {
         try await app.database.queueDownloads([try await chapters()[1]])
         try await app.database.updateDownload(ids[1]) { $0.state = .downloading }

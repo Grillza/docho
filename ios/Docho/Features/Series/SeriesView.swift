@@ -20,6 +20,10 @@ struct SeriesView: View {
     /// Local source chapters waiting on "Delete from device?".
     @State private var deletingFiles: Set<Int>?
     @State private var deletingSeriesFiles = false
+    @State private var editingPrediction = false
+    @State private var predictionStop = false
+    @State private var predictionHide = false
+    @Environment(\.navigate) private var navigate
     @State private var fileError: String?
     @State private var descriptionExpanded = false
     let seriesId: Int
@@ -113,6 +117,39 @@ struct SeriesView: View {
             M3TextButton(title: String(localized: "Remove")) {
                 confirmingRemove = false
                 Task { await model.setInLibrary(false) }
+            }
+        }
+        .m3Dialog(isPresented: $editingPrediction, title: String(localized: "Release prediction")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Group {
+                    if predictionStopped {
+                        Text("Release prediction is stopped for this series.")
+                    } else if let series = model.series, let predicted = predictedDays(series, model: model) {
+                        Text("New chapters predicted to be released in around \(dayCount(predicted.days)), checking around every \(dayCount(predicted.interval)).")
+                    } else {
+                        Text("This series is either completed, or there is no predicted release date.")
+                    }
+                }
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                CheckboxRow(title: String(localized: "Stop predicting releases for this series"), isOn: $predictionStop)
+                CheckboxRow(title: String(localized: "Hide this for this series"), isOn: $predictionHide)
+                M3TextButton(title: String(localized: "Hide for all series…")) {
+                    editingPrediction = false
+                    navigate(.settingsPage(.appearance))
+                }
+                .padding(.horizontal, 12)
+            }
+        } buttons: {
+            M3TextButton(title: String(localized: "Cancel")) { editingPrediction = false }
+            M3TextButton(title: String(localized: "OK")) {
+                editingPrediction = false
+                if predictionStop {
+                    app.preferences.stoppedReleasePrediction.insert(seriesId)
+                } else {
+                    app.preferences.stoppedReleasePrediction.remove(seriesId)
+                }
+                if predictionHide { app.preferences.hiddenReleasePrediction.insert(seriesId) }
             }
         }
         .m3Dialog(isPresented: Binding(get: { deletingFiles != nil }, set: { if !$0 { deletingFiles = nil } }), title: String(localized: "Delete from device?")) {
@@ -221,6 +258,11 @@ struct SeriesView: View {
                         Button(String(localized: "Open in browser")) { openURL(url) }
                         ShareLink(String(localized: "Share"), item: url)
                     }
+                    if app.preferences.showReleasePrediction, app.preferences.hiddenReleasePrediction.contains(model.seriesId) {
+                        Button(String(localized: "Show release prediction")) {
+                            app.preferences.hiddenReleasePrediction.remove(model.seriesId)
+                        }
+                    }
                     if model.isLocal {
                         Button(String(localized: "Delete from device"), role: .destructive) { deletingSeriesFiles = true }
                     }
@@ -307,6 +349,15 @@ struct SeriesView: View {
                 }
             }
             .accessibilityIdentifier("series.library")
+            if app.preferences.showReleasePrediction, !app.preferences.hiddenReleasePrediction.contains(series.id) {
+                actionButton(title: predictionTitle(series, model: model), icon: "hourglass_empty", active: false) {
+                    guard series.inLibrary else { return }
+                    predictionStop = app.preferences.stoppedReleasePrediction.contains(series.id)
+                    predictionHide = false
+                    editingPrediction = true
+                }
+                .accessibilityIdentifier("series.prediction")
+            }
             actionButton(
                 title: trackCount == 0 ? String(localized: "Tracking") : String(localized: "\(trackCount) tracked"),
                 icon: trackCount == 0 ? "sync" : "check", active: trackCount > 0
@@ -318,6 +369,37 @@ struct SeriesView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+
+    // MARK: Release prediction (Android's fetch interval)
+
+    /// Android's estimate of the next release, from the chapters' upload (or else fetch) days.
+    /// Like Android, only series in the library get one.
+    private func predictedDays(_ series: SeriesRecord, model: SeriesModel) -> (days: Int, interval: Int)? {
+        guard series.inLibrary, !model.chapters.isEmpty else { return nil }
+        let today = Day(.now)
+        let schedule = ReleaseSchedule.estimate(
+            uploads: model.chapters.map { $0.dateUpload.map { Day($0) } },
+            fetches: model.chapters.compactMap { $0.dateFetch.map { Day($0) } },
+            today: today
+        )
+        return (max(today.daysUntil(schedule.nextCheck(today: today)), 0), schedule.interval)
+    }
+
+    private var predictionStopped: Bool { app.preferences.stoppedReleasePrediction.contains(seriesId) }
+
+    private func dayCount(_ days: Int) -> String {
+        days == 1 ? String(localized: "1 day") : String(localized: "\(days) days")
+    }
+
+    private func predictionTitle(_ series: SeriesRecord, model: SeriesModel) -> String {
+        if app.preferences.stoppedReleasePrediction.contains(series.id) { return String(localized: "Stopped") }
+        switch predictedDays(series, model: model)?.days {
+        case nil: return String(localized: "N/A")
+        case 0: return String(localized: "Soon")
+        case 1: return String(localized: "1 day")
+        case let days?: return String(localized: "\(days) days")
+        }
     }
 
     private func addToLibrary(_ model: SeriesModel) {
