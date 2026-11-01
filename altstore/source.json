@@ -20,11 +20,11 @@
       "versions": [
         {
           "version": "0.28.0",
-          "buildVersion": "48",
+          "buildVersion": "49",
           "date": "2026-10-31T22:09:31Z",
           "localizedDescription": "Version 0.28.0. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.28.0.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Update checks. Dōchō now checks this page for a new release when it opens, and again when you come back to it after 6 hours, then shows the iOS notes. Download opens this page, since the IPA has to go through your sideloader. More → About → Check for updates checks right away.\n• Skip this version, or bug-fix updates. Skip this version won't remind you about it again until there's a newer release. Skip bug-fix updates (0.0.x), in the update dialog or About, only reminds you about 0.x.0 releases. Checking by hand still shows everything.\n• Contact us in About opens GitHub Issues, for bug reports and suggestions.",
           "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.28.0/docho-0.28.0.ipa",
-          "size": 6293067,
+          "size": 6293511,
           "minOSVersion": "18.0"
         }
       ],
