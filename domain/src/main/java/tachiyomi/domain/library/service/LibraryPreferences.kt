@@ -233,6 +233,12 @@ class LibraryPreferences(
         Disabled,
     }
 
+    /**
+     * Library ids of series whose next-release estimate is stopped: the "outside expected release period" restriction
+     * no longer skips them in library updates.
+     */
+    val stoppedReleasePrediction: Preference<Set<String>> = preferenceStore.getStringSet("release_prediction_stopped")
+
     companion object {
         const val DEVICE_ONLY_ON_WIFI = "wifi"
         const val DEVICE_NETWORK_NOT_METERED = "network_not_metered"

@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,12 +59,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import logcat.LogPriority
+import mihon.app.di.appGraph
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
+import tachiyomi.core.common.preference.minusAssign
+import tachiyomi.core.common.preference.plusAssign
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
+import tachiyomi.presentation.core.util.collectAsState
+import tachiyomi.source.local.isLocal
 
 class MangaScreen(
     private val mangaId: Long,
@@ -104,6 +114,14 @@ class MangaScreen(
                 }
             }
         }
+
+        val uiPreferences = remember { context.appGraph.uiPreferences }
+        val libraryPreferences = remember { context.appGraph.libraryPreferences }
+        val showReleasePredictions by uiPreferences.showReleasePrediction.collectAsState()
+        val hiddenPredictions by uiPreferences.hiddenReleasePrediction.collectAsState()
+        val stoppedPredictions by libraryPreferences.stoppedReleasePrediction.collectAsState()
+        val mangaKey = successState.manga.id.toString()
+        val isPredictionStopped = mangaKey in stoppedPredictions
 
         MangaScreen(
             state = successState,
@@ -157,6 +175,11 @@ class MangaScreen(
             onEditFetchIntervalClicked = viewModel::showSetFetchIntervalDialog.takeIf {
                 successState.manga.favorite
             },
+            showReleasePrediction = showReleasePredictions && mangaKey !in hiddenPredictions,
+            releasePredictionStopped = isPredictionStopped,
+            onShowReleasePrediction = { uiPreferences.hiddenReleasePrediction -= mangaKey }
+                .takeIf { showReleasePredictions && mangaKey in hiddenPredictions },
+            onDeleteFromDeviceClicked = viewModel::showDeleteLocalMangaDialog.takeIf { successState.source.isLocal() },
             onMigrateClicked = {
                 navigator.push(MigrationConfigScreen(successState.manga.id))
             }.takeIf { successState.manga.favorite },
@@ -193,6 +216,42 @@ class MangaScreen(
                     onEditCategories = { navigator.push(CategoryScreen()) },
                     onConfirm = { include, _ ->
                         viewModel.moveMangaToCategoriesAndAddToLibrary(dialog.manga, include)
+                    },
+                )
+            }
+            is MangaViewModel.Dialog.DeleteLocalFiles -> {
+                AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { Text(stringResource(MR.strings.delete_from_device_title)) },
+                    text = { Text(stringResource(MR.strings.delete_local_chapters_message)) },
+                    dismissButton = {
+                        TextButton(onClick = onDismissRequest) { Text(stringResource(MR.strings.action_cancel)) }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                onDismissRequest()
+                                viewModel.deleteLocalFiles(dialog.chapters)
+                            },
+                        ) { Text(stringResource(MR.strings.action_delete)) }
+                    },
+                )
+            }
+            MangaViewModel.Dialog.DeleteLocalManga -> {
+                AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { Text(stringResource(MR.strings.delete_from_device_title)) },
+                    text = { Text(stringResource(MR.strings.delete_local_manga_message)) },
+                    dismissButton = {
+                        TextButton(onClick = onDismissRequest) { Text(stringResource(MR.strings.action_cancel)) }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                onDismissRequest()
+                                viewModel.deleteLocalManga(onDeleted = navigator::pop)
+                            },
+                        ) { Text(stringResource(MR.strings.action_delete)) }
                     },
                 )
             }
@@ -286,6 +345,17 @@ class MangaScreen(
                     onDismissRequest = onDismissRequest,
                     onValueChanged = { interval: Int -> viewModel.setFetchInterval(dialog.manga, interval) }
                         .takeIf { viewModel.isUpdateIntervalEnabled },
+                    stopped = isPredictionStopped,
+                    onApply = { stop, hide ->
+                        val key = dialog.manga.id.toString()
+                        if (stop) {
+                            libraryPreferences.stoppedReleasePrediction += key
+                        } else {
+                            libraryPreferences.stoppedReleasePrediction -= key
+                        }
+                        if (hide) uiPreferences.hiddenReleasePrediction += key
+                    },
+                    onHideForAll = { navigator.push(SettingsScreen(SettingsScreen.Destination.Appearance)) },
                 )
             }
         }

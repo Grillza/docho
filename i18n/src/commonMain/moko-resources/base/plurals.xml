@@ -35,6 +35,10 @@
         <item quantity="other">%1$s remaining</item>
     </plurals>
 
+    <plurals name="pref_unhide_release_prediction_summary">
+        <item quantity="one">Hidden on %d series</item>
+        <item quantity="other">Hidden on %d series</item>
+    </plurals>
     <plurals name="day">
         <item quantity="one">1 day</item>
         <item quantity="other">%d days</item>

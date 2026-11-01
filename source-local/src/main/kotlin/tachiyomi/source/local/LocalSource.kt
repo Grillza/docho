@@ -346,6 +346,30 @@ class LocalSource(
     // Unused stuff
     override suspend fun getPageList(chapter: SChapter): List<Page> = throw UnsupportedOperationException("Unused")
 
+    /**
+     * Deletes chapters' files (or folders of images) from the device, by their urls ("Series/Chapter.cbz").
+     * Chapters already gone are skipped.
+     */
+    fun deleteChapters(chapterUrls: List<String>) {
+        for (url in chapterUrls) {
+            val mangaDirName = url.substringBefore('/')
+            val chapterName = url.substringAfter('/')
+            val file = fileSystem.getMangaDirectory(mangaDirName)?.findFile(chapterName) ?: continue
+            deleteRecursively(file)
+        }
+    }
+
+    /** Deletes a series' folder from the device: its chapters, cover and ComicInfo.xml. */
+    fun deleteManga(mangaUrl: String) {
+        val mangaDir = fileSystem.getMangaDirectory(mangaUrl) ?: return
+        deleteRecursively(mangaDir)
+    }
+
+    private fun deleteRecursively(file: UniFile) {
+        if (file.isDirectory) file.listFiles()?.forEach(::deleteRecursively)
+        if (!file.delete() && file.exists()) error("Couldn't delete ${file.name}")
+    }
+
     fun getFormat(chapter: SChapter): Format {
         try {
             val (mangaDirName, chapterName) = chapter.url.split('/', limit = 2)

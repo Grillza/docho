@@ -182,6 +182,8 @@ class LibraryUpdateWorker(private val context: Context, workerParams: WorkerPara
         }
 
         val restrictions = libraryPreferences.autoUpdateMangaRestrictions.get()
+        // Series whose release estimate the user stopped aren't skipped for being outside it
+        val stoppedPredictions = libraryPreferences.stoppedReleasePrediction.get()
         val skippedUpdates = mutableListOf<Pair<Manga, String?>>()
         val timeZone = TimeZone.currentSystemDefault()
         val fetchWindowUpperBound = fetchInterval.getWindow(
@@ -215,6 +217,7 @@ class LibraryUpdateWorker(private val context: Context, workerParams: WorkerPara
                     }
 
                     MANGA_OUTSIDE_RELEASE_PERIOD in restrictions &&
+                        it.manga.id.toString() !in stoppedPredictions &&
                         it.manga.nextUpdate.let { next -> next != null && next > fetchWindowUpperBound } -> {
                         skippedUpdates.add(
                             it.manga to context.stringResource(MR.strings.skipped_reason_not_in_release_period),

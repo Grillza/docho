@@ -105,6 +105,7 @@ import tachiyomi.domain.manga.model.applyFilter
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.i18n.MR
+import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.isLocal
 import kotlin.math.floor
 import kotlin.time.Duration.Companion.seconds
@@ -1067,6 +1068,8 @@ class MangaViewModel(
             val initialSelection: List<CheckboxState<Category>>,
         ) : Dialog
         data class DeleteChapters(val chapters: List<Chapter>) : Dialog
+        data class DeleteLocalFiles(val chapters: List<Chapter>) : Dialog
+        data object DeleteLocalManga : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class Migrate(val target: Manga, val current: Manga) : Dialog
         data class SetFetchInterval(val manga: Manga) : Dialog
@@ -1081,7 +1084,43 @@ class MangaViewModel(
     }
 
     fun showDeleteChapterDialog(chapters: List<Chapter>) {
-        dialog.value = Dialog.DeleteChapters(chapters)
+        dialog.value = if (source?.isLocal() == true) Dialog.DeleteLocalFiles(chapters) else Dialog.DeleteChapters(chapters)
+    }
+
+    fun showDeleteLocalMangaDialog() {
+        dialog.value = Dialog.DeleteLocalManga
+    }
+
+    /** Deletes Local source chapters' files from the device; the refresh then drops them from the list. */
+    fun deleteLocalFiles(chapters: List<Chapter>) {
+        val local = source as? LocalSource ?: return
+        toggleAllSelection(false)
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { local.deleteChapters(chapters.map { it.url }) }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar(message = with(context) { e.formattedMessage })
+            }
+            fetchAllFromSource()
+        }
+    }
+
+    /** Deletes a Local source series' folder from the device and takes it out of the library. */
+    fun deleteLocalManga(onDeleted: () -> Unit) {
+        val local = source as? LocalSource ?: return
+        val manga = manga ?: return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { local.deleteManga(manga.url) }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar(message = with(context) { e.formattedMessage })
+                return@launch
+            }
+            if (manga.favorite) updateManga.awaitUpdateFavorite(manga.id, false)
+            onDeleted()
+        }
     }
 
     fun showSettingsDialog() {

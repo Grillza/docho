@@ -39,6 +39,7 @@ import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import mihon.app.di.appGraph
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import kotlin.time.Clock
@@ -57,7 +58,37 @@ object SettingsAppearanceScreen : SearchableSettings {
         return listOf(
             getThemeGroup(uiPreferences = uiPreferences),
             getDisplayGroup(uiPreferences = uiPreferences),
+            getSeriesGroup(uiPreferences = uiPreferences),
             getNavigationBarGroup(uiPreferences = uiPreferences),
+        )
+    }
+
+    @Composable
+    private fun getSeriesGroup(
+        uiPreferences: UiPreferences,
+    ): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val showPrediction by uiPreferences.showReleasePrediction.collectAsState()
+        val hidden by uiPreferences.hiddenReleasePrediction.collectAsState()
+
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.pref_category_series),
+            preferenceItems = listOf(
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.showReleasePrediction,
+                    title = stringResource(MR.strings.pref_show_release_prediction),
+                    subtitle = stringResource(MR.strings.pref_show_release_prediction_summary),
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.pref_unhide_release_prediction),
+                    subtitle = pluralStringResource(MR.plurals.pref_unhide_release_prediction_summary, hidden.size, hidden.size),
+                    visible = showPrediction && hidden.isNotEmpty(),
+                    onClick = {
+                        uiPreferences.hiddenReleasePrediction.delete()
+                        context.toast(MR.strings.pref_unhide_release_prediction_done)
+                    },
+                ),
+            ),
         )
     }
 
@@ -76,6 +107,7 @@ object SettingsAppearanceScreen : SearchableSettings {
             .map { stringResource(navBarTabLooks.getValue(it).second) }
             .joinToString()
         val alignmentName = stringResource(alignment.titleRes)
+        val context = LocalContext.current
 
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_category_nav_bar),
@@ -104,6 +136,18 @@ object SettingsAppearanceScreen : SearchableSettings {
                     entries = NavBarAlignment.entries.associateWith { stringResource(it.titleRes) },
                     title = stringResource(MR.strings.pref_nav_bar_alignment),
                     visible = !allShown,
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.pref_nav_bar_reset),
+                    subtitle = stringResource(MR.strings.pref_nav_bar_reset_summary),
+                    onClick = {
+                        uiPreferences.showUpdatesTab.delete()
+                        uiPreferences.showHistoryTab.delete()
+                        uiPreferences.showBrowseTab.delete()
+                        uiPreferences.navBarOrder.delete()
+                        uiPreferences.navBarAlignment.delete()
+                        context.toast(MR.strings.pref_nav_bar_reset_done)
+                    },
                 ),
             ),
         )

@@ -127,4 +127,10 @@ class UiPreferences(
                 .toFormatter(locale)
         }
     }
+
+    /** Whether series show Mihon's next-release estimate (the hourglass next to In library). */
+    val showReleasePrediction: Preference<Boolean> = preferenceStore.getBoolean("show_release_prediction", true)
+
+    /** Library ids of series the estimate is hidden on, one at a time from its dialog. */
+    val hiddenReleasePrediction: Preference<Set<String>> = preferenceStore.getStringSet("release_prediction_hidden")
 }

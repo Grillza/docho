@@ -110,6 +110,10 @@ fun MangaScreen(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onEditCategoryClicked: (() -> Unit)?,
     onEditFetchIntervalClicked: (() -> Unit)?,
+    showReleasePrediction: Boolean,
+    releasePredictionStopped: Boolean,
+    onShowReleasePrediction: (() -> Unit)?,
+    onDeleteFromDeviceClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
     onToggleMissingChaptersClicked: () -> Unit,
@@ -161,6 +165,10 @@ fun MangaScreen(
             onDownloadActionClicked = onDownloadActionClicked,
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
+            showReleasePrediction = showReleasePrediction,
+            releasePredictionStopped = releasePredictionStopped,
+            onShowReleasePrediction = onShowReleasePrediction,
+            onDeleteFromDeviceClicked = onDeleteFromDeviceClicked,
             onMigrateClicked = onMigrateClicked,
             onEditNotesClicked = onEditNotesClicked,
             onToggleMissingChaptersClicked = onToggleMissingChaptersClicked,
@@ -199,6 +207,10 @@ fun MangaScreen(
             onDownloadActionClicked = onDownloadActionClicked,
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
+            showReleasePrediction = showReleasePrediction,
+            releasePredictionStopped = releasePredictionStopped,
+            onShowReleasePrediction = onShowReleasePrediction,
+            onDeleteFromDeviceClicked = onDeleteFromDeviceClicked,
             onMigrateClicked = onMigrateClicked,
             onEditNotesClicked = onEditNotesClicked,
             onToggleMissingChaptersClicked = onToggleMissingChaptersClicked,
@@ -247,6 +259,10 @@ private fun MangaScreenSmallImpl(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
+    showReleasePrediction: Boolean,
+    releasePredictionStopped: Boolean,
+    onShowReleasePrediction: (() -> Unit)?,
+    onDeleteFromDeviceClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
     onToggleMissingChaptersClicked: () -> Unit,
@@ -306,6 +322,8 @@ private fun MangaScreenSmallImpl(
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
                 onClickEditNotes = onEditNotesClicked,
+                onClickShowReleasePrediction = onShowReleasePrediction,
+                onClickDeleteFromDevice = onDeleteFromDeviceClicked,
                 hideMissingChapters = state.manga.hideMissingChapters,
                 onClickToggleMissingChapters = onToggleMissingChaptersClicked,
                 actionModeCounter = state.selectedChapters.size,
@@ -324,6 +342,7 @@ private fun MangaScreenSmallImpl(
                 onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                 onDownloadChapter = onDownloadChapter,
                 onMultiDeleteClicked = onMultiDeleteClicked,
+                isLocal = state.source.isLocal(),
                 fillFraction = 1f,
             )
         },
@@ -395,6 +414,8 @@ private fun MangaScreenSmallImpl(
                             trackingCount = state.trackingCount,
                             nextUpdate = nextUpdate,
                             isUserIntervalMode = state.manga.fetchInterval < 0,
+                            showReleasePrediction = showReleasePrediction,
+                            releasePredictionStopped = releasePredictionStopped,
                             onAddToLibraryClicked = onAddToLibraryClicked,
                             onWebViewClicked = onWebViewClicked,
                             onWebViewLongClicked = onWebViewLongClicked,
@@ -482,6 +503,10 @@ fun MangaScreenLargeImpl(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
+    showReleasePrediction: Boolean,
+    releasePredictionStopped: Boolean,
+    onShowReleasePrediction: (() -> Unit)?,
+    onDeleteFromDeviceClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
     onToggleMissingChaptersClicked: () -> Unit,
@@ -534,6 +559,8 @@ fun MangaScreenLargeImpl(
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
                 onClickEditNotes = onEditNotesClicked,
+                onClickShowReleasePrediction = onShowReleasePrediction,
+                onClickDeleteFromDevice = onDeleteFromDeviceClicked,
                 hideMissingChapters = state.manga.hideMissingChapters,
                 onClickToggleMissingChapters = onToggleMissingChaptersClicked,
                 onCancelActionMode = { onAllChapterSelected(false) },
@@ -554,6 +581,7 @@ fun MangaScreenLargeImpl(
                 onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                 onDownloadChapter = onDownloadChapter,
                 onMultiDeleteClicked = onMultiDeleteClicked,
+                isLocal = state.source.isLocal(),
                 fillFraction = 0.5f,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -616,6 +644,8 @@ fun MangaScreenLargeImpl(
                             trackingCount = state.trackingCount,
                             nextUpdate = nextUpdate,
                             isUserIntervalMode = state.manga.fetchInterval < 0,
+                            showReleasePrediction = showReleasePrediction,
+                            releasePredictionStopped = releasePredictionStopped,
                             onAddToLibraryClicked = onAddToLibraryClicked,
                             onWebViewClicked = onWebViewClicked,
                             onWebViewLongClicked = onWebViewLongClicked,
@@ -687,6 +717,7 @@ private fun SharedMangaBottomActionMenu(
     onMarkPreviousAsReadClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onMultiDeleteClicked: (List<Chapter>) -> Unit,
+    isLocal: Boolean,
     fillFraction: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -716,7 +747,7 @@ private fun SharedMangaBottomActionMenu(
         onDeleteClicked = {
             onMultiDeleteClicked(selected.fastMap { it.chapter })
         }.takeIf {
-            selected.fastAny { it.downloadState == Download.State.DOWNLOADED }
+            isLocal || selected.fastAny { it.downloadState == Download.State.DOWNLOADED }
         },
     )
 }
