@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.29.2",
+          "buildVersion": "53",
+          "date": "2026-11-01T07:56:07Z",
+          "localizedDescription": "Version 0.29.2. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.29.2.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• A different position in landscape on iPad. Settings → Appearance → Navigation bar → Different position in landscape sets the bar and tab position for portrait and landscape separately, for example a bar at the bottom in portrait and a rail on the left in landscape, with its tabs at the bottom.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.29.2/docho-0.29.2.ipa",
+          "size": 6340913,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.29.1",
           "buildVersion": "52",
           "date": "2026-11-01T07:28:22Z",
