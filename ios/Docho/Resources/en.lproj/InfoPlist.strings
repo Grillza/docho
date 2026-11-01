@@ -1,0 +1,4 @@
+/* The name under the icon. Info.plist keeps a plain "Docho", since sideloaders
+   register the app with Apple under that name and Apple only accepts letters,
+   numbers and spaces there. */
+"CFBundleDisplayName" = "Dōchō";

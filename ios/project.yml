@@ -14,7 +14,7 @@ settings:
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     MARKETING_VERSION: "0.28.0"
-    CURRENT_PROJECT_VERSION: "48"
+    CURRENT_PROJECT_VERSION: "49"
 
 packages:
   GRDB:
@@ -49,7 +49,10 @@ targets:
     info:
       path: Docho/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Dōchō
+        # Plain ASCII: AltStore and SideStore register the App ID under this name, and Apple rejects
+        # "Dōchō". en.lproj/InfoPlist.strings gives the home screen "Dōchō".
+        CFBundleDisplayName: Docho
+        CFBundleDevelopmentRegion: en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
