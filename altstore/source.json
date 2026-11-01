@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.29.1",
+          "buildVersion": "52",
+          "date": "2026-11-01T07:28:22Z",
+          "localizedDescription": "Version 0.29.1. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.29.1.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nChanged\n\n• Update in AltStore or SideStore. When AltStore or SideStore is on your device, the new-version dialog's button is Update in AltStore (or SideStore), which opens it to install the new version over the current one. Without either, Download still opens this page.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.29.1/docho-0.29.1.ipa",
+          "size": 6332746,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.29.0",
           "buildVersion": "51",
           "date": "2026-11-01T07:09:03Z",
