@@ -400,26 +400,29 @@ private struct NavigationBarSettings: View {
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
 
     /// The bar as it would sit: always at the bottom on iPhone.
-    private var position: AppPreferences.NavPosition {
+    private func shown(_ position: AppPreferences.NavPosition) -> AppPreferences.NavPosition {
         guard isPad else { return .bottom }
-        return app.preferences.navPosition == .automatic ? .left : app.preferences.navPosition
+        return position == .automatic ? .left : position
     }
 
     var body: some View {
         @Bindable var preferences = app.preferences
-        let vertical = position == .left || position == .right
         PreferenceHeader(title: String(localized: "Navigation bar"))
-        preview
         if isPad {
-            ListPreference(
-                title: String(localized: "Bar position"), selection: $preferences.navPosition,
-                options: AppPreferences.NavPosition.allCases.map { ($0, $0.title) }
+            SwitchPreference(
+                title: String(localized: "Different position in landscape"),
+                subtitle: String(localized: "For example at the bottom in portrait and on the left in landscape"),
+                isOn: $preferences.navSplitOrientation
             )
         }
-        ListPreference(
-            title: String(localized: "Tab position"), selection: $preferences.navAlignment,
-            options: AppPreferences.NavAlignment.allCases.map { ($0, $0.title(vertical: vertical)) }
-        )
+        if isPad, preferences.navSplitOrientation {
+            orientationHeader(String(localized: "Portrait"))
+        }
+        layoutSettings(position: $preferences.navPosition, alignment: $preferences.navAlignment)
+        if isPad, preferences.navSplitOrientation {
+            orientationHeader(String(localized: "Landscape"))
+            layoutSettings(position: $preferences.navPositionLandscape, alignment: $preferences.navAlignmentLandscape)
+        }
         Text("Drag tabs to change their order, and tap the eye to show or hide one. Library and More always show, so you can always get around the app.")
             .font(M3Type.bodySmall)
             .foregroundStyle(m3.onSurfaceVariant)
@@ -498,16 +501,41 @@ private struct NavigationBarSettings: View {
         return ordered + HomeTab.allCases.filter { !ordered.contains($0) }
     }
 
-    /// A small copy of the bar as the settings would show it (Android's preview).
+    private func orientationHeader(_ title: String) -> some View {
+        Text(title)
+            .font(M3Type.titleSmall)
+            .foregroundStyle(m3.onSurface)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A preview, then the bar position (iPad) and tab position for one orientation.
     @ViewBuilder
-    private var preview: some View {
-        let preferences = app.preferences
-        let tabs = HomeTab.visible(preferences)
-        let bar = NavBar(tabs: tabs, position: position, alignment: preferences.navAlignment, current: tabs.first ?? .library,
+    private func layoutSettings(position: Binding<AppPreferences.NavPosition>, alignment: Binding<AppPreferences.NavAlignment>) -> some View {
+        let shownPosition = shown(position.wrappedValue)
+        let vertical = shownPosition == .left || shownPosition == .right
+        preview(position: shownPosition, alignment: alignment.wrappedValue)
+        if isPad {
+            ListPreference(
+                title: String(localized: "Bar position"), selection: position,
+                options: AppPreferences.NavPosition.allCases.map { ($0, $0.title) }
+            )
+        }
+        ListPreference(
+            title: String(localized: "Tab position"), selection: alignment,
+            options: AppPreferences.NavAlignment.allCases.map { ($0, $0.title(vertical: vertical)) }
+        )
+    }
+
+    /// A small copy of the bar as the settings would show it (Android's preview).
+    private func preview(position: AppPreferences.NavPosition, alignment: AppPreferences.NavAlignment) -> some View {
+        let tabs = HomeTab.visible(app.preferences)
+        let bar = NavBar(tabs: tabs, position: position, alignment: alignment, current: tabs.first ?? .library,
                          badge: { _ in nil }, selection: { _ in })
             .allowsHitTesting(false)
         let screen = RoundedRectangle(cornerRadius: 8).fill(m3.surfaceContainerLow)
-        Group {
+        return Group {
             switch position {
             case .left, .automatic: HStack(spacing: 0) { bar; screen }
             case .right: HStack(spacing: 0) { screen; bar }
@@ -519,8 +547,8 @@ private struct NavigationBarSettings: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(m3.outlineVariant))
         .padding(16)
-        .animation(.easeOut(duration: 0.2), value: preferences.navPosition)
-        .animation(.easeOut(duration: 0.2), value: preferences.navAlignment)
+        .animation(.easeOut(duration: 0.2), value: position)
+        .animation(.easeOut(duration: 0.2), value: alignment)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "Preview: \(tabs.map(\.title).joined(separator: ", "))"))
     }

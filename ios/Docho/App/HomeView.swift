@@ -65,6 +65,8 @@ struct HomeView: View {
     @State private var paths: [HomeTab: [Route]] = [:]
     @State private var reader: ReaderLaunch?
     @State private var updatesCount = 0
+    /// Whether the window is wider than tall, for a landscape bar layout of its own.
+    @State private var isLandscape = false
 
     private var tabs: [HomeTab] { HomeTab.visible(app.preferences) }
 
@@ -72,14 +74,14 @@ struct HomeView: View {
     private var position: AppPreferences.NavPosition {
         // On iPhone the bar is always at the bottom.
         guard UIDevice.current.userInterfaceIdiom == .pad else { return .bottom }
-        let chosen = app.preferences.navPosition
+        let chosen = app.preferences.navLayout(landscape: isLandscape).position
         guard chosen == .automatic else { return chosen }
         return sizeClass == .regular ? .left : .bottom
     }
 
     var body: some View {
         let bar = NavBar(
-            tabs: tabs, position: position, alignment: app.preferences.navAlignment,
+            tabs: tabs, position: position, alignment: app.preferences.navLayout(landscape: isLandscape).alignment,
             current: selection, badge: badge, selection: select
         )
         Group {
@@ -101,6 +103,7 @@ struct HomeView: View {
             }
         }
         .background(m3.surface.ignoresSafeArea())
+        .onGeometryChange(for: Bool.self, of: { $0.size.width > $0.size.height }) { isLandscape = $0 }
         .environment(\.openReader, OpenReaderAction { reader = $0 })
         .environment(\.navigate, NavigateAction { route in paths[selection, default: []].append(route) })
         .environment(\.openBrowse, OpenBrowseAction { route in

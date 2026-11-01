@@ -73,6 +73,16 @@ final class AppPreferences {
 
     var navPosition: NavPosition { didSet { save(navPosition.rawValue, "nav_bar_position") } }
     var navAlignment: NavAlignment { didSet { save(navAlignment.rawValue, "nav_bar_alignment") } }
+    /// iPad: whether landscape has its own bar position and tab position. `navPosition` and
+    /// `navAlignment` are then portrait's.
+    var navSplitOrientation: Bool { didSet { save(navSplitOrientation, "nav_bar_split_orientation") } }
+    var navPositionLandscape: NavPosition { didSet { save(navPositionLandscape.rawValue, "nav_bar_position_landscape") } }
+    var navAlignmentLandscape: NavAlignment { didSet { save(navAlignmentLandscape.rawValue, "nav_bar_alignment_landscape") } }
+
+    /// The bar's position and tab position in an orientation: landscape's own when the split is on.
+    func navLayout(landscape: Bool) -> (position: NavPosition, alignment: NavAlignment) {
+        navSplitOrientation && landscape ? (navPositionLandscape, navAlignmentLandscape) : (navPosition, navAlignment)
+    }
     /// The tabs in the order the bar shows them.
     var tabOrder: [String] { didSet { save(tabOrder, "nav_bar_order") } }
 
@@ -201,7 +211,8 @@ final class AppPreferences {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         func string(_ key: String) -> String? { defaults.string(forKey: key) }
-        func bool(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) as? Bool ?? fallback }
+        // UserDefaults.bool also reads "YES" and "1", as launch arguments give them.
+        func bool(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) == nil ? fallback : defaults.bool(forKey: key) }
         func int(_ key: String, _ fallback: Int) -> Int { defaults.object(forKey: key) as? Int ?? fallback }
         func tri(_ key: String) -> ChapterDisplay.TriState { ChapterDisplay.TriState(rawValue: int(key, 0)) ?? .off }
 
@@ -218,6 +229,9 @@ final class AppPreferences {
         showBrowseTab = bool("nav_show_browse", true)
         navPosition = string("nav_bar_position").flatMap(NavPosition.init) ?? .automatic
         navAlignment = string("nav_bar_alignment").flatMap(NavAlignment.init) ?? .center
+        navSplitOrientation = bool("nav_bar_split_orientation", false)
+        navPositionLandscape = string("nav_bar_position_landscape").flatMap(NavPosition.init) ?? .left
+        navAlignmentLandscape = string("nav_bar_alignment_landscape").flatMap(NavAlignment.init) ?? .center
         tabOrder = defaults.stringArray(forKey: "nav_bar_order") ?? Self.defaultTabOrder
         sourceLanguages = defaults.stringArray(forKey: "source_languages") ?? ["all", Locale.current.language.languageCode?.identifier ?? "en"]
 
@@ -281,6 +295,9 @@ final class AppPreferences {
         showBrowseTab = true
         navPosition = .automatic
         navAlignment = .center
+        navSplitOrientation = false
+        navPositionLandscape = .left
+        navAlignmentLandscape = .center
         tabOrder = Self.defaultTabOrder
     }
 
