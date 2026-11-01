@@ -77,6 +77,10 @@ targets:
         # automatic library updates (Settings → Library), which iOS runs when it decides.
         UIBackgroundModes:
           - fetch
+        # Lets the update dialog see whether AltStore or SideStore is installed, to update through it.
+        LSApplicationQueriesSchemes:
+          - altstore
+          - sidestore
         # The Local source: Documents shows in the Files app (On My iPhone › Dōchō), and comic
         # files can be opened in Dōchō from Files or shared to it.
         UIFileSharingEnabled: true

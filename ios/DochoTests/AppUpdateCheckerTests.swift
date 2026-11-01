@@ -23,7 +23,7 @@ final class AppUpdateCheckerTests: XCTestCase {
     private func json(assets: [String]) -> Data {
         let object: [String: Any] = [
             "tag_name": "v0.28.0", "body": body, "html_url": "https://github.com/Grillza/docho/releases/tag/v0.28.0",
-            "assets": assets.map { ["name": $0] },
+            "assets": assets.map { ["name": $0, "browser_download_url": "https://github.com/Grillza/docho/releases/download/v0.28.0/\($0)"] },
         ]
         return try! JSONSerialization.data(withJSONObject: object)
     }
@@ -34,6 +34,17 @@ final class AppUpdateCheckerTests: XCTestCase {
         XCTAssertTrue(release.notes.hasPrefix("Version 0.28.0."))
         XCTAssertTrue(release.notes.contains("iOS change"))
         XCTAssertFalse(release.notes.contains("Android change"))
+    }
+
+    func testInstallLinksForAltStoreAndSideStore() throws {
+        let release = try XCTUnwrap(AppUpdateChecker.parse(json(assets: ["docho-0.28.0.ipa"])))
+        let ipa = "https://github.com/Grillza/docho/releases/download/v0.28.0/docho-0.28.0.ipa"
+        XCTAssertEqual(release.ipa?.absoluteString, ipa)
+        let alt = try XCTUnwrap(release.installURL(in: .altStore))
+        XCTAssertEqual(alt.scheme, "altstore")
+        XCTAssertEqual(alt.host, "install")
+        XCTAssertEqual(URLComponents(url: alt, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, ipa)
+        XCTAssertEqual(release.installURL(in: .sideStore)?.scheme, "sidestore")
     }
 
     func testAReleaseWithoutAnIpaIsIgnored() throws {

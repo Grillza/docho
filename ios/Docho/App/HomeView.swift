@@ -491,10 +491,17 @@ private struct AppUpdateContent: View {
     }
 }
 
-/// Skip this version, Not now, and Download (the release page, since the IPA needs a sideloader).
+/// Skip this version, Not now, and Update: through AltStore or SideStore when one is on the
+/// device, which installs the new IPA, or else the release page.
 private struct AppUpdateButtons: View {
     @Environment(AppModel.self) private var app
     @Environment(\.openURL) private var openURL
+
+    /// The first sideloader installed that can take the update (its scheme is listed in
+    /// LSApplicationQueriesSchemes, so canOpenURL can see it).
+    private var sideloader: AppRelease.Sideloader? {
+        AppRelease.Sideloader.allCases.first { UIApplication.shared.canOpenURL(URL(string: "\($0.rawValue)://")!) }
+    }
 
     var body: some View {
         M3TextButton(title: String(localized: "Skip this version")) {
@@ -502,8 +509,16 @@ private struct AppUpdateButtons: View {
             app.availableUpdate = nil
         }
         M3TextButton(title: String(localized: "Not now")) { app.availableUpdate = nil }
-        M3TextButton(title: String(localized: "Download")) {
-            if let release = app.availableUpdate { openURL(release.page) }
+        let sideloader = sideloader
+        M3TextButton(title: sideloader.map { String(localized: "Update in \($0.name)") } ?? String(localized: "Download")) {
+            if let release = app.availableUpdate {
+                if let sideloader, let url = release.installURL(in: sideloader) {
+                    // Falls back to the release page if the sideloader turns the link down.
+                    openURL(url) { accepted in if !accepted { openURL(release.page) } }
+                } else {
+                    openURL(release.page)
+                }
+            }
             app.availableUpdate = nil
         }
     }

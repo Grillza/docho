@@ -7,8 +7,34 @@ struct AppRelease: Equatable, Identifiable, Sendable {
     /// The "## iOS and iPadOS" part of the release notes.
     let notes: String
     let page: URL
+    /// The IPA itself, which AltStore or SideStore can install as the update.
+    var ipa: URL?
 
     var id: String { version }
+
+    /// A sideloader on the device that can install the update.
+    enum Sideloader: String, CaseIterable {
+        case altStore = "altstore"
+        case sideStore = "sidestore"
+
+        var name: String {
+            switch self {
+            case .altStore: "AltStore"
+            case .sideStore: "SideStore"
+            }
+        }
+    }
+
+    /// `altstore://install?url=…` (SideStore takes the same link on its own scheme): opens the
+    /// sideloader, which downloads and installs the IPA over the current app.
+    func installURL(in sideloader: Sideloader) -> URL? {
+        guard let ipa else { return nil }
+        var components = URLComponents()
+        components.scheme = sideloader.rawValue
+        components.host = "install"
+        components.queryItems = [URLQueryItem(name: "url", value: ipa.absoluteString)]
+        return components.url
+    }
 }
 
 /// Checks GitHub for a newer release, as Android's AppUpdateChecker does.
@@ -51,7 +77,10 @@ struct AppUpdateChecker: Sendable {
     // MARK: Parsing
 
     private struct GitHubRelease: Decodable {
-        struct Asset: Decodable { let name: String }
+        struct Asset: Decodable {
+            let name: String
+            let browser_download_url: URL?
+        }
         let tag_name: String
         let body: String?
         let html_url: URL
@@ -61,8 +90,11 @@ struct AppUpdateChecker: Sendable {
     /// The iOS release in GitHub's JSON, or nil if it has no IPA.
     static func parse(_ data: Data) throws -> AppRelease? {
         let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
-        guard let version = release.assets.lazy.compactMap({ ipaVersion(of: $0.name) }).first else { return nil }
-        return AppRelease(version: version, notes: iosSection(of: release.body ?? ""), page: release.html_url)
+        guard let asset = release.assets.first(where: { ipaVersion(of: $0.name) != nil }),
+              let version = ipaVersion(of: asset.name) else { return nil }
+        return AppRelease(
+            version: version, notes: iosSection(of: release.body ?? ""), page: release.html_url, ipa: asset.browser_download_url
+        )
     }
 
     /// "docho-0.28.0.ipa" gives "0.28.0".
