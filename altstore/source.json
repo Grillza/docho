@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.28.1",
+          "buildVersion": "50",
+          "date": "2026-11-01T06:58:16Z",
+          "localizedDescription": "Version 0.28.1. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.28.1.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Release prediction. Series in your library show Android's hourglass next to In library, with when the next chapter is expected. Tap it to stop predicting for that series, hide it on that series, or both. Hide for all series… opens Settings → Appearance, which has a Show release prediction switch. A series with it hidden can show it again from its ⋮ menu.\n• Reset the navigation bar. Settings → Appearance → Navigation bar → Reset to default shows every tab again, in the original order and position.\n\nFixed\n\n• Opening the app after an update no longer shows a \"Download completed\" notification when nothing was downloading.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.28.1/docho-0.28.1.ipa",
+          "size": 6329291,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.28.0",
           "buildVersion": "49",
           "date": "2026-10-31T22:09:31Z",
