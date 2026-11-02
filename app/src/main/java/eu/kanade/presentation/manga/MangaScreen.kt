@@ -453,6 +453,7 @@ private fun MangaScreenSmallImpl(
                             enabled = !isAnySelected,
                             chapterCount = chapters.size,
                             missingChapterCount = state.missingChapterCount,
+                            missingVolumeCount = state.missingVolumeCount,
                             onClick = onFilterClicked,
                         )
                     }
@@ -692,6 +693,7 @@ fun MangaScreenLargeImpl(
                                     enabled = !isAnySelected,
                                     chapterCount = chapters.size,
                                     missingChapterCount = state.missingChapterCount,
+                                    missingVolumeCount = state.missingVolumeCount,
                                     onClick = onFilterButtonClicked,
                                 )
                             }
@@ -789,7 +791,7 @@ private fun LazyListScope.sharedChapterItems(
 
         when (item) {
             is ChapterList.MissingCount -> {
-                MissingChapterCountListItem(count = item.count)
+                MissingChapterCountListItem(count = item.count, volumes = item.volumes)
             }
             is ChapterList.Item -> {
                 MangaChapterListItem(

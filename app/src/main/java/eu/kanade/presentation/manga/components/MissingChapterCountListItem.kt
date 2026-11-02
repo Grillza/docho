@@ -21,6 +21,7 @@ import tachiyomi.presentation.core.util.secondaryItemAlpha
 fun MissingChapterCountListItem(
     count: Int,
     modifier: Modifier = Modifier,
+    volumes: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -34,7 +35,11 @@ fun MissingChapterCountListItem(
     ) {
         HorizontalDivider(modifier = Modifier.weight(1f))
         Text(
-            text = pluralStringResource(MR.plurals.missing_chapters, count = count, count),
+            text = pluralStringResource(
+                if (volumes) MR.plurals.missing_volumes else MR.plurals.missing_chapters,
+                count = count,
+                count,
+            ),
             style = MaterialTheme.typography.labelMedium,
         )
         HorizontalDivider(modifier = Modifier.weight(1f))
