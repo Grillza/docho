@@ -32,6 +32,7 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.eclipse.jetty.server.ServerConnector
+import suwayomi.tachidesk.docho.sync.DochoSync
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
@@ -124,6 +125,7 @@ object JavalinSetup {
 
                         OpdsAPI.defineEndpoints()
                         GraphQL.defineEndpoints()
+                        DochoSync.defineEndpoints()
 
                         after { ctx ->
                             // If not matched, the request was for an invalid endpoint
@@ -240,7 +242,9 @@ object JavalinSetup {
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
             val isApi = ctx.path().startsWith(ServerSubpath.maybeAddAsPrefix("/api/"))
 
-            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
+            // Dōchō Sync signs devices in with its own accounts and tokens.
+            val isDochoSync = ctx.path().startsWith(ServerSubpath.maybeAddAsPrefix("/api/docho/sync/"))
+            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest && !isDochoSync
             if (!requiresAuthentication) {
                 return@beforeMatched
             }

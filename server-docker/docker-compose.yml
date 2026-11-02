@@ -1,0 +1,34 @@
+# Dōchō Server
+#
+#   docker compose up -d            # pull the published image
+#   docker compose up -d --build    # or build it from this repository
+#
+# Then open http://<host>:4567, go to Libraries, and add /books/manga, /books/comics, ...
+# In the Dōchō app: Settings → Sync / Self-hosted sources → Dōchō Server.
+
+services:
+  docho-server:
+    image: ghcr.io/grillza/docho-server:latest
+    build:
+      context: ..
+      dockerfile: server-docker/Dockerfile
+    container_name: docho-server
+    restart: unless-stopped
+    # Match the owner of your library files, so covers and progress can be read and saved.
+    user: "1000:1000"
+    ports:
+      - "4567:4567"
+    environment:
+      TZ: Australia/Sydney
+      # Heap for the server; raise it for very large libraries or big PDFs.
+      JAVA_OPTS: "-Xmx1g"
+      # "open" lets more than one person make a Dōchō Sync account.
+      DOCHO_SYNC_REGISTRATION: ""
+    volumes:
+      # Database, covers, extensions, downloads and settings.
+      - data:/data
+      # Your library, read-only: the server never changes your files.
+      - /mnt/usb/Books:/books:ro
+
+volumes:
+  data:

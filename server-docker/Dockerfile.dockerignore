@@ -1,0 +1,11 @@
+# The build only needs the server and its WebUI.
+*
+!server/
+!server-webui/
+!server-docker/entrypoint.sh
+server/**/build/
+server/.gradle/
+server/server/src/main/resources/WebUI.zip
+server-webui/node_modules/
+server-webui/build/
+server-webui/buildZip/

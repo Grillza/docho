@@ -6,6 +6,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import { DochoLibraries } from '@/features/docho/screens/DochoLibraries.tsx';
+import { DochoSeriesGroups } from '@/features/docho/screens/DochoSeriesGroups.tsx';
+import { DochoCollections } from '@/features/docho/screens/DochoCollections.tsx';
 import CssBaseline from '@mui/material/CssBaseline';
 import type { PropsWithChildren, ReactNode } from 'react';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
@@ -291,6 +294,11 @@ const MainApp = () => {
                         />
                         {isMobileWidth && <Route path={AppRoutes.more.match} element={<More />} />}
                         <Route path={AppRoutes.about.match} element={<About />} />
+                        <Route path={AppRoutes.docho.match}>
+                            <Route path={AppRoutes.docho.children.libraries.match} element={<DochoLibraries />} />
+                            <Route path={AppRoutes.docho.children.groups.match} element={<DochoSeriesGroups />} />
+                            <Route path={AppRoutes.docho.children.collections.match} element={<DochoCollections />} />
+                        </Route>
                         <Route path={AppRoutes.settings.match}>
                             <Route index element={<Settings />} />
                             <Route path={AppRoutes.settings.children.categories.match} element={<CategorySettings />} />

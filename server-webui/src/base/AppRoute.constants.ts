@@ -46,6 +46,24 @@ export const AppRoutes = {
         match: 'about',
         path: '/about',
     },
+    docho: {
+        match: 'docho',
+        path: '/docho',
+        children: {
+            libraries: {
+                match: 'libraries',
+                path: '/docho/libraries',
+            },
+            groups: {
+                match: 'groups',
+                path: '/docho/groups',
+            },
+            collections: {
+                match: 'collections',
+                path: '/docho/collections',
+            },
+        },
+    },
     settings: {
         match: 'settings',
         path: '/settings',

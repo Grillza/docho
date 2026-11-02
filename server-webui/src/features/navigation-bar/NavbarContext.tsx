@@ -11,7 +11,7 @@ import type { INavbarOverride, NavbarContextType } from '@/features/navigation-b
 import { useLocalStorage } from '@/base/hooks/useStorage.tsx';
 
 export const NavBarContext = React.createContext<NavbarContextType>({
-    title: 'Suwayomi',
+    title: 'Dōchō Server',
     setTitle: (): void => {},
     hideTitle: false,
     setHideTitle: (): void => {},
@@ -38,7 +38,7 @@ interface IProps {
 }
 
 export function NavBarContextProvider({ children }: IProps) {
-    const [title, setTitle] = useState<string | React.ReactNode>('Suwayomi');
+    const [title, setTitle] = useState<string | React.ReactNode>('Dōchō Server');
     const [hideTitle, setHideTitle] = useState(false);
     const [action, setAction] = useState<any>(<div />);
     const [appBarHeight, setAppBarHeight] = useState(0);

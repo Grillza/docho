@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.local.LocalSource
+import suwayomi.tachidesk.docho.library.Libraries
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -88,7 +89,7 @@ object Library {
                         .get(MangaTable.sourceReference)
                 }
 
-            if (sourceId == LocalSource.ID) {
+            if (sourceId == LocalSource.ID || Libraries.isDochoSource(sourceId)) {
                 return@launch
             }
 

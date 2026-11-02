@@ -13,6 +13,10 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.local.LocalSource
+import suwayomi.tachidesk.docho.groups.GroupSource
+import suwayomi.tachidesk.docho.groups.SeriesGroups
+import suwayomi.tachidesk.docho.library.FileBackedSource
+import suwayomi.tachidesk.docho.library.Libraries
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
@@ -425,6 +429,17 @@ object Manga {
                 }
             }
 
+            // Dōchō: a group shows a member's cover; a library series, the cover its scan saved.
+            is GroupSource -> {
+                val member = SeriesGroups.coverMemberOf(mangaId) ?: throw IOException("This group has no series")
+                getMangaThumbnail(member)
+            }
+
+            is FileBackedSource -> {
+                val imageFile = mangaEntry[MangaTable.thumbnail_url]?.let(::File)?.takeIf(File::exists) ?: throw IOException("Thumbnail does not exist")
+                imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg")
+            }
+
             is LocalSource -> {
                 val imageFile =
                     mangaEntry[MangaTable.thumbnail_url]?.let {
@@ -462,7 +477,10 @@ object Manga {
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
 
-        if (mangaEntry[MangaTable.inLibrary] && mangaEntry[MangaTable.sourceReference] != LocalSource.ID) {
+        if (mangaEntry[MangaTable.inLibrary] &&
+            mangaEntry[MangaTable.sourceReference] != LocalSource.ID &&
+            !Libraries.isDochoSource(mangaEntry[MangaTable.sourceReference])
+        ) {
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {

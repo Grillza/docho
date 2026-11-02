@@ -1,6 +1,6 @@
 {
-    "name": "Suwayomi",
-    "short_name": "Suwayomi",
+    "name": "Dōchō Server",
+    "short_name": "Dōchō",
     "start_url": ".",
     "icons": [
         {
@@ -21,7 +21,7 @@
             "purpose": "maskable"
         }
     ],
-    "theme_color": "#3181C0",
-    "background_color": "#3181C0",
+    "theme_color": "#3D8FD9",
+    "background_color": "#3D8FD9",
     "display": "standalone"
 }

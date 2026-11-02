@@ -83,6 +83,8 @@ dependencies {
     implementation(libs.zip4j)
     implementation(libs.commonscompress)
     implementation(libs.junrar)
+    implementation(libs.pdfbox)
+    implementation(libs.xz)
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     implementation(libs.bouncycastle)

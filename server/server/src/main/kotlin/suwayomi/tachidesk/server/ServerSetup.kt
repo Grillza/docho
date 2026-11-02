@@ -15,6 +15,8 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
+import suwayomi.tachidesk.docho.groups.SeriesGroups
+import suwayomi.tachidesk.docho.library.Libraries
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson3
 import io.javalin.json.JsonMapper
@@ -340,6 +342,14 @@ fun applicationSetup() {
     } catch (e: Exception) {
         logger.error(e) { "Failed to setup LocalSource" }
         shutdownApp(ExitCode.LocalSourceSetupFailure)
+    }
+
+    // Dōchō: Kavita-style libraries and series groups
+    try {
+        SeriesGroups.start()
+        Libraries.start()
+    } catch (e: Exception) {
+        logger.error(e) { "Failed to set up the Dōchō libraries" }
     }
 
     serverConfig.subscribeTo(

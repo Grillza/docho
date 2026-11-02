@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.download
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.local.LocalSource
+import suwayomi.tachidesk.docho.library.Libraries
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
@@ -146,7 +147,7 @@ class Downloader(
             val downloadLogger = KotlinLogging.logger(logContext)
 
             // Skip local source downloads
-            if (sourceId == LocalSource.ID) {
+            if (sourceId == LocalSource.ID || Libraries.libraryIdOf(sourceId) != null) {
                 finishDownload(downloadLogger, download)
                 continue
             }

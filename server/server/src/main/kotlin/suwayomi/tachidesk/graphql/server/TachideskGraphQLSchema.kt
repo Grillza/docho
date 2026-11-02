@@ -19,6 +19,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import suwayomi.tachidesk.docho.graphql.DochoMutation
+import suwayomi.tachidesk.docho.graphql.DochoQuery
 import suwayomi.tachidesk.graphql.directives.RequireAuthDirectiveWiring
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
@@ -95,7 +97,7 @@ object GraphQLSchemaProvider {
             toSchema(
                 config =
                     SchemaGeneratorConfig(
-                        supportedPackages = listOf("suwayomi.tachidesk.graphql"),
+                        supportedPackages = listOf("suwayomi.tachidesk.graphql", "suwayomi.tachidesk.docho"),
                         introspectionEnabled = true,
                         hooks = CustomSchemaGeneratorHooks(),
                     ),
@@ -103,6 +105,7 @@ object GraphQLSchemaProvider {
                     listOf(
                         TopLevelObject(BackupQuery()),
                         TopLevelObject(CategoryQuery()),
+                        TopLevelObject(DochoQuery()),
                         TopLevelObject(ChapterQuery()),
                         TopLevelObject(DownloadQuery()),
                         TopLevelObject(ExtensionQuery()),
@@ -121,6 +124,7 @@ object GraphQLSchemaProvider {
                     listOf(
                         TopLevelObject(BackupMutation()),
                         TopLevelObject(CategoryMutation()),
+                        TopLevelObject(DochoMutation()),
                         TopLevelObject(ChapterMutation()),
                         TopLevelObject(DownloadMutation()),
                         TopLevelObject(ExtensionMutation()),

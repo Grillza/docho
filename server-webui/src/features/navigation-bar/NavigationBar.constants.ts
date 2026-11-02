@@ -19,6 +19,12 @@ import GetAppOutlinedIcon from '@mui/icons-material/GetAppOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
 import InfoIcon from '@mui/icons-material/Info';
+import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';
+import LocalLibraryOutlinedIcon from '@mui/icons-material/LocalLibraryOutlined';
+import LayersIcon from '@mui/icons-material/Layers';
+import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
+import StyleIcon from '@mui/icons-material/Style';
+import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import { useLingui } from '@lingui/react/macro';
 import { msg, plural } from '@lingui/core/macro';
 import type { NavbarItem } from '@/features/navigation-bar/NavigationBar.types.ts';
@@ -89,6 +95,31 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 ] as const satisfies RestrictedNavBarItem<'both'>[];
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
+    // Dōchō Server: Kavita-style libraries, series groups and collections
+    {
+        path: AppRoutes.docho.children.libraries.path,
+        title: msg`Libraries`,
+        SelectedIconComponent: LocalLibraryIcon,
+        IconComponent: LocalLibraryOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
+    {
+        path: AppRoutes.docho.children.groups.path,
+        title: msg`Series groups`,
+        SelectedIconComponent: LayersIcon,
+        IconComponent: LayersOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
+    {
+        path: AppRoutes.docho.children.collections.path,
+        title: msg`Collections`,
+        SelectedIconComponent: StyleIcon,
+        IconComponent: StyleOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
     {
         path: AppRoutes.downloads.path,
         title: msg`Downloads`,

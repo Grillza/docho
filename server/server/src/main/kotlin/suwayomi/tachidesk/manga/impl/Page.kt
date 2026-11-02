@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.local.LocalSource
+import suwayomi.tachidesk.docho.library.FileBackedSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -85,6 +86,11 @@ object Page {
             }
         } catch (_: Exception) {
             // ignore and fetch again
+        }
+
+        // Dōchō libraries and series groups serve their own pages.
+        (getSourceOrNull(mangaEntry[MangaTable.sourceReference]) as? FileBackedSource)?.let { source ->
+            return source.openPage(chapterEntry[ChapterTable.url], index)
         }
 
         val pageEntry =
