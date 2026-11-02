@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.30.0",
+          "buildVersion": "54",
+          "date": "2026-11-02",
+          "localizedDescription": "Version 0.30.0. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.30.0.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Rename chapters. Select chapters on a series and tap Rename in the bottom bar. With one chapter selected, change its name and number; leave the number empty to read it from the name. With several selected, replace text in all their names at once (for example, take \"Kaiju No. 8 \" off every name), with a preview of the new names and numbers. Renames stay after refreshing the series.\n  - Local source: the files on the device are renamed too, and read progress is kept.\n  - Komga: the book's title and number are set on the server and locked, so scans keep them.\n  - Kavita: the chapter's title is set on the server and locked.\n  - BookOrbit: the book's title (without the \"Vol. N - \" part) and series index are set on the server and locked.\n  - The server account needs permission to edit metadata. If the server refuses, the chapter is still renamed in Dōchō.\n• Volumes and chapters. In the Rename dialog, mark entries as a Volume or a Chapter. The series' sort settings can then list Volumes first or Chapters first (or Mixed, as before). Entries named like \"Vol. 3\" count as volumes to begin with.\n• Hide the release prediction for a whole source. Tap the hourglass on a series and tick Hide this for every series from …. The hourglass now works on series that aren't in your library too. Settings → Appearance → Series → Hide for sources lists the hidden sources, where you can show them again.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.30.0/docho-0.30.0.ipa",
+          "size": 6417351,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.29.2",
           "buildVersion": "53",
           "date": "2026-11-01T07:56:07Z",
