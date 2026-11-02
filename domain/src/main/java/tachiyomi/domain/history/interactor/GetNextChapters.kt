@@ -23,7 +23,7 @@ class GetNextChapters(
     suspend fun await(mangaId: Long, onlyUnread: Boolean = true): List<Chapter> {
         val manga = getManga.await(mangaId) ?: return emptyList()
         val chapters = getChaptersByMangaId.await(mangaId, applyScanlatorFilter = true)
-            .sortedWith(getChapterSort(manga, sortDescending = false))
+            .sortedWith(getChapterSort(manga, sortDescending = false, readingOrder = true))
 
         return if (onlyUnread) {
             chapters.filterNot { it.read }

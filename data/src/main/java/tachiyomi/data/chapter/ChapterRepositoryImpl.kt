@@ -34,11 +34,12 @@ class ChapterRepositoryImpl(
         partialUpdate(*chapterUpdates.toTypedArray())
     }
 
-    override suspend fun rename(id: Long, url: String, name: String, chapterNumber: Double) {
+    override suspend fun rename(id: Long, url: String, name: String, chapterNumber: Double, memo: JsonObject) {
         database.chapterQueries.rename(
             remoteUrl = url,
             remoteName = name,
             remoteChapterNumber = chapterNumber,
+            remoteMemo = memo,
             id = id,
         )
     }

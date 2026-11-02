@@ -51,6 +51,14 @@ class SetMangaChapterFlags(
         )
     }
 
+    suspend fun awaitSetKindOrder(manga: Manga, flag: Long): Boolean {
+        return mangaRepository.update(
+            MangaUpdate(manga.id) {
+                chapterFlags = manga.chapterFlags.setFlag(flag, Manga.CHAPTER_KIND_ORDER_MASK)
+            },
+        )
+    }
+
     suspend fun awaitSetSortingModeOrFlipOrder(manga: Manga, flag: Long): Boolean {
         val newFlags = manga.chapterFlags.let {
             if (manga.sorting == flag) {
@@ -90,11 +98,13 @@ class SetMangaChapterFlags(
             .setFlag(sortingMode, Manga.CHAPTER_SORTING_MASK)
             .setFlag(sortingDirection, Manga.CHAPTER_SORT_DIR_MASK)
             .setFlag(displayMode, Manga.CHAPTER_DISPLAY_MASK)
-        // Hiding missing chapters is a per-manga choice rather than a default, so it is kept.
+        // Hiding missing chapters and listing volumes or chapters first are per-manga choices rather than defaults, so
+        // they are kept.
+        val keptMask = Manga.CHAPTER_HIDE_MISSING_MASK or Manga.CHAPTER_KIND_ORDER_MASK
         return mangaRepository.updateAll(
             mangas.map { manga ->
                 MangaUpdate(manga.id) {
-                    chapterFlags = flags or (manga.chapterFlags and Manga.CHAPTER_HIDE_MISSING_MASK)
+                    chapterFlags = flags or (manga.chapterFlags and keptMask)
                 }
             },
         )

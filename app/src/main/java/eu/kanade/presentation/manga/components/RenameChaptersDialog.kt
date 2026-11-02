@@ -1,6 +1,8 @@
 package eu.kanade.presentation.manga.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -9,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -55,6 +58,10 @@ fun RenameChaptersDialog(
     var number by rememberSaveable {
         mutableStateOf(single?.chapterNumber?.takeIf { it >= 0 }?.let(numberFormat::format).orEmpty())
     }
+    // Whether the chapters are volumes or chapters; null keeps each as it is
+    var kind by rememberSaveable {
+        mutableStateOf(single?.let { if (it.isVolume) Chapter.KIND_VOLUME else Chapter.KIND_CHAPTER })
+    }
     var find by rememberSaveable { mutableStateOf("") }
     var replace by rememberSaveable { mutableStateOf("") }
 
@@ -63,20 +70,20 @@ fun RenameChaptersDialog(
         return ChapterRecognition.parseChapterNumber(mangaTitle, newName).takeIf { it >= 0 } ?: chapter.chapterNumber
     }
 
-    val requests = remember(chapters, name, number, find, replace) {
+    val requests = remember(chapters, name, number, find, replace, kind) {
         if (single != null) {
-            listOf(RenameChapters.Request(single, name.trim(), numberFor(single, name.trim(), number)))
+            listOf(RenameChapters.Request(single, name.trim(), numberFor(single, name.trim(), number), kind))
         } else {
             chapters.map { chapter ->
                 val newName = if (find.isEmpty()) chapter.name else chapter.name.replace(find, replace).trim()
-                RenameChapters.Request(chapter, newName, numberFor(chapter, newName, null))
+                RenameChapters.Request(chapter, newName, numberFor(chapter, newName, null), kind)
             }
         }
     }
     val numberValid = single == null || number.isBlank() || number.replace(',', '.').toDoubleOrNull() != null
     val canConfirm = numberValid &&
         requests.all { it.name.isNotEmpty() } &&
-        requests.any { it.name != it.chapter.name || it.number != it.chapter.chapterNumber }
+        requests.any { it.changes }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -146,6 +153,28 @@ fun RenameChaptersDialog(
                         }
                     }
                 }
+                Spacer(Modifier.height(MaterialTheme.padding.medium))
+                Text(
+                    text = stringResource(MR.strings.rename_kind),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
+                    buildList {
+                        if (single == null) add(null to MR.strings.rename_kind_keep)
+                        add(Chapter.KIND_VOLUME to MR.strings.rename_kind_volume)
+                        add(Chapter.KIND_CHAPTER to MR.strings.rename_kind_chapter)
+                    }.forEach { (value, label) ->
+                        FilterChip(
+                            selected = kind == value,
+                            onClick = { kind = value },
+                            label = { Text(stringResource(label)) },
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(MR.strings.rename_kind_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Spacer(Modifier.height(MaterialTheme.padding.medium))
                 Text(
                     text = when (reach) {

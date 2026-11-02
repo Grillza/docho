@@ -1,6 +1,7 @@
 package tachiyomi.domain.chapter.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.JsonObject
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterRemoteUpdate
 import tachiyomi.domain.chapter.model.ChapterSummary
@@ -12,8 +13,11 @@ interface ChapterRepository {
 
     suspend fun updateAll(chapterUpdates: List<ChapterUpdate>)
 
-    /** Renames a chapter the user renamed, moving it to [url] when its file was renamed too. */
-    suspend fun rename(id: Long, url: String, name: String, chapterNumber: Double)
+    /**
+     * Renames a chapter the user renamed, moving it to [url] when its file was renamed too. [memo] carries whether the
+     * user said it's a volume.
+     */
+    suspend fun rename(id: Long, url: String, name: String, chapterNumber: Double, memo: JsonObject)
 
     suspend fun updateFromRemote(
         removedIds: List<Long>,

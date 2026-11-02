@@ -35,6 +35,7 @@ import mihon.icons.materialsymbols.rounded.Group
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.HeadingItem
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.RadioItem
 import tachiyomi.presentation.core.components.SortItem
@@ -52,6 +53,7 @@ fun ChapterSettingsDialog(
     scanlatorFilterActive: Boolean,
     onScanlatorFilterClicked: (() -> Unit),
     onSortModeChanged: (Long) -> Unit,
+    onKindOrderChanged: (Long) -> Unit,
     onDisplayModeChanged: (Long) -> Unit,
     onSetAsDefault: (applyToExistingManga: Boolean) -> Unit,
     onResetToDefault: () -> Unit,
@@ -115,6 +117,8 @@ fun ChapterSettingsDialog(
                         sortingMode = manga?.sorting ?: 0,
                         sortDescending = manga?.sortDescending() ?: false,
                         onItemSelected = onSortModeChanged,
+                        kindOrder = manga?.kindOrder ?: Manga.CHAPTER_KIND_MIXED,
+                        onKindOrderSelected = onKindOrderChanged,
                     )
                 }
                 2 -> {
@@ -194,6 +198,8 @@ private fun ColumnScope.SortPage(
     sortingMode: Long,
     sortDescending: Boolean,
     onItemSelected: (Long) -> Unit,
+    kindOrder: Long,
+    onKindOrderSelected: (Long) -> Unit,
 ) {
     listOf(
         MR.strings.sort_by_source to Manga.CHAPTER_SORTING_SOURCE,
@@ -206,6 +212,19 @@ private fun ColumnScope.SortPage(
             label = stringResource(titleRes),
             sortDescending = sortDescending.takeIf { sortingMode == mode },
             onClick = { onItemSelected(mode) },
+        )
+    }
+
+    HeadingItem(MR.strings.sort_volumes_and_chapters)
+    listOf(
+        MR.strings.sort_kind_mixed to Manga.CHAPTER_KIND_MIXED,
+        MR.strings.sort_volumes_first to Manga.CHAPTER_VOLUMES_FIRST,
+        MR.strings.sort_chapters_first to Manga.CHAPTER_CHAPTERS_FIRST,
+    ).map { (titleRes, order) ->
+        RadioItem(
+            label = stringResource(titleRes),
+            selected = kindOrder == order,
+            onClick = { onKindOrderSelected(order) },
         )
     }
 }

@@ -94,6 +94,11 @@
     <string name="rename_chapter_name">Name</string>
     <string name="rename_chapter_number">Chapter number</string>
     <string name="rename_chapter_number_hint">Leave empty to read it from the name</string>
+    <string name="rename_kind">Type</string>
+    <string name="rename_kind_keep">Keep</string>
+    <string name="rename_kind_volume">Volume</string>
+    <string name="rename_kind_chapter">Chapter</string>
+    <string name="rename_kind_hint">Sort the series by volumes or chapters first in its sort settings.</string>
     <string name="rename_find">Find</string>
     <string name="rename_replace">Replace with</string>
     <string name="rename_preview">Preview</string>
@@ -922,6 +927,10 @@
     <string name="sort_by_number">By chapter number</string>
     <string name="sort_by_upload_date">By upload date</string>
     <string name="sort_by_file_name">By file name</string>
+    <string name="sort_volumes_and_chapters">Volumes and chapters</string>
+    <string name="sort_kind_mixed">Mixed</string>
+    <string name="sort_volumes_first">Volumes first</string>
+    <string name="sort_chapters_first">Chapters first</string>
     <string name="manga_download">Download</string>
     <string name="download_unread">Unread</string>
     <string name="download_bookmarked">Bookmarked</string>

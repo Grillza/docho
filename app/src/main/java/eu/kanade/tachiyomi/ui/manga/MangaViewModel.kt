@@ -675,8 +675,7 @@ class MangaViewModel(
 
     private fun getUnreadChaptersSorted(): List<Chapter> {
         val manga = successState?.manga ?: return emptyList()
-        val chaptersSorted = getUnreadChapters().sortedWith(getChapterSort(manga))
-        return if (manga.sortDescending()) chaptersSorted.reversed() else chaptersSorted
+        return getUnreadChapters().sortedWith(getChapterSort(manga, sortDescending = false, readingOrder = true))
     }
 
     private fun getBookmarkedChapters(): List<Chapter> {
@@ -768,7 +767,13 @@ class MangaViewModel(
     fun markPreviousChapterRead(pointer: Chapter) {
         val manga = successState?.manga ?: return
         val chapters = filteredChapters.orEmpty().map { it.chapter }
-        val prevChapters = if (manga.sortDescending()) chapters.asReversed() else chapters
+        val prevChapters = when {
+            // Volumes or chapters listed first: "previous" still means earlier in reading order
+            manga.kindOrder != Manga.CHAPTER_KIND_MIXED ->
+                chapters.sortedWith(getChapterSort(manga, sortDescending = false, readingOrder = true))
+            manga.sortDescending() -> chapters.asReversed()
+            else -> chapters
+        }
         val pointerPos = prevChapters.indexOf(pointer)
         if (pointerPos != -1) markChaptersRead(prevChapters.take(pointerPos), true)
     }
@@ -999,6 +1004,15 @@ class MangaViewModel(
 
         appScope.launch {
             setMangaChapterFlags.awaitSetSortingModeOrFlipOrder(manga, sort)
+        }
+    }
+
+    /** Lists volumes or chapters first, or both mixed in the sort order. */
+    fun setKindOrder(order: Long) {
+        val manga = successState?.manga ?: return
+
+        appScope.launch {
+            setMangaChapterFlags.awaitSetKindOrder(manga, order)
         }
     }
 

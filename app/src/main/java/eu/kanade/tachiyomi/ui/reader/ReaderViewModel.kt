@@ -281,7 +281,7 @@ class ReaderViewModel(
         }
 
         return chaptersForReader
-            .sortedWith(getChapterSort(manga, sortDescending = false))
+            .sortedWith(getChapterSort(manga, sortDescending = false, readingOrder = true))
             .run {
                 if (readerPreferences.skipDupe.get()) {
                     removeDuplicates(selectedChapter)
