@@ -493,8 +493,11 @@ Android features released without iOS yet; add them to the next iOS release.
   read state by moving its row to the new url, Komga gets the title and number
   (`PATCH /api/v1/books/{id}/metadata`, locked), and Kavita gets the title (read
   `GET /api/Chapter`, send it back to `POST /api/Chapter/update` with `titleName` and
-  `titleNameLocked`, since Kavita replaces all of a chapter's metadata). Both servers need an
-  admin account; if the server refuses, the chapter is still renamed in Docho. Downloads are
+  `titleNameLocked`, since Kavita replaces all of a chapter's metadata). BookOrbit (Android
+  0.29.4) gets the title, without Docho's "Vol. N - " prefix, and the series index through
+  `PATCH /api/v1/books/{id}/metadata-and-locks`; it replaces the whole lock list, so read the
+  book's `lockedFields` first and add `title` and `seriesIndex`. All three servers need an
+  account allowed to edit metadata; if the server refuses, the chapter is still renamed in Docho. Downloads are
   renamed with the chapter.
 - **Hide the release prediction for a source** (Android 0.29.3). The hourglass dialog has
   "Hide this for every series from <source>", and it now opens for series outside the
