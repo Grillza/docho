@@ -2,6 +2,8 @@ FROM python:3.13-alpine
 WORKDIR /app
 COPY server.py .
 ENV DOCHO_SYNC_DATA=/data PYTHONUNBUFFERED=1
+# Owned by the user the server runs as, so a new volume starts out writable
+RUN mkdir /data && chown 1000:1000 /data
 VOLUME /data
 EXPOSE 8090
 USER 1000:1000

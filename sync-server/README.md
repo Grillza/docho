@@ -11,7 +11,7 @@ cd sync-server
 docker compose up -d --build
 ```
 
-It listens on port 8090 and keeps its data in `./data`. In Dōchō, open **Settings → Sync /
+It listens on port 8090 and keeps its data in the `data` Docker volume (`docker compose down` keeps it; `down -v` erases it). In Dōchō, open **Settings → Sync /
 Self-hosted sources → Dōchō Sync**, enter `http://<this machine>:8090`, a username and a password,
 and tap **Create account**. On your other devices, enter the same details; they sign in and sync.
 

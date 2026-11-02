@@ -6,7 +6,10 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ./data:/data
+      - data:/data
     environment:
       # Set to "open" to let more than one person create an account.
       DOCHO_SYNC_REGISTRATION: ""
+
+volumes:
+  data:
