@@ -69,6 +69,20 @@ class RenameLikeTest {
         RenameLike.learn("Something", "Bonus", "S", false) shouldBe null
     }
 
+    private fun asKind(name: String, volume: Boolean, fallback: Double = -1.0) =
+        RenameLike.asKind(name, "Kaiju No. 8", volume, fallback)?.let { "${it.name}|${it.number}" }
+
+    @Test
+    fun `volume and chapter name entries Vol N and Ch N`() {
+        asKind("Kaiju No. 8 v10 Ch. 074–081 (2024) (Digital) (1r0n)", true) shouldBe "Vol. 10|10.0"
+        asKind("Kaiju No. 8 v10 Ch. 074–081", false) shouldBe "Ch. 74–81|74.0"
+        asKind("Chainsaw Man Ch. 5 - Gun Devil", false) shouldBe "Ch. 5 - Gun Devil|5.0"
+        asKind("Vol. 3 - Title", false, 3.0) shouldBe "Ch. 3|3.0"
+        asKind("Ch. 120", true, 120.0) shouldBe "Vol. 120|120.0"
+        asKind("Extra", true) shouldBe null
+        asKind("Extra", true, 4.5) shouldBe "Vol. 4.5|4.5"
+    }
+
     private fun chapter(id: Long, number: Double, volume: Boolean) = Chapter.create().copy(
         id = id,
         chapterNumber = number,

@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.30.1",
+          "buildVersion": "55",
+          "date": "2026-11-02T08:58:44Z",
+          "localizedDescription": "Version 0.30.1. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.30.1.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Rename like another chapter. Select chapters, tap Rename, and choose Like another. Pick a chapter whose name you like (the one you renamed last is picked for you), and the selected chapters take its style while keeping their own volume number, chapter number or range, and title. For example, if you renamed \"Chainsaw v10 ch 10-15\" to \"Vol. 10 - Chainsaw\", then \"Chainsaw v11 ch 16-20\" becomes \"Vol. 11 - Chainsaw\". A preview shows every new name, and chapters whose names don't include the number it needs are left as they are.\n\nChanged\n\n• If a series is sorted Mixed and a rename leaves it with both volumes and chapters, it switches to Volumes first, so marking a chapter as a volume moves it in the list.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.30.1/docho-0.30.1.ipa",
+          "size": 6472668,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.30.0",
           "buildVersion": "54",
           "date": "2026-11-02",
