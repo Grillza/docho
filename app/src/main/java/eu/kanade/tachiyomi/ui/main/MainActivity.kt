@@ -165,6 +165,30 @@ class MainActivity : BaseActivity() {
         registerSecureActivity(this)
     }
 
+    private val notificationPermission =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+
+    /**
+     * Downloads show their progress in a notification and carry on in the background, but only
+     * with permission to post notifications. Asks once a session when a download starts without it;
+     * Android itself stops asking after it's been declined twice.
+     */
+    private fun askForNotificationsOnDownload() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
+        lifecycleScope.launch {
+            eu.kanade.tachiyomi.data.download.DownloadManager.downloadsStarted.collect {
+                val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (!granted && !askedForNotifications) {
+                    askedForNotifications = true
+                    notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+
+    private var askedForNotifications = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         graph.inject(this)
         val isLaunch = savedInstanceState == null
@@ -181,6 +205,7 @@ class MainActivity : BaseActivity() {
         // Uncaught on purpose: a failed database migration otherwise leaves the migrating screen up for good,
         // while the crash screen tells what went wrong and lets the logs be shared
         lifecycleScope.launch { databaseRepository.awaitOpen() }
+        askForNotificationsOnDownload()
 
         // Do not let the launcher create a new activity http://stackoverflow.com/questions/16283079
         if (!isTaskRoot) {

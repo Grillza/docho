@@ -62,6 +62,11 @@ class DownloadManager(
     /**
      * Starts the download worker, which runs the downloader.
      */
+    companion object {
+        /** Downloads were queued, so the screen in front can ask for notification permission. */
+        val downloadsStarted = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    }
+
     fun startDownloads() {
         if (downloader.isRunning) return
 
@@ -142,6 +147,7 @@ class DownloadManager(
     suspend fun downloadChapters(manga: Manga, chapters: List<Chapter>, autoStart: Boolean = true) {
         if (downloader.queueChapters(manga, chapters, autoStart)) {
             startDownloads()
+            downloadsStarted.tryEmit(Unit)
         }
     }
 

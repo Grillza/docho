@@ -23,6 +23,7 @@ import coil3.request.crossfade
 import coil3.util.DebugLogger
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.createGraphFactory
+import docho.dochosync.DochoSyncWorker
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
@@ -149,6 +150,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         scope.launch(Dispatchers.IO) { AppUpdateApk.cleanUp(this@App) }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+        DochoSyncWorker.schedulePeriodic(this)
 
         // Show notification to disable Incognito Mode when it's enabled
         basePreferences.incognitoMode.changes()
@@ -267,10 +269,14 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
 
     override fun onStart(owner: LifecycleOwner) {
         SecureActivityDelegate.onApplicationStart(this)
+        // Dōchō Sync: take what other devices changed while the app was away
+        DochoSyncWorker.syncNow(this)
     }
 
     override fun onStop(owner: LifecycleOwner) {
         SecureActivityDelegate.onApplicationStopped(this)
+        // and send what changed here before the app sleeps
+        DochoSyncWorker.syncNow(this)
     }
 
     override fun getPackageName(): String {
