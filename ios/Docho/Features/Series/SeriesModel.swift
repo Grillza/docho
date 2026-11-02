@@ -147,7 +147,11 @@ final class SeriesModel {
                     } catch {
                         if result.serverError == nil { result.serverError = error.localizedDescription }
                     }
-                    app.renames.put(source: series.source, oldURL: old.url, newURL: url, .init(name: name, number: number))
+                    let original = app.renames.get(source: series.source, url: old.url)?.original ?? old.name
+                    app.renames.put(
+                        source: series.source, oldURL: old.url, newURL: url,
+                        .init(name: name, number: number, original: original, at: Date().timeIntervalSince1970)
+                    )
                 }
                 if request.changesKind, let kind = request.kind {
                     memo[ChapterMemo.kind] = .string(kind)
@@ -159,9 +163,36 @@ final class SeriesModel {
                 result.failed += 1
             }
         }
+        await listVolumesFirstIfMixed(requests)
         // The Local source lists its files again, now under their new names.
         if isLocal { await refresh() }
         return result
+    }
+
+    /// A series listed mixed shows no change when a chapter is made a volume, so once it has both
+    /// it lists volumes first. Sorting it Mixed again in the sort tab sticks.
+    private func listVolumesFirstIfMixed(_ requests: [ChapterRenameRequest]) async {
+        guard display.kindOrder == .mixed, requests.contains(where: \.changesKind) else { return }
+        let kinds = Dictionary(requests.map { ($0.chapter.id, $0.kind) }, uniquingKeysWith: { first, _ in first })
+        let volumes = chapters.map { chapter in
+            kinds[chapter.id].flatMap { $0 }.map { $0 == ChapterMemo.kindVolume } ?? chapter.isVolume
+        }
+        guard volumes.contains(true), volumes.contains(false) else { return }
+        var display = display
+        display.kindOrder = .volumesFirst
+        await setDisplay(display)
+    }
+
+    /// The series' other chapters to rename `selected` like, the last one renamed first.
+    func renameExamples(excluding selected: Set<Int>) -> [RenameExample] {
+        guard let series else { return [] }
+        return chapters
+            .filter { !selected.contains($0.id) }
+            .map { chapter in
+                let rename = app.renames.get(source: series.source, url: chapter.url)
+                return RenameExample(chapter: chapter, original: rename?.original, renamedAt: rename?.at ?? 0)
+            }
+            .sorted { $0.renamedAt > $1.renamedAt }
     }
 
     private func renameOnServer(source: Int64, url: String, name: String, number: Double) async throws {

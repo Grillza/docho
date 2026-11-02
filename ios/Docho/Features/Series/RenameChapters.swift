@@ -31,6 +31,22 @@ enum RenameReach {
     }
 }
 
+/// A chapter to rename others like (Android's `RenameChapters.Example`): `original` is its name
+/// before the user renamed it, if they did, at `renamedAt` (0 if not).
+struct RenameExample: Equatable, Identifiable {
+    var chapter: ChapterRecord
+    var original: String?
+    var renamedAt: Double
+
+    var id: Int { chapter.id }
+}
+
+/// How the dialog renames: by name and number (one chapter), find and replace (several), or like
+/// another chapter.
+enum RenameMode: Equatable {
+    case name, find, like
+}
+
 /// What the rename dialog has typed in. One chapter gets a name and number; several get text
 /// replaced in their names, e.g. taking "Kaiju No. 8 " off every name so the 8 isn't read as the
 /// chapter number. Numbers left out are read from the new names, or else kept.
@@ -40,10 +56,14 @@ struct RenameDraft: Equatable {
     var find = ""
     var replace = ""
     var kind: String?
+    var mode = RenameMode.find
+    var example: RenameExample?
 
     init() {}
 
-    init(chapters: [ChapterRecord]) {
+    init(chapters: [ChapterRecord], examples: [RenameExample] = []) {
+        example = examples.first
+        mode = chapters.count == 1 ? .name : .find
         if chapters.count == 1, let chapter = chapters.first {
             name = chapter.name
             number = chapter.number >= 0 ? formatNumber(chapter.number) : ""
@@ -51,12 +71,31 @@ struct RenameDraft: Equatable {
         }
     }
 
+    /// Switches to renaming like `example`, as a volume or chapter as it is.
+    mutating func renameLike(_ example: RenameExample) {
+        self.example = example
+        mode = .like
+        kind = example.chapter.isVolume ? ChapterMemo.kindVolume : ChapterMemo.kindChapter
+    }
+
+    func style(seriesTitle: String) -> RenameLike.Style? {
+        example.flatMap {
+            RenameLike.learn(original: $0.original, renamed: $0.chapter.name, seriesTitle: seriesTitle, volume: $0.chapter.isVolume)
+        }
+    }
+
+    /// Each chapter renamed like the example, or nil where its name doesn't say the number needed.
+    func liked(_ chapters: [ChapterRecord], seriesTitle: String) -> [RenameLike.Renamed?] {
+        guard let style = style(seriesTitle: seriesTitle) else { return chapters.map { _ in nil } }
+        return chapters.map { RenameLike.apply(style, to: $0.name, seriesTitle: seriesTitle) }
+    }
+
     private var typedNumber: Double? {
         Double(number.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
     }
 
     func numberValid(single: Bool) -> Bool {
-        !single || number.isBlank || typedNumber != nil
+        !single || mode == .like || number.isBlank || typedNumber != nil
     }
 
     func requests(for chapters: [ChapterRecord], seriesTitle: String) -> [ChapterRenameRequest] {
@@ -64,6 +103,12 @@ struct RenameDraft: Equatable {
             if let typed { return typed }
             let parsed = ChapterNumber.parse(seriesTitle: seriesTitle, chapterName: newName)
             return parsed >= 0 ? parsed : chapter.number
+        }
+        if mode == .like {
+            return zip(chapters, liked(chapters, seriesTitle: seriesTitle)).map { chapter, renamed in
+                guard let renamed else { return ChapterRenameRequest(chapter: chapter, name: chapter.name, number: chapter.number, kind: nil) }
+                return ChapterRenameRequest(chapter: chapter, name: renamed.name, number: renamed.number, kind: kind)
+            }
         }
         if chapters.count == 1, let chapter = chapters.first {
             let newName = name.trimmingCharacters(in: .whitespaces)
@@ -87,6 +132,7 @@ struct RenameChaptersFields: View {
     @Environment(\.m3) private var m3
     @Binding var draft: RenameDraft
     let chapters: [ChapterRecord]
+    let examples: [RenameExample]
     let seriesTitle: String
     let sourceName: String
     let reach: RenameReach
@@ -95,7 +141,20 @@ struct RenameChaptersFields: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if chapters.count == 1 {
+            if !examples.isEmpty {
+                HStack(spacing: 8) {
+                    let single = chapters.count == 1
+                    chip(draft.mode != .like, single ? String(localized: "Name") : String(localized: "Find and replace")) {
+                        draft.mode = single ? .name : .find
+                    }
+                    chip(draft.mode == .like, String(localized: "Like another")) {
+                        if draft.mode != .like, let example = draft.example { draft.renameLike(example) }
+                    }
+                }
+            }
+            if draft.mode == .like {
+                likeFields
+            } else if chapters.count == 1 {
                 M3TextField(label: String(localized: "Name"), text: $draft.name)
                 M3TextField(
                     label: String(localized: "Chapter number"), text: $draft.number, keyboard: .decimalPad,
@@ -138,10 +197,67 @@ struct RenameChaptersFields: View {
         }
     }
 
-    /// Material's filter chip.
+    @ViewBuilder private var likeFields: some View {
+        Menu {
+            ForEach(examples) { example in
+                Button {
+                    draft.renameLike(example)
+                } label: {
+                    if let original = example.original {
+                        Text(example.chapter.name)
+                        Text("Was \(original)")
+                    } else {
+                        Text(example.chapter.name)
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rename like").font(M3Type.bodySmall).foregroundStyle(m3.onSurfaceVariant)
+                    Text(draft.example?.chapter.name ?? "").font(M3Type.bodyLarge).foregroundStyle(m3.onSurface).lineLimit(1)
+                }
+                Spacer()
+                MIcon("expand_more", size: 24).foregroundStyle(m3.onSurfaceVariant)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(m3.outline, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        if let original = draft.example?.original {
+            Text("Was \(original)").font(M3Type.bodySmall).foregroundStyle(m3.onSurfaceVariant).lineLimit(1)
+        }
+        let style = draft.style(seriesTitle: seriesTitle)
+        if style == nil {
+            Text("This name has no volume or chapter number to follow. Pick another.")
+                .font(M3Type.bodySmall).foregroundStyle(m3.error)
+        } else {
+            Text("Each keeps its own volume or chapter number, and title, in this one's style.").font(M3Type.bodySmall)
+            Text("Preview").font(M3Type.labelLarge).foregroundStyle(m3.onSurface)
+            let liked = draft.liked(chapters, seriesTitle: seriesTitle)
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(Array(zip(chapters, liked).prefix(Self.previewCount).enumerated()), id: \.offset) { _, pair in
+                    if let renamed = pair.1 {
+                        Text(renamed.name).font(M3Type.bodySmall).lineLimit(1)
+                    } else {
+                        Text("\(pair.0.name) (no number to use, left as it is)")
+                            .font(M3Type.bodySmall).foregroundStyle(m3.error).lineLimit(1)
+                    }
+                }
+                if chapters.count > Self.previewCount { Text("…").font(M3Type.bodySmall) }
+            }
+        }
+    }
+
     private func kindChip(_ value: String?, _ title: String) -> some View {
-        let selected = draft.kind == value
-        return Button { draft.kind = value } label: {
+        chip(draft.kind == value, title) { draft.kind = value }
+    }
+
+    /// Material's filter chip.
+    private func chip(_ selected: Bool, _ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack(spacing: 8) {
                 if selected { MIcon("check", size: 18) }
                 Text(title).font(M3Type.labelLarge)

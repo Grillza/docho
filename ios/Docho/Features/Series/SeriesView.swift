@@ -27,6 +27,7 @@ struct SeriesView: View {
     /// Chapters waiting on the rename dialog, and what it has typed in.
     @State private var renaming: [ChapterRecord]?
     @State private var renameDraft = RenameDraft()
+    @State private var renameExamples: [RenameExample] = []
     @State private var renameError: String?
     @Environment(\.navigate) private var navigate
     @State private var fileError: String?
@@ -206,7 +207,7 @@ struct SeriesView: View {
         ) {
             if let chapters = renaming {
                 RenameChaptersFields(
-                    draft: $renameDraft, chapters: chapters, seriesTitle: model.series?.name ?? "", sourceName: model.source.name,
+                    draft: $renameDraft, chapters: chapters, examples: renameExamples, seriesTitle: model.series?.name ?? "", sourceName: model.source.name,
                     reach: RenameReach.of(source: model.series?.source ?? 0)
                 )
             }
@@ -614,7 +615,8 @@ struct SeriesView: View {
             }
             barButton("edit", String(localized: "Rename")) { ids in
                 let chapters = model.displayedChapters.filter { ids.contains($0.id) }
-                renameDraft = RenameDraft(chapters: chapters)
+                renameExamples = model.renameExamples(excluding: ids)
+                renameDraft = RenameDraft(chapters: chapters, examples: renameExamples)
                 renaming = chapters
             }
             if model.series?.source != LocalSource.id, selected.contains(where: { !$0.isDownloaded }) {

@@ -5,9 +5,13 @@ import Foundation
 /// kept apart, keyed by source id and chapter url, and put back over them (`apply`).
 @MainActor
 final class ChapterRenames {
+    /// `original` is the source's name before the user's first rename, and `at` when it was last
+    /// renamed (seconds since 1970), both missing on renames from before 0.30.1.
     struct Rename: Codable, Equatable, Sendable {
         var name: String
         var number: Double
+        var original: String?
+        var at: Double?
     }
 
     private let defaults: UserDefaults
@@ -20,6 +24,9 @@ final class ChapterRenames {
         renames = defaults.data(forKey: "chapter_renames").flatMap { try? JSONDecoder().decode([String: Rename].self, from: $0) } ?? [:]
         kinds = defaults.data(forKey: "chapter_kinds").flatMap { try? JSONDecoder().decode([String: String].self, from: $0) } ?? [:]
     }
+
+    /// What the user renamed the chapter at `url` to, if they did.
+    func get(source: Int64, url: String) -> Rename? { renames[Self.key(source, url)] }
 
     /// Remembers `rename` for the chapter at `newURL`, which was at `oldURL` before its file was
     /// renamed.
