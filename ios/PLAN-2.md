@@ -480,6 +480,29 @@ iPad, and commit at the end of each.
     distribution signing, review notes with a demo account, a TestFlight build, and the
     checklist under [Before submitting](#before-submitting).
 
+## To bring over from Android
+
+Android features released without iOS yet; add them to the next iOS release.
+
+- **Rename chapters** (Android 0.29.3). Select chapters on the series screen, then Rename. With
+  one selected you edit its name and number (an empty number is read from the name). With
+  several you replace text in their names, with a preview, and numbers are read again from the
+  new names. Renames are kept in Docho (Android's `chapter_renames` preference, keyed by
+  source id and chapter url) and put back over the source's names on every refresh. Where it
+  can, the rename goes past Docho: the Local source renames the file and keeps the chapter's
+  read state by moving its row to the new url, Komga gets the title and number
+  (`PATCH /api/v1/books/{id}/metadata`, locked), and Kavita gets the title (read
+  `GET /api/Chapter`, send it back to `POST /api/Chapter/update` with `titleName` and
+  `titleNameLocked`, since Kavita replaces all of a chapter's metadata). Both servers need an
+  admin account; if the server refuses, the chapter is still renamed in Docho. Downloads are
+  renamed with the chapter.
+- **Hide the release prediction for a source** (Android 0.29.3). The hourglass dialog has
+  "Hide this for every series from <source>", and it now opens for series outside the
+  library too (with only the hide options). Settings → Appearance → Series → Hide for sources
+  lists the hidden sources (`release_prediction_hidden_sources`, source ids). The series
+  menu's Show release prediction clears both the series and its source.
+- Android also deletes the update APK after it's installed; not needed on iOS.
+
 ## Open questions
 
 1. Is losing extension sources acceptable if the trial (milestone 16) fails, or is rebuilding
