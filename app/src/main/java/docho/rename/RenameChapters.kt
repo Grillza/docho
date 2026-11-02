@@ -1,0 +1,86 @@
+package docho.rename
+
+import dev.zacsweers.metro.Inject
+import docho.kavita.KavitaApi
+import docho.kavita.KavitaSource
+import docho.komga.KomgaApi
+import docho.komga.KomgaSource
+import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.download.DownloadProvider
+import eu.kanade.tachiyomi.source.Source
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import logcat.LogPriority
+import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.chapter.repository.ChapterRepository
+import tachiyomi.domain.manga.model.Manga
+import tachiyomi.source.local.LocalSource
+
+/**
+ * Renames chapters in Docho, and where the chapter lives somewhere Docho can change it too: the file itself for the
+ * Local source, the title (and number) on Kavita and Komga. Other sources keep the new name in Docho only.
+ */
+@Inject
+class RenameChapters(
+    private val chapterRepository: ChapterRepository,
+    private val chapterRenames: ChapterRenames,
+    private val downloadManager: DownloadManager,
+    private val downloadProvider: DownloadProvider,
+    private val kavitaApi: KavitaApi,
+    private val komgaApi: KomgaApi,
+) {
+
+    data class Request(val chapter: Chapter, val name: String, val number: Double)
+
+    /**
+     * How a rename went: [renamed] chapters were renamed in Docho, [failed] weren't at all, and [serverError] is why
+     * the server didn't take some of them, which Docho still shows renamed.
+     */
+    data class Result(val renamed: Int, val failed: Int, val serverError: Throwable?)
+
+    suspend fun await(manga: Manga, source: Source, requests: List<Request>): Result = withContext(Dispatchers.IO) {
+        var renamed = 0
+        var failed = 0
+        var serverError: Throwable? = null
+        for (request in requests) {
+            val old = request.chapter
+            val name = request.name.trim()
+            if (name.isEmpty() || (name == old.name && request.number == old.chapterNumber)) continue
+            try {
+                val url = if (source is LocalSource) source.renameChapter(old.url, name) else old.url
+                try {
+                    updateServer(source, old.url, name, request.number)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logcat(LogPriority.WARN, e) { "Server didn't rename ${old.url}" }
+                    if (serverError == null) serverError = e
+                }
+                val new = old.copy(url = url, name = name, chapterNumber = request.number)
+                chapterRenames.put(source.id, old.url, url, ChapterRenames.Rename(name, request.number))
+                if (source !is LocalSource && downloadProvider.isChapterDirNameChanged(old, new) &&
+                    downloadManager.isChapterDownloaded(old.name, old.scanlator, old.url, manga.title, manga.source)
+                ) {
+                    downloadManager.renameChapter(source, manga, old, new)
+                }
+                chapterRepository.rename(old.id, url, name, request.number)
+                renamed++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e) { "Couldn't rename ${old.url}" }
+                failed++
+            }
+        }
+        Result(renamed, failed, serverError)
+    }
+
+    private suspend fun updateServer(source: Source, url: String, name: String, number: Double) {
+        when (source.id) {
+            KavitaSource.ID -> kavitaApi.setChapterTitle(KavitaSource.chapterId(url), name)
+            KomgaSource.ID -> komgaApi.setBookTitle(KomgaSource.bookId(url), name, number)
+        }
+    }
+}

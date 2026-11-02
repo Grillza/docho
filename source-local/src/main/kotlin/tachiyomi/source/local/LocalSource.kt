@@ -359,6 +359,29 @@ class LocalSource(
         }
     }
 
+    /**
+     * Renames a chapter's file (or folder of images) on the device to [newName], keeping its extension, and returns
+     * its new url ("Series/Chapter.cbz"). Characters files can't have are replaced, and a name already taken fails.
+     */
+    fun renameChapter(chapterUrl: String, newName: String): String {
+        val mangaDirName = chapterUrl.substringBefore('/')
+        val fileName = chapterUrl.substringAfter('/')
+        val mangaDir = fileSystem.getMangaDirectory(mangaDirName)
+            ?: error(context.stringResource(MR.strings.chapter_not_found))
+        val file = mangaDir.findFile(fileName) ?: error(context.stringResource(MR.strings.chapter_not_found))
+        val safeName = newName.trim().replace(INVALID_FILE_CHARACTERS, "_").trimEnd('.')
+        require(safeName.isNotEmpty()) { "Empty chapter name" }
+        val extension = file.extension.takeIf { !file.isDirectory && !it.isNullOrEmpty() }
+        val newFileName = if (extension != null) "$safeName.$extension" else safeName
+        if (newFileName == fileName) return chapterUrl
+        // Files that only differ in case are the same file on most storage
+        if (!newFileName.equals(fileName, ignoreCase = true) && mangaDir.findFile(newFileName) != null) {
+            error("$newFileName already exists")
+        }
+        if (!file.renameTo(newFileName)) error("Couldn't rename $fileName")
+        return "$mangaDirName/$newFileName"
+    }
+
     /** Deletes a series' folder from the device: its chapters, cover and ComicInfo.xml. */
     fun deleteManga(mangaUrl: String) {
         val mangaDir = fileSystem.getMangaDirectory(mangaUrl) ?: return
@@ -431,6 +454,9 @@ class LocalSource(
         const val HELP_URL = "https://mihon.app/docs/guides/local-source/"
 
         private val LATEST_THRESHOLD = 7.days.inWholeMilliseconds
+
+        /** Characters Android's shared storage doesn't allow in file names. */
+        private val INVALID_FILE_CHARACTERS = Regex("""[\\/:*?"<>|\u0000-\u001f]""")
     }
 }
 

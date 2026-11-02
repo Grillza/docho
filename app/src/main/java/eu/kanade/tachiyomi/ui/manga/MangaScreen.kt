@@ -24,6 +24,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import docho.kavita.KavitaSource
+import docho.komga.KomgaSource
 import eu.kanade.domain.manga.model.hasCustomCover
 import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.presentation.browse.components.RemoveMangaDialog
@@ -35,6 +37,8 @@ import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
 import eu.kanade.presentation.manga.components.DeleteChaptersDialog
 import eu.kanade.presentation.manga.components.MangaCoverDialog
+import eu.kanade.presentation.manga.components.RenameChaptersDialog
+import eu.kanade.presentation.manga.components.RenameReach
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
 import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.util.AssistContentScreen
@@ -119,9 +123,12 @@ class MangaScreen(
         val libraryPreferences = remember { context.appGraph.libraryPreferences }
         val showReleasePredictions by uiPreferences.showReleasePrediction.collectAsState()
         val hiddenPredictions by uiPreferences.hiddenReleasePrediction.collectAsState()
+        val hiddenPredictionSources by uiPreferences.hiddenReleasePredictionSources.collectAsState()
         val stoppedPredictions by libraryPreferences.stoppedReleasePrediction.collectAsState()
         val mangaKey = successState.manga.id.toString()
         val isPredictionStopped = mangaKey in stoppedPredictions
+        val sourceKey = successState.manga.source.toString()
+        val isPredictionHidden = mangaKey in hiddenPredictions || sourceKey in hiddenPredictionSources
 
         MangaScreen(
             state = successState,
@@ -172,13 +179,14 @@ class MangaScreen(
             onShareClicked = { shareManga(context, viewModel.manga, viewModel.source) }.takeIf { isHttpSource },
             onDownloadActionClicked = viewModel::runDownloadAction.takeIf { !successState.source.isLocalOrStub() },
             onEditCategoryClicked = viewModel::showChangeCategoryDialog.takeIf { successState.manga.favorite },
-            onEditFetchIntervalClicked = viewModel::showSetFetchIntervalDialog.takeIf {
-                successState.manga.favorite
-            },
-            showReleasePrediction = showReleasePredictions && mangaKey !in hiddenPredictions,
+            // Also outside the library, where it only offers to hide the hourglass
+            onEditFetchIntervalClicked = viewModel::showSetFetchIntervalDialog,
+            showReleasePrediction = showReleasePredictions && !isPredictionHidden,
             releasePredictionStopped = isPredictionStopped,
-            onShowReleasePrediction = { uiPreferences.hiddenReleasePrediction -= mangaKey }
-                .takeIf { showReleasePredictions && mangaKey in hiddenPredictions },
+            onShowReleasePrediction = {
+                uiPreferences.hiddenReleasePrediction -= mangaKey
+                uiPreferences.hiddenReleasePredictionSources -= sourceKey
+            }.takeIf { showReleasePredictions && isPredictionHidden },
             onDeleteFromDeviceClicked = viewModel::showDeleteLocalMangaDialog.takeIf { successState.source.isLocal() },
             onMigrateClicked = {
                 navigator.push(MigrationConfigScreen(successState.manga.id))
@@ -189,6 +197,7 @@ class MangaScreen(
             onMultiMarkAsReadClicked = viewModel::markChaptersRead,
             onMarkPreviousAsReadClicked = viewModel::markPreviousChapterRead,
             onMultiDeleteClicked = viewModel::showDeleteChapterDialog,
+            onMultiRenameClicked = viewModel::showRenameChaptersDialog,
             onChapterSwipe = viewModel::chapterSwipe,
             onChapterSelected = viewModel::toggleSelection,
             onAllChapterSelected = viewModel::toggleAllSelection,
@@ -217,6 +226,21 @@ class MangaScreen(
                     onConfirm = { include, _ ->
                         viewModel.moveMangaToCategoriesAndAddToLibrary(dialog.manga, include)
                     },
+                )
+            }
+            is MangaViewModel.Dialog.RenameChapters -> {
+                val source = successState.source
+                RenameChaptersDialog(
+                    chapters = dialog.chapters,
+                    mangaTitle = successState.manga.title,
+                    sourceName = source.name,
+                    reach = when {
+                        source.isLocal() -> RenameReach.LOCAL_FILES
+                        source.id == KavitaSource.ID || source.id == KomgaSource.ID -> RenameReach.SERVER
+                        else -> RenameReach.APP_ONLY
+                    },
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = viewModel::renameChapters,
                 )
             }
             is MangaViewModel.Dialog.DeleteLocalFiles -> {
@@ -339,21 +363,27 @@ class MangaScreen(
                 }
             }
             is MangaViewModel.Dialog.SetFetchInterval -> {
+                val inLibrary = dialog.manga.favorite
                 SetIntervalDialog(
                     interval = dialog.manga.fetchInterval,
                     nextUpdate = dialog.manga.expectedNextUpdate,
                     onDismissRequest = onDismissRequest,
                     onValueChanged = { interval: Int -> viewModel.setFetchInterval(dialog.manga, interval) }
-                        .takeIf { viewModel.isUpdateIntervalEnabled },
+                        .takeIf { viewModel.isUpdateIntervalEnabled && inLibrary },
                     stopped = isPredictionStopped,
-                    onApply = { stop, hide ->
+                    canStop = inLibrary,
+                    sourceName = successState.source.name,
+                    onApply = { stop, hide, hideSource ->
                         val key = dialog.manga.id.toString()
-                        if (stop) {
-                            libraryPreferences.stoppedReleasePrediction += key
-                        } else {
-                            libraryPreferences.stoppedReleasePrediction -= key
+                        if (inLibrary) {
+                            if (stop) {
+                                libraryPreferences.stoppedReleasePrediction += key
+                            } else {
+                                libraryPreferences.stoppedReleasePrediction -= key
+                            }
                         }
                         if (hide) uiPreferences.hiddenReleasePrediction += key
+                        if (hideSource) uiPreferences.hiddenReleasePredictionSources += dialog.manga.source.toString()
                     },
                     onHideForAll = { navigator.push(SettingsScreen(SettingsScreen.Destination.Appearance)) },
                 )

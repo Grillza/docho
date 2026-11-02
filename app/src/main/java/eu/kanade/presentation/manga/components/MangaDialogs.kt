@@ -72,12 +72,15 @@ fun SetIntervalDialog(
     onDismissRequest: () -> Unit,
     onValueChanged: ((Int) -> Unit)? = null,
     stopped: Boolean = false,
-    onApply: ((stop: Boolean, hide: Boolean) -> Unit)? = null,
+    canStop: Boolean = true,
+    sourceName: String? = null,
+    onApply: ((stop: Boolean, hide: Boolean, hideSource: Boolean) -> Unit)? = null,
     onHideForAll: (() -> Unit)? = null,
 ) {
     var selectedInterval by rememberSaveable { mutableIntStateOf(if (interval < 0) -interval else 0) }
     var stop by rememberSaveable { mutableStateOf(stopped) }
     var hide by rememberSaveable { mutableStateOf(false) }
+    var hideSource by rememberSaveable { mutableStateOf(false) }
 
     val nextUpdateDays = remember(nextUpdate) {
         return@remember if (nextUpdate != null) {
@@ -145,16 +148,25 @@ fun SetIntervalDialog(
                 }
 
                 if (onApply != null) {
-                    LabeledCheckbox(
-                        label = stringResource(MR.strings.release_prediction_stop),
-                        checked = stop,
-                        onCheckedChange = { stop = it },
-                    )
+                    if (canStop) {
+                        LabeledCheckbox(
+                            label = stringResource(MR.strings.release_prediction_stop),
+                            checked = stop,
+                            onCheckedChange = { stop = it },
+                        )
+                    }
                     LabeledCheckbox(
                         label = stringResource(MR.strings.release_prediction_hide),
                         checked = hide,
                         onCheckedChange = { hide = it },
                     )
+                    if (sourceName != null) {
+                        LabeledCheckbox(
+                            label = stringResource(MR.strings.release_prediction_hide_source, sourceName),
+                            checked = hideSource,
+                            onCheckedChange = { hideSource = it },
+                        )
+                    }
                 }
                 if (onHideForAll != null) {
                     TextButton(
@@ -176,7 +188,7 @@ fun SetIntervalDialog(
         confirmButton = {
             TextButton(onClick = {
                 onValueChanged?.invoke(selectedInterval)
-                onApply?.invoke(stop, hide)
+                onApply?.invoke(stop, hide, hideSource)
                 onDismissRequest()
             }) {
                 Text(text = stringResource(MR.strings.action_ok))

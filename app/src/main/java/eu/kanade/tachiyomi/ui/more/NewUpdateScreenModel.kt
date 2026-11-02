@@ -13,6 +13,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.domain.base.BasePreferences
+import eu.kanade.tachiyomi.data.updater.AppUpdateApk
 import eu.kanade.tachiyomi.extension.util.ExtensionInstaller
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -53,7 +54,7 @@ class NewUpdateScreenModel(
     }
 
     private val apkFile: File
-        get() = File(context.externalCacheDir, "update.apk")
+        get() = AppUpdateApk.file(context)
 
     private var downloadJob: Job? = null
 
@@ -103,6 +104,7 @@ class NewUpdateScreenModel(
 
     fun skipUpdate(versionName: String, skipPatchUpdates: Boolean) {
         downloadJob?.cancel()
+        AppUpdateApk.delete(context)
         preferences.skippedAppUpdate.set(versionName)
         preferences.skipPatchAppUpdates.set(skipPatchUpdates)
     }

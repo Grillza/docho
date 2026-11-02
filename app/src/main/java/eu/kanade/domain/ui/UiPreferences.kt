@@ -150,4 +150,8 @@ class UiPreferences(
 
     /** Library ids of series the estimate is hidden on, one at a time from its dialog. */
     val hiddenReleasePrediction: Preference<Set<String>> = preferenceStore.getStringSet("release_prediction_hidden")
+
+    /** Source ids whose series don't show the estimate, whether in the library or not. */
+    val hiddenReleasePredictionSources: Preference<Set<String>> =
+        preferenceStore.getStringSet("release_prediction_hidden_sources")
 }

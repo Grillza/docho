@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -72,6 +73,12 @@ object SettingsAppearanceScreen : SearchableSettings {
         val context = LocalContext.current
         val showPrediction by uiPreferences.showReleasePrediction.collectAsState()
         val hidden by uiPreferences.hiddenReleasePrediction.collectAsState()
+        val hiddenSources by uiPreferences.hiddenReleasePredictionSources.collectAsState()
+        val sources by remember { context.appGraph.sourceManager.sources }.collectAsState(initial = emptyList())
+        val sourceNames = remember(sources, hiddenSources) {
+            // Sources hidden before they were uninstalled are still listed, so they can be shown again
+            hiddenSources.associateWith { it } + sources.associate { it.id.toString() to it.toString() }
+        }
 
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_category_series),
@@ -81,9 +88,24 @@ object SettingsAppearanceScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_show_release_prediction),
                     subtitle = stringResource(MR.strings.pref_show_release_prediction_summary),
                 ),
+                Preference.PreferenceItem.MultiSelectListPreference(
+                    preference = uiPreferences.hiddenReleasePredictionSources,
+                    entries = sourceNames,
+                    title = stringResource(MR.strings.pref_release_prediction_hidden_sources),
+                    subtitleProvider = { value, entries ->
+                        value.mapNotNull { entries[it] }.joinToString().ifBlank {
+                            stringResource(MR.strings.pref_release_prediction_hidden_sources_summary)
+                        }
+                    },
+                    visible = showPrediction,
+                ),
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.pref_unhide_release_prediction),
-                    subtitle = pluralStringResource(MR.plurals.pref_unhide_release_prediction_summary, hidden.size, hidden.size),
+                    subtitle = pluralStringResource(
+                        MR.plurals.pref_unhide_release_prediction_summary,
+                        hidden.size,
+                        hidden.size,
+                    ),
                     visible = showPrediction && hidden.isNotEmpty(),
                     onClick = {
                         uiPreferences.hiddenReleasePrediction.delete()

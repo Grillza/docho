@@ -34,6 +34,15 @@ class ChapterRepositoryImpl(
         partialUpdate(*chapterUpdates.toTypedArray())
     }
 
+    override suspend fun rename(id: Long, url: String, name: String, chapterNumber: Double) {
+        database.chapterQueries.rename(
+            remoteUrl = url,
+            remoteName = name,
+            remoteChapterNumber = chapterNumber,
+            id = id,
+        )
+    }
+
     override suspend fun updateFromRemote(
         removedIds: List<Long>,
         added: List<Chapter>,

@@ -2,6 +2,7 @@ package eu.kanade.domain.chapter.interactor
 
 import dev.zacsweers.metro.Inject
 import docho.BuiltInSources
+import docho.rename.ChapterRenames
 import docho.sync.ProgressSync
 import eu.kanade.domain.chapter.model.copyFromSChapter
 import eu.kanade.domain.chapter.model.toSChapter
@@ -42,6 +43,7 @@ class SyncChaptersWithSource(
     private val getExcludedScanlators: GetExcludedScanlators,
     private val libraryPreferences: LibraryPreferences,
     private val progressSync: ProgressSync,
+    private val chapterRenames: ChapterRenames,
 ) {
 
     /**
@@ -115,7 +117,7 @@ class SyncChaptersWithSource(
 
         // Recognize chapter numbers, from the whole list since names alone don't always tell.
         // Built-in sources' numbers are exact; Kavita's volumes and specials are negative on purpose.
-        val recognizedChapters = if (BuiltInSources.isBuiltIn(source.id)) {
+        val sourceNumberedChapters = if (BuiltInSources.isBuiltIn(source.id)) {
             preparedChapters
         } else {
             preparedChapters
@@ -123,6 +125,9 @@ class SyncChaptersWithSource(
                     chapter.copy(chapterNumber = numbering.chapter?.let(ChapterRecognition::toDouble) ?: -1.0)
                 }
         }
+
+        // Chapters renamed in Docho keep the user's name and number over the source's
+        val recognizedChapters = chapterRenames.applyTo(source.id, sourceNumberedChapters)
 
         for (chapter in recognizedChapters) {
             if (!sourceUrls.add(chapter.url)) continue
