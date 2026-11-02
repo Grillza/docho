@@ -35,6 +35,15 @@ class BookOrbitSourceTest {
     }
 
     @Test
+    fun `renamed chapters send only the title back`() {
+        assertEquals("The Return", BookOrbitSource.titleFromChapterName("Vol. 3 - The Return"))
+        assertEquals("Kaiju No. 8 v01", BookOrbitSource.titleFromChapterName("Vol. 119.1 - Kaiju No. 8 v01"))
+        assertEquals("Kaiju No. 8 v01", BookOrbitSource.titleFromChapterName("Kaiju No. 8 v01"))
+        assertEquals("Vol. 3", BookOrbitSource.titleFromChapterName("Vol. 3"))
+        assertEquals("Volume 8 extras", BookOrbitSource.titleFromChapterName("Volume 8 extras"))
+    }
+
+    @Test
     fun `only comic archives can be read`() {
         val book = BookOrbitBookDto(id = 1, files = listOf(BookOrbitFileDto(1, "epub"), BookOrbitFileDto(2, "CBZ")))
         assertEquals(2, book.comicFile?.id)

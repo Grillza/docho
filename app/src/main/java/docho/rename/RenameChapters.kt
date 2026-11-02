@@ -1,6 +1,8 @@
 package docho.rename
 
 import dev.zacsweers.metro.Inject
+import docho.bookorbit.BookOrbitApi
+import docho.bookorbit.BookOrbitSource
 import docho.kavita.KavitaApi
 import docho.kavita.KavitaSource
 import docho.komga.KomgaApi
@@ -20,7 +22,8 @@ import tachiyomi.source.local.LocalSource
 
 /**
  * Renames chapters in Docho, and where the chapter lives somewhere Docho can change it too: the file itself for the
- * Local source, the title (and number) on Kavita and Komga. Other sources keep the new name in Docho only.
+ * Local source, the title and number on Komga and BookOrbit (its series index), the title on Kavita. Other sources
+ * keep the new name in Docho only.
  */
 @Inject
 class RenameChapters(
@@ -30,6 +33,7 @@ class RenameChapters(
     private val downloadProvider: DownloadProvider,
     private val kavitaApi: KavitaApi,
     private val komgaApi: KomgaApi,
+    private val bookOrbitApi: BookOrbitApi,
 ) {
 
     data class Request(val chapter: Chapter, val name: String, val number: Double)
@@ -81,6 +85,11 @@ class RenameChapters(
         when (source.id) {
             KavitaSource.ID -> kavitaApi.setChapterTitle(KavitaSource.chapterId(url), name)
             KomgaSource.ID -> komgaApi.setBookTitle(KomgaSource.bookId(url), name, number)
+            BookOrbitSource.ID -> bookOrbitApi.setBookTitle(
+                BookOrbitSource.bookId(url),
+                BookOrbitSource.titleFromChapterName(name),
+                number,
+            )
         }
     }
 }

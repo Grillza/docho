@@ -24,6 +24,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import docho.bookorbit.BookOrbitSource
 import docho.kavita.KavitaSource
 import docho.komga.KomgaSource
 import eu.kanade.domain.manga.model.hasCustomCover
@@ -236,7 +237,7 @@ class MangaScreen(
                     sourceName = source.name,
                     reach = when {
                         source.isLocal() -> RenameReach.LOCAL_FILES
-                        source.id == KavitaSource.ID || source.id == KomgaSource.ID -> RenameReach.SERVER
+                        source.id in setOf(KavitaSource.ID, KomgaSource.ID, BookOrbitSource.ID) -> RenameReach.SERVER
                         else -> RenameReach.APP_ONLY
                     },
                     onDismissRequest = onDismissRequest,

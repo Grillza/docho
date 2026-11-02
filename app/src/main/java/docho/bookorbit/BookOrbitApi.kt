@@ -16,6 +16,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
@@ -24,6 +32,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.math.BigDecimal
 
 /**
  * Talks to the configured BookOrbit server. It signs in the way BookOrbit's own iPhone app does,
@@ -151,6 +160,38 @@ class BookOrbitApi(
         val request = Request.Builder().url("${apiUrl()}/books/$bookId/status").patch(body).build()
         client.newCall(request).awaitSuccess().close()
     }
+
+    /**
+     * Sets a book's title, and its series index when given, and locks them so metadata refreshes keep them. BookOrbit
+     * replaces a book's whole set of locks, so the ones it already has are read first and kept. Needs an account that
+     * may edit metadata.
+     */
+    suspend fun setBookTitle(bookId: Int, title: String, seriesIndex: Double?) {
+        val current = client.newCall(GET("${apiUrl()}/books/$bookId")).awaitSuccess().use {
+            json.parseToJsonElement(it.body.string()).jsonObject
+        }
+        val locks = current["lockedFields"]?.jsonArray?.map { it.jsonPrimitive.content }.orEmpty().toMutableSet()
+        val update = buildJsonObject {
+            putJsonObject("metadata") {
+                put("title", title)
+                if (seriesIndex != null && seriesIndex >= 0) {
+                    put("seriesIndex", formatSeriesIndex(seriesIndex))
+                    locks += "seriesIndex"
+                }
+            }
+            locks += "title"
+            putJsonArray("lockedFields") { locks.forEach { add(it) } }
+        }
+        val request = Request.Builder()
+            .url("${apiUrl()}/books/$bookId/metadata-and-locks")
+            .patch(update.toString().toRequestBody(jsonMime))
+            .build()
+        client.newCall(request).awaitSuccess().close()
+    }
+
+    /** BookOrbit takes series indexes like 8 or 119.1, without a sign or exponent. */
+    private fun formatSeriesIndex(index: Double): String =
+        BigDecimal.valueOf(index).stripTrailingZeros().toPlainString()
 
     fun thumbnailUrl(bookId: Int): String = "${apiUrl()}/books/$bookId/thumbnail"
 
