@@ -25,6 +25,7 @@ struct SyncSettingsPage: View {
             BookOrbitSection(waiting: counts[BookOrbitSync.engine] ?? 0)
             KomgaSection(waiting: counts[KomgaSync.engine] ?? 0)
             KoreaderSection(waiting: counts[KoreaderSync.engine] ?? 0)
+            DochoSyncSection()
             SuwayomiSection()
             SettingsFileSection()
         }
@@ -510,6 +511,119 @@ func connectionText(_ status: ServerConnection, configured: Bool) -> String {
     case .checking: String(localized: "Connecting…")
     case .connected(let text): text
     case .failed(let reason): String(localized: "Couldn't connect: \(reason)")
+    }
+}
+
+// MARK: - Dōchō Sync
+
+/// Android's Dōchō Sync group: the server from `sync-server/`, its account, and syncing.
+private struct DochoSyncSection: View {
+    @Environment(AppModel.self) private var app
+    @State private var server = ""
+    @State private var username = ""
+    @State private var password = ""
+    @State private var automatic = true
+    @State private var loaded = false
+    @State private var connection: DochoSyncConnection = .unknown
+
+    var body: some View {
+        let settings = app.dochoSyncSettings
+        ServerSection(name: String(localized: "Dōchō Sync"), icon: "sync", status: displayed, configured: settings.isConfigured) {
+            InfoPreference(text: String(localized: "Keeps your library and categories, chapter renames and types, read progress and history the same on every iPhone, iPad and Android device signed in to the same Dōchō Sync server. Series are matched by their source, so set up the same sources on each device."))
+            VStack(spacing: 16) {
+                M3TextField(
+                    label: String(localized: "Server address"), text: $server, keyboard: .URL,
+                    supporting: String(localized: "e.g. http://arch.lan:8090")
+                )
+                M3TextField(label: String(localized: "Username"), text: $username)
+                M3TextField(label: String(localized: "Password"), text: $password, secure: true, supporting: String(localized: "Your Dōchō Sync account"))
+            }
+            .padding(16)
+            PreferenceRow(title: String(localized: "Connection"), subtitle: connectionText(displayed, configured: settings.isConfigured), action: {
+                Task { await app.dochoSyncClient.signIn() }
+            })
+            PreferenceRow(
+                title: String(localized: "Create account"),
+                subtitle: String(localized: "Creates the account above on the server. A new server takes one account unless it's set up for more."),
+                action: {
+                    Task {
+                        if case .connected = await app.dochoSyncClient.signIn(register: true) { await app.dochoSync.sync() }
+                    }
+                }
+            )
+            PreferenceRow(title: String(localized: "Sync now"), subtitle: syncSummary, action: {
+                Task { await app.dochoSync.sync() }
+            })
+            SwitchPreference(
+                title: String(localized: "Sync automatically"),
+                subtitle: String(localized: "When Dōchō opens and goes to the background"),
+                isOn: $automatic
+            )
+            PreferenceRow(
+                title: String(localized: "Delete"), subtitle: String(localized: "Erase the Dōchō Sync settings on this device"), icon: "delete",
+                action: {
+                    settings.reset()
+                    app.dochoSync.resetState()
+                    server = ""
+                    username = ""
+                    password = ""
+                }
+            )
+        }
+        .onAppear {
+            guard !loaded else { return }
+            server = settings.serverURL
+            username = settings.username
+            password = settings.password
+            automatic = settings.automatic
+            loaded = true
+        }
+        // A different server or account signs in again and starts over with a first sync.
+        .onChange(of: server) { old, value in accountChanged(old, value) { settings.serverURL = value } }
+        .onChange(of: username) { old, value in accountChanged(old, value) { settings.username = value } }
+        .onChange(of: password) { old, value in
+            guard loaded, old != value else { return }
+            settings.password = value
+            settings.token = ""
+        }
+        .onChange(of: automatic) { _, value in settings.automatic = value }
+        .modifier(DebouncedCheck(key: server + username + password) {
+            if case .connected = await app.dochoSyncClient.checkConnection(), settings.since == 0 { await app.dochoSync.sync() }
+        })
+        .task {
+            for await state in app.dochoSyncClient.changes { connection = state }
+        }
+    }
+
+    private func accountChanged(_ old: String, _ value: String, save: () -> Void) {
+        guard loaded, old != value else { return }
+        save()
+        app.dochoSyncSettings.token = ""
+        app.dochoSync.resetState()
+    }
+
+    private var displayed: ServerConnection {
+        switch connection {
+        case .unknown: .unknown
+        case .checking: .checking
+        case .connected(let name): .connected(String(localized: "Signed in as \(name)"))
+        case .failed(let reason): .failed(reason)
+        }
+    }
+
+    private var syncSummary: String {
+        switch app.dochoSync.status {
+        case .syncing: return String(localized: "Syncing…")
+        case .done(let sent, let received): return String(localized: "Synced: sent \(sent), received \(received) changes")
+        default:
+            let settings = app.dochoSyncSettings
+            if !settings.lastError.isEmpty { return String(localized: "Last sync failed: \(settings.lastError)") }
+            if settings.lastSyncAt > 0 {
+                let date = Date(timeIntervalSince1970: settings.lastSyncAt)
+                return String(localized: "Last synced \(date.formatted(.relative(presentation: .named)))")
+            }
+            return String(localized: "Not synced yet")
+        }
     }
 }
 

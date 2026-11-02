@@ -1,6 +1,7 @@
 import Foundation
 import Nuke
 import Observation
+import UIKit
 import os
 
 /// The dependency container: one instance for the app, handed to views through the environment.
@@ -37,6 +38,10 @@ final class AppModel {
     let suwayomiSettings: SuwayomiSettings
     let suwayomi: SuwayomiModel
     let notifier = DownloadNotifier()
+    let dochoSyncSettings: DochoSyncSettings
+    let dochoSyncClient: DochoSyncClient
+    /// Dōchō Sync: the library, renames, read state and history across devices.
+    let dochoSync: DochoSync
     private var triggers: SyncTriggers?
 
     /// Mirrors Kavita's latest sign-in outcome for the UI.
@@ -111,6 +116,14 @@ final class AppModel {
             database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences, renames: renames
         )
         trackers = TrackerManager(database: database, session: session, defaults: downloadDefaults)
+        let dochoSyncSettings = DochoSyncSettings()
+        self.dochoSyncSettings = dochoSyncSettings
+        dochoSyncClient = DochoSyncClient(settings: dochoSyncSettings, session: session)
+        dochoSync = DochoSync(
+            settings: dochoSyncSettings, client: dochoSyncClient, database: database, renames: renames
+        ) { [library] series in
+            _ = try? await library.refresh(series)
+        }
         self.suwayomiSettings = suwayomiSettings
         suwayomi = SuwayomiModel(client: SuwayomiClient(settings: suwayomiSettings, session: session), sources: sources, defaults: downloadDefaults)
 
@@ -132,6 +145,7 @@ final class AppModel {
         Task { _ = try? await checkForAppUpdate() }
         Task { await suwayomi.refreshSources() }
         await downloads.resume()
+        if dochoSyncSettings.automatic { await dochoSync.sync() }
         await sync.syncLibrary()
         if preferences.updateOnLaunch { await library.update() }
     }
@@ -172,6 +186,8 @@ final class AppModel {
 
     func sceneChanged(to phase: SyncTriggers.ScenePhaseChange) {
         triggers?.sceneChanged(to: phase)
+        if phase == .background { notifier.appWentToBackground() }
+        syncDochoOnSceneChange(phase)
         // The app can stay open for days, so returning to it checks again, at most every 6 hours (as on Android).
         if phase == .active, triggers != nil, let last = lastUpdateCheck, Date.now.timeIntervalSince(last) > 6 * 3600 {
             Task { _ = try? await checkForAppUpdate() }
@@ -263,5 +279,38 @@ final class AppModel {
             // swiftlint:disable:next force_try
             return try! .inMemory()
         }
+    }
+}
+
+extension AppModel {
+    /// Dōchō Sync runs when the app comes back (to take other devices' changes) and as it goes to
+    /// the background (to send this one's), with a little extra time to finish there.
+    fileprivate func syncDochoOnSceneChange(_ phase: SyncTriggers.ScenePhaseChange) {
+        guard triggers != nil, dochoSyncSettings.isConfigured, dochoSyncSettings.automatic else { return }
+        switch phase {
+        case .active:
+            Task { await dochoSync.sync() }
+        case .background:
+            let task = BackgroundTask()
+            task.id = UIApplication.shared.beginBackgroundTask(withName: "docho-sync") {
+                MainActor.assumeIsolated { task.end() }
+            }
+            Task {
+                await dochoSync.sync()
+                task.end()
+            }
+        }
+    }
+}
+
+/// A `beginBackgroundTask` id, ended once whichever comes first: the work or its expiry.
+@MainActor
+private final class BackgroundTask {
+    var id = UIBackgroundTaskIdentifier.invalid
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }

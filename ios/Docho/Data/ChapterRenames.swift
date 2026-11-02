@@ -39,6 +39,18 @@ final class ChapterRenames {
         save()
     }
 
+    /// Forgets the user's name and number for the chapter at `url`; Dōchō Sync, when another
+    /// device dropped it.
+    func remove(source: Int64, url: String) {
+        renames[Self.key(source, url)] = nil
+        save()
+    }
+
+    func removeKind(source: Int64, url: String) {
+        kinds[Self.key(source, url)] = nil
+        save()
+    }
+
     /// Remembers whether the chapter at `url` is a volume or a chapter.
     func putKind(source: Int64, url: String, _ kind: String) {
         kinds[Self.key(source, url)] = kind

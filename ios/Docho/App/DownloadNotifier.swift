@@ -27,6 +27,7 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
     /// A task submitted that the system hasn't started yet, so a second tap doesn't submit another.
     private var submitted = false
     private var activityObserver: Task<Void, Never>?
+    private var backgroundTask = UIBackgroundTaskIdentifier.invalid
     private let log = Logger(subsystem: "io.github.grillza.docho", category: "download-notifier")
 
     func attach(_ app: AppModel) {
@@ -53,6 +54,7 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
         switch event {
         case .queueFinished:
             finishContinuedTask(success: true)
+            endBackgroundTask()
             guard UIApplication.shared.applicationState != .active else { return }
             post(title: String(localized: "Download completed"), body: nil, seriesId: nil)
         case .failed(let seriesId, let chapterId, let message):
@@ -111,10 +113,10 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
         let request = BGContinuedProcessingTaskRequest(
             identifier: Self.taskPrefix + UUID().uuidString, title: String(localized: "Downloading"), subtitle: subtitle
         )
-        // Run now or not at all. A queued request (the default) can wait behind other apps' tasks
-        // and only show its progress once the downloads are well under way; the download bar
-        // covers the app either way.
-        request.strategy = .fail
+        // Queued rather than failed when the system can't start it at once: a failed request left
+        // downloads to stop as soon as the app was swiped away. The download bar covers the app
+        // until it starts.
+        request.strategy = .queue
         do {
             try BGTaskScheduler.shared.submit(request)
             submitted = true
@@ -158,6 +160,24 @@ final class DownloadNotifier: NSObject, UNUserNotificationCenterDelegate {
                 }
             } catch {}
         }
+    }
+
+    /// Leaving the app mid-download: until the continued-processing task (iOS 26+) takes over, or
+    /// on older systems, asks for the extra time iOS gives apps finishing work in the background.
+    func appWentToBackground() {
+        guard let app, backgroundTask == .invalid, activity == nil, !app.preferences.downloadsPaused else { return }
+        Task { [weak self] in
+            guard let queue = try? await app.database.queuedDownloads(), !queue.isEmpty, let self else { return }
+            backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "downloads") { [weak self] in
+                self?.endBackgroundTask()
+            }
+        }
+    }
+
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
     }
 
     private func finishContinuedTask(success: Bool) {
