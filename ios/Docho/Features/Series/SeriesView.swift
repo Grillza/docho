@@ -23,6 +23,11 @@ struct SeriesView: View {
     @State private var editingPrediction = false
     @State private var predictionStop = false
     @State private var predictionHide = false
+    @State private var predictionHideSource = false
+    /// Chapters waiting on the rename dialog, and what it has typed in.
+    @State private var renaming: [ChapterRecord]?
+    @State private var renameDraft = RenameDraft()
+    @State private var renameError: String?
     @Environment(\.navigate) private var navigate
     @State private var fileError: String?
     @State private var descriptionExpanded = false
@@ -132,8 +137,11 @@ struct SeriesView: View {
                 }
                 .padding(.horizontal, 24)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                CheckboxRow(title: String(localized: "Stop predicting releases for this series"), isOn: $predictionStop)
+                if model.series?.inLibrary == true {
+                    CheckboxRow(title: String(localized: "Stop predicting releases for this series"), isOn: $predictionStop)
+                }
                 CheckboxRow(title: String(localized: "Hide this for this series"), isOn: $predictionHide)
+                CheckboxRow(title: String(localized: "Hide this for every series from \(model.source.name)"), isOn: $predictionHideSource)
                 M3TextButton(title: String(localized: "Hide for all series…")) {
                     editingPrediction = false
                     navigate(.settingsPage(.appearance))
@@ -144,12 +152,17 @@ struct SeriesView: View {
             M3TextButton(title: String(localized: "Cancel")) { editingPrediction = false }
             M3TextButton(title: String(localized: "OK")) {
                 editingPrediction = false
-                if predictionStop {
-                    app.preferences.stoppedReleasePrediction.insert(seriesId)
-                } else {
-                    app.preferences.stoppedReleasePrediction.remove(seriesId)
+                if model.series?.inLibrary == true {
+                    if predictionStop {
+                        app.preferences.stoppedReleasePrediction.insert(seriesId)
+                    } else {
+                        app.preferences.stoppedReleasePrediction.remove(seriesId)
+                    }
                 }
                 if predictionHide { app.preferences.hiddenReleasePrediction.insert(seriesId) }
+                if predictionHideSource, let source = model.series?.source {
+                    app.preferences.hiddenReleasePredictionSources.insert(source)
+                }
             }
         }
         .m3Dialog(isPresented: Binding(get: { deletingFiles != nil }, set: { if !$0 { deletingFiles = nil } }), title: String(localized: "Delete from device?")) {
@@ -186,6 +199,46 @@ struct SeriesView: View {
         } buttons: {
             M3TextButton(title: String(localized: "OK")) { fileError = nil }
         }
+        .m3Dialog(
+            isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
+            title: (renaming?.count ?? 0) > 1
+                ? String(localized: "Rename \(renaming?.count ?? 0) chapters") : String(localized: "Rename chapter")
+        ) {
+            if let chapters = renaming {
+                RenameChaptersFields(
+                    draft: $renameDraft, chapters: chapters, seriesTitle: model.series?.name ?? "", sourceName: model.source.name,
+                    reach: RenameReach.of(source: model.series?.source ?? 0)
+                )
+            }
+        } buttons: {
+            M3TextButton(title: String(localized: "Cancel")) { renaming = nil }
+            M3TextButton(title: String(localized: "Rename")) {
+                guard let chapters = renaming else { return }
+                let requests = renameDraft.requests(for: chapters, seriesTitle: model.series?.name ?? "")
+                renaming = nil
+                Task {
+                    let result = await model.rename(requests)
+                    if result.failed > 0 {
+                        renameError = String(localized: "Couldn't rename \(result.failed) chapters")
+                    } else if let error = result.serverError {
+                        renameError = String(localized: "Renamed in Dōchō, but \(model.source.name) didn't take it: \(error)")
+                    }
+                }
+            }
+            .disabled(!canRename(model))
+            .opacity(canRename(model) ? 1 : 0.38)
+        }
+        .m3Dialog(isPresented: Binding(get: { renameError != nil }, set: { if !$0 { renameError = nil } }), title: String(localized: "Rename")) {
+            Text(renameError ?? "").font(M3Type.bodyMedium).foregroundStyle(m3.onSurfaceVariant)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } buttons: {
+            M3TextButton(title: String(localized: "OK")) { renameError = nil }
+        }
+    }
+
+    private func canRename(_ model: SeriesModel) -> Bool {
+        renaming.map { renameDraft.canConfirm(for: $0, seriesTitle: model.series?.name ?? "") } ?? false
     }
 
     /// The chapter list on its own, for the tablet layout.
@@ -258,9 +311,11 @@ struct SeriesView: View {
                         Button(String(localized: "Open in browser")) { openURL(url) }
                         ShareLink(String(localized: "Share"), item: url)
                     }
-                    if app.preferences.showReleasePrediction, app.preferences.hiddenReleasePrediction.contains(model.seriesId) {
+                    if app.preferences.showReleasePrediction, let series = model.series,
+                       !app.preferences.showsReleasePrediction(seriesId: series.id, source: series.source) {
                         Button(String(localized: "Show release prediction")) {
-                            app.preferences.hiddenReleasePrediction.remove(model.seriesId)
+                            app.preferences.hiddenReleasePrediction.remove(series.id)
+                            app.preferences.hiddenReleasePredictionSources.remove(series.source)
                         }
                     }
                     if model.isLocal {
@@ -349,11 +404,12 @@ struct SeriesView: View {
                 }
             }
             .accessibilityIdentifier("series.library")
-            if app.preferences.showReleasePrediction, !app.preferences.hiddenReleasePrediction.contains(series.id) {
+            if app.preferences.showsReleasePrediction(seriesId: series.id, source: series.source) {
+                // Also outside the library, where it only offers to hide the hourglass.
                 actionButton(title: predictionTitle(series, model: model), icon: "hourglass_empty", active: false) {
-                    guard series.inLibrary else { return }
                     predictionStop = app.preferences.stoppedReleasePrediction.contains(series.id)
                     predictionHide = false
+                    predictionHideSource = false
                     editingPrediction = true
                 }
                 .accessibilityIdentifier("series.prediction")
@@ -555,6 +611,11 @@ struct SeriesView: View {
             }
             if selected.count == 1, let chapter = selected.first {
                 barButton("done_previous", String(localized: "Mark previous as read")) { _ in Task { await model.markPreviousRead(chapter) } }
+            }
+            barButton("edit", String(localized: "Rename")) { ids in
+                let chapters = model.displayedChapters.filter { ids.contains($0.id) }
+                renameDraft = RenameDraft(chapters: chapters)
+                renaming = chapters
             }
             if model.series?.source != LocalSource.id, selected.contains(where: { !$0.isDownloaded }) {
                 barButton("download", String(localized: "Download")) { ids in Task { await model.download(ids) } }
@@ -812,6 +873,10 @@ struct ChapterSettingsSheet: View {
                                     if display.sort == sort { display.descending.toggle() } else { display.sort = sort }
                                 }
                             }
+                        }
+                        PreferenceHeader(title: String(localized: "Volumes and chapters"))
+                        ForEach(ChapterDisplay.KindOrder.allCases, id: \.self) { order in
+                            RadioRow(title: order.title, selected: display.kindOrder == order) { display.kindOrder = order }
                         }
                     default:
                         RadioRow(title: String(localized: "Source title"), selected: !display.showChapterNumbers) { display.showChapterNumbers = false }

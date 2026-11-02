@@ -324,11 +324,15 @@ struct LocalSource: MangaSource {
     enum LocalError: LocalizedError {
         case missing
         case nothingToAdd
+        case invalidName
+        case nameTaken(String)
 
         var errorDescription: String? {
             switch self {
             case .missing: String(localized: "The file isn't in the local folder any more")
             case .nothingToAdd: String(localized: "No comics found to add")
+            case .invalidName: String(localized: "That name can't be used for a file")
+            case .nameTaken(let name): String(localized: "\(name) already exists")
             }
         }
     }
@@ -343,6 +347,29 @@ struct LocalSource: MangaSource {
             if let unpacked = try? unpackDirectory(for: file) { try? FileManager.default.removeItem(at: unpacked) }
             try FileManager.default.removeItem(at: file)
         }
+    }
+
+    /// Renames a chapter's file (or folder of images) to `newName`, keeping its extension, and
+    /// returns its new url ("Series/Chapter.cbz"). Characters file names can't have are replaced,
+    /// and a name already taken fails.
+    func renameChapter(_ url: String, to newName: String) throws -> String {
+        let file = try chapterURL(url)
+        let seriesName = String(url.prefix { $0 != "/" })
+        var safeName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacing(#/[\\/:*?"<>|\x00-\x1f]/#, with: "_")
+        while safeName.hasSuffix(".") { safeName.removeLast() }
+        guard !safeName.isEmpty, !safeName.hasPrefix(".") else { throw LocalError.invalidName }
+        let ext = file.pathExtension
+        let newFileName = isDirectory(file) || ext.isEmpty ? safeName : "\(safeName).\(ext)"
+        guard newFileName != file.lastPathComponent else { return url }
+        let destination = file.deletingLastPathComponent().appending(path: newFileName)
+        // Names that only differ in case are the same file on APFS.
+        if newFileName.lowercased() != file.lastPathComponent.lowercased(), FileManager.default.fileExists(atPath: destination.path) {
+            throw LocalError.nameTaken(newFileName)
+        }
+        if let unpacked = try? unpackDirectory(for: file) { try? FileManager.default.removeItem(at: unpacked) }
+        try FileManager.default.moveItem(at: file, to: destination)
+        return "\(seriesName)/\(newFileName)"
     }
 
     /// Deletes a series' folder from the device: its chapters, cover and ComicInfo.xml.

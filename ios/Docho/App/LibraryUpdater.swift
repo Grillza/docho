@@ -19,6 +19,7 @@ final class LibraryUpdater {
     @ObservationIgnored private let sync: ProgressSync
     @ObservationIgnored private let downloads: DownloadManager
     @ObservationIgnored private let preferences: AppPreferences
+    @ObservationIgnored private let renames: ChapterRenames
     @ObservationIgnored private let log = Logger(subsystem: "io.github.grillza.docho", category: "library-update")
 
     static let taskIdentifier = "io.github.grillza.docho.library-update"
@@ -31,7 +32,11 @@ final class LibraryUpdater {
         try? BGTaskScheduler.shared.submit(request)
     }
 
-    init(database: AppDatabase, sources: SourceManager, sync: ProgressSync, downloads: DownloadManager, preferences: AppPreferences) {
+    init(
+        database: AppDatabase, sources: SourceManager, sync: ProgressSync, downloads: DownloadManager, preferences: AppPreferences,
+        renames: ChapterRenames
+    ) {
+        self.renames = renames
         self.database = database
         self.sources = sources
         self.sync = sync
@@ -44,7 +49,9 @@ final class LibraryUpdater {
     @discardableResult
     func refresh(_ series: SeriesRecord, details: Bool = true) async throws -> [ChapterRecord] {
         let source = sources.source(series.source)
-        let (manga, chapters) = try await source.update(series.manga, details: details || !series.initialized, chapters: true)
+        let (manga, fetched) = try await source.update(series.manga, details: details || !series.initialized, chapters: true)
+        // Chapters renamed in Dōchō keep the user's name, number and kind over the source's.
+        let chapters = fetched.map { renames.apply(source: series.source, $0) }
         let added = try await database.saveFromSource(seriesId: series.id, manga: manga, chapters: chapters)
         if let stored = try await database.seriesRecord(id: series.id) {
             await sync.syncSeries(stored)

@@ -111,6 +111,19 @@ extension AppDatabase {
         }
     }
 
+    /// Renames a chapter the user renamed, moving it to `url` when its file was renamed too, so
+    /// its reading state stays with it.
+    func renameChapter(id: Int, url: String, name: String, number: Double, memo: ChapterMemo) async throws {
+        try await writer.write { db in
+            guard var chapter = try ChapterRecord.fetchOne(db, key: id) else { return }
+            chapter.url = url
+            chapter.name = name
+            chapter.number = number
+            chapter.chapterMemo = memo
+            try chapter.update(db)
+        }
+    }
+
     /// Marks chapters read or unread locally. Unread also goes back to the first page.
     func setChaptersRead(_ chapterIds: [Int], read: Bool) async throws {
         try await writer.write { db in
@@ -236,7 +249,13 @@ extension Array where Element == ChapterRecord {
         case .fileName:
             filtered.sorted { $0.fileNameKey.localizedStandardCompare($1.fileNameKey) == .orderedAscending }
         }
-        return display.descending ? ascending.reversed() : ascending
+        let sorted = display.descending ? Array(ascending.reversed()) : ascending
+        guard display.kindOrder != .mixed else { return sorted }
+        // Reading the kind decodes the memo, so once per chapter rather than per comparison.
+        let volumes = sorted.filter(\.isVolume)
+        let volumeIds = Set(volumes.map(\.id))
+        let chapters = sorted.filter { !volumeIds.contains($0.id) }
+        return display.kindOrder == .volumesFirst ? volumes + chapters : chapters + volumes
     }
 
     private static func matches(_ state: ChapterDisplay.TriState, _ value: Bool) -> Bool {

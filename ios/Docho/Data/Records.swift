@@ -128,8 +128,38 @@ struct ChapterDisplay: Codable, Sendable, Equatable, Hashable {
     var downloaded = TriState.off
     var bookmarked = TriState.off
     var showChapterNumbers = false
+    var kindOrder = KindOrder.mixed
 
     var hasFilter: Bool { unread != .off || downloaded != .off || bookmarked != .off }
+
+    /// Whether volumes or chapters are listed first, whichever way the list runs, or both mixed
+    /// in the sort order (Android 0.30.0).
+    enum KindOrder: String, Codable, CaseIterable, Sendable {
+        case mixed, volumesFirst, chaptersFirst
+
+        var title: String {
+            switch self {
+            case .mixed: String(localized: "Mixed")
+            case .volumesFirst: String(localized: "Volumes first")
+            case .chaptersFirst: String(localized: "Chapters first")
+            }
+        }
+    }
+}
+
+extension ChapterDisplay {
+    /// Settings saved before a field existed keep the rest and take its default.
+    init(from decoder: any Decoder) throws {
+        self.init()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sort = try container.decodeIfPresent(Sort.self, forKey: .sort) ?? sort
+        descending = try container.decodeIfPresent(Bool.self, forKey: .descending) ?? descending
+        unread = try container.decodeIfPresent(TriState.self, forKey: .unread) ?? unread
+        downloaded = try container.decodeIfPresent(TriState.self, forKey: .downloaded) ?? downloaded
+        bookmarked = try container.decodeIfPresent(TriState.self, forKey: .bookmarked) ?? bookmarked
+        showChapterNumbers = try container.decodeIfPresent(Bool.self, forKey: .showChapterNumbers) ?? showChapterNumbers
+        kindOrder = (try? container.decodeIfPresent(KindOrder.self, forKey: .kindOrder)) ?? kindOrder
+    }
 }
 
 /// A category to group the library by (Mihon's categories).

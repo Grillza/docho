@@ -131,6 +131,19 @@ actor KavitaClient {
         try await get("/Chapter?chapterId=\(chapterId)")
     }
 
+    /// Sets a chapter's title on the server and locks it so scans keep it. Kavita replaces all of
+    /// a chapter's metadata at once, so the chapter is read first and sent back with only the
+    /// title changed. Needs an admin account.
+    func setChapterTitle(chapterId: Int, title: String) async throws {
+        let (data, _) = try await send("GET", "/Chapter?chapterId=\(chapterId)")
+        guard var chapter = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw KavitaError.http(status: 0)
+        }
+        chapter["titleName"] = title
+        chapter["titleNameLocked"] = true
+        _ = try await send("POST", "/Chapter/update", body: JSONSerialization.data(withJSONObject: chapter))
+    }
+
     /// The page the server has for one chapter; `pages` means read. Servers without
     /// `get-progress` answer 404, and then the chapter's `pagesRead` from the volumes is used.
     func pagesRead(seriesId: Int, chapterId: Int) async throws -> Int {

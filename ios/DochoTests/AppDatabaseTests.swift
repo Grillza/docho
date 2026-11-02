@@ -195,6 +195,67 @@ final class AppDatabaseTests: XCTestCase {
         XCTAssertEqual(unread.map(\.name), ["Vol. 1", "Vol. 10"])
     }
 
+    /// Volumes or chapters come first whichever way the list runs; a chapter said to be a volume
+    /// counts as one whatever its name.
+    @MainActor
+    func testVolumesOrChaptersFirst() async throws {
+        let defaults = UserDefaults(suiteName: "renames-\(UUID())")!
+        let renames = ChapterRenames(defaults: defaults)
+        renames.putKind(source: kavita, url: "/chapter/3", ChapterMemo.kindVolume)
+        let series = try await database.localSeries(source: kavita, manga: manga(7, "Kaiju No. 8"))
+        try await database.saveFromSource(seriesId: series.id, manga: nil, chapters: renames.apply(source: kavita, [
+            chapter(82, name: "Ch. 82"), chapter(2, name: "Vol. 2"), chapter(81, name: "Ch. 81"), chapter(1, name: "Vol. 1"),
+            chapter(3, name: "Collected edition 3"),
+        ]))
+        let chapters = try await database.chapterList(seriesId: series.id)
+        var display = ChapterDisplay(sort: .number, descending: false, kindOrder: .volumesFirst)
+        XCTAssertEqual(chapters.displayed(display).map(\.name), ["Vol. 1", "Vol. 2", "Collected edition 3", "Ch. 81", "Ch. 82"])
+
+        display.descending = true
+        XCTAssertEqual(chapters.displayed(display).map(\.name), ["Collected edition 3", "Vol. 2", "Vol. 1", "Ch. 82", "Ch. 81"])
+
+        display.kindOrder = .chaptersFirst
+        XCTAssertEqual(chapters.displayed(display).map(\.name), ["Ch. 82", "Ch. 81", "Collected edition 3", "Vol. 2", "Vol. 1"])
+
+        XCTAssertTrue(ChapterMemo.looksLikeVolume("Volume 12 - The End"))
+        XCTAssertTrue(ChapterMemo.looksLikeVolume("v03"))
+        XCTAssertFalse(ChapterMemo.looksLikeVolume("Vol. 3 Ch. 12"))
+        XCTAssertFalse(ChapterMemo.looksLikeVolume("Valkyrie 3"))
+    }
+
+    /// Chapter settings saved before volumes and chapters could be ordered keep everything else.
+    func testOlderChapterSettingsStillDecode() throws {
+        let old = #"{"sort":"number","descending":false,"unread":1,"downloaded":0,"bookmarked":0,"showChapterNumbers":true}"#
+        let display = try JSONDecoder().decode(ChapterDisplay.self, from: Data(old.utf8))
+        XCTAssertEqual(display, ChapterDisplay(sort: .number, descending: false, unread: .include, showChapterNumbers: true))
+        XCTAssertEqual(display.kindOrder, .mixed)
+    }
+
+    /// A renamed chapter keeps its name over the source's on refresh, and a renamed Local file
+    /// keeps its reading state by moving to its new url.
+    @MainActor
+    func testRenamesStayAfterRefresh() async throws {
+        let renames = ChapterRenames(defaults: UserDefaults(suiteName: "renames-\(UUID())")!)
+        let series = try await database.localSeries(source: kavita, manga: manga(7, "Kaiju No. 8"))
+        try await database.saveFromSource(seriesId: series.id, manga: nil, chapters: [chapter(1, name: "Kaiju No. 8 Ch. 1")])
+        let stored = try await database.chapterList(seriesId: series.id)[0]
+        try await database.setChaptersRead([stored.id], read: true)
+
+        renames.put(source: kavita, oldURL: "/chapter/1", newURL: "/chapter/1", .init(name: "Ch. 1 - Monster", number: 1))
+        try await database.renameChapter(id: stored.id, url: "/chapter/1", name: "Ch. 1 - Monster", number: 1, memo: stored.chapterMemo)
+        try await database.saveFromSource(seriesId: series.id, manga: nil, chapters: renames.apply(source: kavita, [chapter(1, name: "Kaiju No. 8 Ch. 1")]))
+
+        let refreshed = try await database.chapterList(seriesId: series.id)
+        XCTAssertEqual(refreshed.map(\.name), ["Ch. 1 - Monster"])
+        XCTAssertEqual(refreshed.map(\.read), [true])
+    }
+
+    func testBookOrbitRenameSendsTheTitleWithoutTheVolume() {
+        XCTAssertEqual(BookOrbitSource.title(fromChapterName: "Vol. 8 - The Return"), "The Return")
+        XCTAssertEqual(BookOrbitSource.title(fromChapterName: "Vol. 119.1"), "Vol. 119.1")
+        XCTAssertEqual(BookOrbitSource.title(fromChapterName: "Just a title"), "Just a title")
+    }
+
     // MARK: Migration
 
     /// PLAN-2 milestone 11: an existing install upgrades with its library, progress, queue and

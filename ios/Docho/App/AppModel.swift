@@ -21,6 +21,8 @@ final class AppModel {
     let preferences: AppPreferences
     let sources: SourceManager
     let localSource: LocalSource
+    /// Names, numbers and kinds the user gave chapters.
+    let renames: ChapterRenames
     let kavitaSource: KavitaSource
     let komgaSource: KomgaSource
     let bookOrbitSource: BookOrbitSource
@@ -104,7 +106,10 @@ final class AppModel {
         )
         sync = ProgressSync(engines: [kavitaSync, komgaSync, bookOrbitSync, koreaderSync])
         downloads = DownloadManager(database: database, sources: sources, store: downloadStore, fetcher: pageFetcher, defaults: SendableDefaults(downloadDefaults))
-        library = LibraryUpdater(database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences)
+        renames = ChapterRenames(defaults: downloadDefaults)
+        library = LibraryUpdater(
+            database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences, renames: renames
+        )
         trackers = TrackerManager(database: database, session: session, defaults: downloadDefaults)
         self.suwayomiSettings = suwayomiSettings
         suwayomi = SuwayomiModel(client: SuwayomiClient(settings: suwayomiSettings, session: session), sources: sources, defaults: downloadDefaults)

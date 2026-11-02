@@ -198,6 +198,16 @@ final class AppPreferences {
     var showReleasePrediction: Bool { didSet { save(showReleasePrediction, "show_release_prediction") } }
     /// Series the estimate is hidden on, one at a time from its dialog.
     var hiddenReleasePrediction: Set<Int> { didSet { save(hiddenReleasePrediction.sorted(), "release_prediction_hidden") } }
+    /// Sources whose series don't show the estimate, in the library or not (Android 0.29.3).
+    var hiddenReleasePredictionSources: Set<Int64> {
+        didSet { save(hiddenReleasePredictionSources.map(String.init).sorted(), "release_prediction_hidden_sources") }
+    }
+
+    /// Whether a series shows the hourglass: the setting is on and neither it nor its source is hidden.
+    func showsReleasePrediction(seriesId: Int, source: Int64) -> Bool {
+        showReleasePrediction && !hiddenReleasePrediction.contains(seriesId) && !hiddenReleasePredictionSources.contains(source)
+    }
+
     /// Series whose estimate is stopped: the button says so instead of predicting.
     var stoppedReleasePrediction: Set<Int> { didSet { save(stoppedReleasePrediction.sorted(), "release_prediction_stopped") } }
 
@@ -278,6 +288,7 @@ final class AppPreferences {
         showReleasePrediction = bool("show_release_prediction", true)
         hiddenReleasePrediction = Set(defaults.array(forKey: "release_prediction_hidden") as? [Int] ?? [])
         stoppedReleasePrediction = Set(defaults.array(forKey: "release_prediction_stopped") as? [Int] ?? [])
+        hiddenReleasePredictionSources = Set((defaults.stringArray(forKey: "release_prediction_hidden_sources") ?? []).compactMap { Int64($0) })
         skippedAppUpdate = string("skipped_app_update") ?? ""
         skipPatchAppUpdates = bool("pref_skip_patch_app_updates", false)
     }

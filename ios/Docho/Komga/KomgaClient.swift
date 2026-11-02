@@ -134,6 +134,22 @@ actor KomgaClient {
         _ = try await send(try request("/v1/books/\(bookId)/read-progress", method: "DELETE"))
     }
 
+    /// Sets a book's title, and its number when given, locking them so Komga's scans keep them.
+    /// Needs an admin account.
+    func setBookTitle(_ bookId: String, title: String, number: Double?) async throws {
+        var body: [String: Any] = ["title": title, "titleLock": true]
+        if let number, number >= 0 {
+            body["number"] = number.rounded() == number ? String(Int64(number)) : String(number)
+            body["numberLock"] = true
+            body["numberSort"] = number
+            body["numberSortLock"] = true
+        }
+        var request = try request("/v1/books/\(bookId)/metadata", method: "PATCH")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        _ = try await send(request)
+    }
+
     private func patchProgress(_ bookId: String, _ body: [String: Any]) async throws {
         var request = try request("/v1/books/\(bookId)/read-progress", method: "PATCH")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

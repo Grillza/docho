@@ -173,6 +173,9 @@ private struct AppearanceSettings: View {
             subtitle: String(localized: "The hourglass next to In library, with when Mihon expects the next chapter"),
             isOn: $preferences.showReleasePrediction
         )
+        if preferences.showReleasePrediction {
+            HiddenPredictionSourcesPreference()
+        }
         if preferences.showReleasePrediction, !preferences.hiddenReleasePrediction.isEmpty {
             PreferenceRow(
                 title: String(localized: "Show it on hidden series again"),
@@ -551,5 +554,56 @@ private struct NavigationBarSettings: View {
         .animation(.easeOut(duration: 0.2), value: alignment)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "Preview: \(tabs.map(\.title).joined(separator: ", "))"))
+    }
+}
+
+/// Settings → Appearance → Series → Hide for sources: series from the ticked sources don't show
+/// the hourglass (Android 0.29.3).
+private struct HiddenPredictionSourcesPreference: View {
+    @Environment(AppModel.self) private var app
+    @State private var choosing = false
+
+    var body: some View {
+        let preferences = app.preferences
+        let hidden = preferences.hiddenReleasePredictionSources
+        let names = hidden.compactMap { id in sources.first { $0.id == id }?.name ?? String(id) }.sorted()
+        PreferenceRow(
+            title: String(localized: "Hide for sources"),
+            subtitle: names.isEmpty
+                ? String(localized: "Series from these sources don't show the hourglass, in the library or not")
+                : names.joined(separator: ", "),
+            action: { choosing = true }
+        )
+        .m3Dialog(isPresented: $choosing, title: String(localized: "Hide for sources")) {
+            VStack(spacing: 0) {
+                // Sources hidden before they went away are still listed, so they can be shown again.
+                ForEach(listed, id: \.id) { source in
+                    CheckboxRow(title: source.name, isOn: Binding(
+                        get: { preferences.hiddenReleasePredictionSources.contains(source.id) },
+                        set: { hide in
+                            if hide {
+                                preferences.hiddenReleasePredictionSources.insert(source.id)
+                            } else {
+                                preferences.hiddenReleasePredictionSources.remove(source.id)
+                            }
+                        }
+                    ))
+                }
+            }
+        } buttons: {
+            M3TextButton(title: String(localized: "OK")) { choosing = false }
+        }
+    }
+
+    private var sources: [(id: Int64, name: String)] {
+        app.sources.sources.map { ($0.id, $0.name) }
+    }
+
+    private var listed: [(id: Int64, name: String)] {
+        let known = sources
+        let gone = app.preferences.hiddenReleasePredictionSources
+            .filter { id in !known.contains { $0.id == id } }
+            .map { (id: $0, name: String($0)) }
+        return known + gone.sorted { $0.id < $1.id }
     }
 }

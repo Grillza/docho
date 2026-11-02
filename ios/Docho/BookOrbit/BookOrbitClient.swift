@@ -173,6 +173,23 @@ actor BookOrbitClient {
         try await setStatus(bookId: bookId, BookOrbitBook.statusUnread)
     }
 
+    /// Sets a book's title, and its series index when given, and locks them so metadata refreshes
+    /// keep them. BookOrbit replaces a book's whole set of locks, so the ones it has are read
+    /// first and kept. Needs an account that may edit metadata.
+    func setBookTitle(bookId: Int, title: String, seriesIndex: Double?) async throws {
+        let current = try JSONSerialization.jsonObject(with: try await send("/books/\(bookId)")) as? [String: Any]
+        var locks = (current?["lockedFields"] as? [String]) ?? []
+        var metadata: [String: Any] = ["title": title]
+        if let seriesIndex, seriesIndex >= 0 {
+            // BookOrbit takes indexes like 8 or 119.1, without a sign or exponent.
+            metadata["seriesIndex"] = seriesIndex.rounded() == seriesIndex ? String(Int64(seriesIndex)) : String(seriesIndex)
+            if !locks.contains("seriesIndex") { locks.append("seriesIndex") }
+        }
+        if !locks.contains("title") { locks.append("title") }
+        let body = try JSONSerialization.data(withJSONObject: ["metadata": metadata, "lockedFields": locks])
+        _ = try await send("/books/\(bookId)/metadata-and-locks", method: "PATCH", body: body)
+    }
+
     func setStatus(bookId: Int, _ status: String) async throws {
         _ = try await send("/books/\(bookId)/status", method: "PATCH", body: JSONEncoder().encode(["status": status]))
     }

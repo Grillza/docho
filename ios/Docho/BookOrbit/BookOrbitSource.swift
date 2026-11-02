@@ -169,6 +169,13 @@ final class BookOrbitSource: MangaSource {
         return url.components(separatedBy: "/file/").last.flatMap { Int($0.prefix { $0.isNumber }) }
     }
 
+    /// The book title in a name `chapterName` made, so a renamed "Vol. 8 - Title" sends only
+    /// "Title" back, the index going separately.
+    static func title(fromChapterName name: String) -> String {
+        let stripped = name.replacing(#/^Vol\. *[0-9]+(?:\.[0-9]+)? *(?:- *|$)/#, with: "").trimmingCharacters(in: .whitespaces)
+        return stripped.isEmpty ? name.trimmingCharacters(in: .whitespaces) : stripped
+    }
+
     /// "Vol. 3 - Title", or whichever half the book has.
     static func chapterName(title: String?, seriesIndex: String?) -> String {
         let title = title?.trimmingCharacters(in: .whitespaces).nilIfEmpty

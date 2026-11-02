@@ -117,6 +117,68 @@ final class SeriesModel {
         return nil
     }
 
+    /// How a rename went: `renamed` chapters were renamed in Dōchō, `failed` weren't at all, and
+    /// `serverError` is why the server didn't take some, which Dōchō still shows renamed.
+    struct RenameResult {
+        var renamed = 0
+        var failed = 0
+        var serverError: String?
+    }
+
+    /// Renames chapters in Dōchō, and where the chapter lives somewhere Dōchō can change it too:
+    /// the file itself for the Local source, the title and number on Komga and BookOrbit (its
+    /// series index), the title on Kavita. Whether a chapter is a volume stays in Dōchō.
+    func rename(_ requests: [ChapterRenameRequest]) async -> RenameResult {
+        guard let series else { return RenameResult() }
+        var result = RenameResult()
+        for request in requests where request.changes {
+            let old = request.chapter
+            var url = old.url
+            var name = old.name
+            var number = old.number
+            var memo = old.chapterMemo
+            do {
+                if request.renames {
+                    name = request.name.trimmingCharacters(in: .whitespaces)
+                    number = request.number
+                    if isLocal { url = try app.localSource.renameChapter(old.url, to: name) }
+                    do {
+                        try await renameOnServer(source: series.source, url: old.url, name: name, number: number)
+                    } catch {
+                        if result.serverError == nil { result.serverError = error.localizedDescription }
+                    }
+                    app.renames.put(source: series.source, oldURL: old.url, newURL: url, .init(name: name, number: number))
+                }
+                if request.changesKind, let kind = request.kind {
+                    memo[ChapterMemo.kind] = .string(kind)
+                    app.renames.putKind(source: series.source, url: url, kind)
+                }
+                try await app.database.renameChapter(id: old.id, url: url, name: name, number: number, memo: memo)
+                result.renamed += 1
+            } catch {
+                result.failed += 1
+            }
+        }
+        // The Local source lists its files again, now under their new names.
+        if isLocal { await refresh() }
+        return result
+    }
+
+    private func renameOnServer(source: Int64, url: String, name: String, number: Double) async throws {
+        switch source {
+        case KavitaSource.id:
+            if let id = KavitaSource.chapterId(url) { try await app.kavita.setChapterTitle(chapterId: id, title: name) }
+        case KomgaSource.id:
+            if let id = KomgaSource.bookIdOrNil(url) { try await app.komga.setBookTitle(id, title: name, number: number) }
+        case BookOrbitSource.id:
+            if let id = BookOrbitSource.bookId(url) {
+                try await app.bookOrbit.setBookTitle(bookId: id, title: BookOrbitSource.title(fromChapterName: name), seriesIndex: number)
+            }
+        default:
+            break
+        }
+    }
+
     func retryDownloads() async {
         await app.downloads.retryFailed()
     }
