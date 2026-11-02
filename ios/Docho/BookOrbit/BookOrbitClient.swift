@@ -180,6 +180,9 @@ actor BookOrbitClient {
         let current = try JSONSerialization.jsonObject(with: try await send("/books/\(bookId)")) as? [String: Any]
         var locks = (current?["lockedFields"] as? [String]) ?? []
         var metadata: [String: Any] = ["title": title]
+        // A series index makes BookOrbit file the book again under its series name, so the name it
+        // has now goes with it and the book stays in the series it's in.
+        if let seriesName = current?["seriesName"] as? String, !seriesName.isBlank { metadata["seriesName"] = seriesName }
         if let seriesIndex, seriesIndex >= 0 {
             // BookOrbit takes indexes like 8 or 119.1, without a sign or exponent.
             metadata["seriesIndex"] = seriesIndex.rounded() == seriesIndex ? String(Int64(seriesIndex)) : String(seriesIndex)

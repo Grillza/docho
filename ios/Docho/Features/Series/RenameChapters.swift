@@ -71,6 +71,19 @@ struct RenameDraft: Equatable {
         }
     }
 
+    /// Says the chapters are volumes or chapters. With one chapter, its name is written as one
+    /// too ("Vol. 10", "Ch. 5 - Title"), to edit further if need be.
+    mutating func setKind(_ value: String?, chapters: [ChapterRecord], seriesTitle: String) {
+        kind = value
+        guard mode == .name, chapters.count == 1, let chapter = chapters.first, let value else { return }
+        if let renamed = RenameLike.asKind(
+            name, seriesTitle: seriesTitle, volume: value == ChapterMemo.kindVolume, fallbackNumber: typedNumber ?? chapter.number
+        ) {
+            name = renamed.name
+            number = formatNumber(renamed.number)
+        }
+    }
+
     /// Switches to renaming like `example`, as a volume or chapter as it is.
     mutating func renameLike(_ example: RenameExample) {
         self.example = example
@@ -117,6 +130,12 @@ struct RenameDraft: Equatable {
         return chapters.map { chapter in
             let newName = find.isEmpty
                 ? chapter.name : chapter.name.replacingOccurrences(of: find, with: replace).trimmingCharacters(in: .whitespaces)
+            // Volume or Chapter names them so too: "Vol. 10", "Ch. 74-81 - Title"
+            if let kind, let renamed = RenameLike.asKind(
+                newName, seriesTitle: seriesTitle, volume: kind == ChapterMemo.kindVolume, fallbackNumber: chapter.number
+            ) {
+                return ChapterRenameRequest(chapter: chapter, name: renamed.name, number: renamed.number, kind: kind)
+            }
             return ChapterRenameRequest(chapter: chapter, name: newName, number: numberFor(chapter, newName, typed: nil), kind: kind)
         }
     }
@@ -181,7 +200,7 @@ struct RenameChaptersFields: View {
                 kindChip(ChapterMemo.kindVolume, String(localized: "Volume"))
                 kindChip(ChapterMemo.kindChapter, String(localized: "Chapter"))
             }
-            Text("Sort the series by volumes or chapters first in its sort settings.").font(M3Type.bodySmall)
+            Text("Volume or Chapter also names them Vol. N or Ch. N, keeping any title. The series lists volumes first once it has both.").font(M3Type.bodySmall)
             Text(note).font(M3Type.bodySmall)
         }
         .padding(.horizontal, 24)
@@ -252,7 +271,7 @@ struct RenameChaptersFields: View {
     }
 
     private func kindChip(_ value: String?, _ title: String) -> some View {
-        chip(draft.kind == value, title) { draft.kind = value }
+        chip(draft.kind == value, title) { draft.setKind(value, chapters: chapters, seriesTitle: seriesTitle) }
     }
 
     /// Material's filter chip.

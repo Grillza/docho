@@ -58,4 +58,18 @@ final class RenameLikeTests: XCTestCase {
         XCTAssertEqual(like("S v1 ch 1", "Vol. 1 Ch. 1", "S", volume: false, "S ch 4"), [nil])
         XCTAssertNil(RenameLike.learn(original: "Something", renamed: "Bonus", seriesTitle: "S", volume: false))
     }
+
+    private func asKind(_ name: String, volume: Bool, _ fallback: Double = -1) -> String? {
+        RenameLike.asKind(name, seriesTitle: "Kaiju No. 8", volume: volume, fallbackNumber: fallback).map { "\($0.name)|\(formatNumber($0.number))" }
+    }
+
+    func testVolumeAndChapterNameEntriesVolNAndChN() {
+        XCTAssertEqual(asKind("Kaiju No. 8 v10 Ch. 074–081 (2024) (Digital) (1r0n)", volume: true), "Vol. 10|10")
+        XCTAssertEqual(asKind("Kaiju No. 8 v10 Ch. 074–081", volume: false), "Ch. 74–81|74")
+        XCTAssertEqual(asKind("Chainsaw Man Ch. 5 - Gun Devil", volume: false), "Ch. 5 - Gun Devil|5")
+        XCTAssertEqual(asKind("Vol. 3 - Title", volume: false, 3), "Ch. 3|3")
+        XCTAssertEqual(asKind("Ch. 120", volume: true, 120), "Vol. 120|120")
+        XCTAssertNil(asKind("Extra", volume: true))
+        XCTAssertEqual(asKind("Extra", volume: true, 4.5), "Vol. 4.5|4.5")
+    }
 }

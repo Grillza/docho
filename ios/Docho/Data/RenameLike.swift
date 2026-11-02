@@ -74,7 +74,10 @@ enum RenameLike {
         }
         var title: String?
         if let end = [volumeMatch, chapterMatch, bareMatch].compactMap({ $0.map { NSMaxRange($0.range) } }).max() {
-            var rest = text.substring(from: end).trimmingCharacters(in: separators)
+            // Tags like "(2024)" or "[Digital]" after the numbers aren't part of a title.
+            var rest = text.substring(from: end)
+                .replacingOccurrences(of: #"\s*(?:\([^)]*\)|\[[^\]]*\])"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: separators)
             while rest.hasSuffix(")") || rest.hasSuffix("]") { rest.removeLast() }
             rest = rest.trimmingCharacters(in: separators)
             if !rest.isEmpty, rest.caseInsensitiveCompare(seriesTitle) != .orderedSame { title = rest }
@@ -192,6 +195,27 @@ enum RenameLike {
             ChapterNumber.parse(seriesTitle: seriesTitle, chapterName: newName)
         }
         return Renamed(name: newName, number: number)
+    }
+
+    /// `name` as a volume ("Vol. 10", or "Vol. 10 - Title" when the name has a title after its
+    /// numbers) or a chapter ("Ch. 74-81 - Title"), from the volume or chapter number in it, else
+    /// `fallbackNumber`. Nil when there's no number to use.
+    static func asKind(_ name: String, seriesTitle: String, volume: Bool, fallbackNumber: Double) -> Renamed? {
+        let parts = parse(name, seriesTitle: seriesTitle)
+        let found = volume ? (parts.volume ?? (parts.chapter == nil ? parts.bare : nil)) : (parts.chapter ?? parts.bare)
+        let written: String
+        if let found {
+            let numbers = splitRange(found.text)
+            let separator = found.text.first { $0 == "-" || $0 == "–" || $0 == "~" }.map(String.init) ?? "-"
+            written = (volume ? Array(numbers.prefix(1)) : numbers).map { format($0, pad: 0) }.joined(separator: separator)
+        } else if fallbackNumber >= 0 {
+            written = formatNumber(fallbackNumber)
+        } else {
+            return nil
+        }
+        let label = volume ? "Vol." : "Ch."
+        let title = found != nil ? parts.title : nil
+        return Renamed(name: title.map { "\(label) \(written) - \($0)" } ?? "\(label) \(written)", number: found?.value ?? fallbackNumber)
     }
 
     private static func regex(_ pattern: String) -> NSRegularExpression {
