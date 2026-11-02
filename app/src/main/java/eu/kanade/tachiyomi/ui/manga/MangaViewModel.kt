@@ -767,7 +767,13 @@ class MangaViewModel(
     fun markPreviousChapterRead(pointer: Chapter) {
         val manga = successState?.manga ?: return
         val chapters = filteredChapters.orEmpty().map { it.chapter }
-        val prevChapters = if (manga.sortDescending()) chapters.asReversed() else chapters
+        val prevChapters = when {
+            // Volumes or chapters listed first: "previous" still means earlier in reading order
+            manga.kindOrder != Manga.CHAPTER_KIND_MIXED ->
+                chapters.sortedWith(getChapterSort(manga, sortDescending = false, readingOrder = true))
+            manga.sortDescending() -> chapters.asReversed()
+            else -> chapters
+        }
         val pointerPos = prevChapters.indexOf(pointer)
         if (pointerPos != -1) markChaptersRead(prevChapters.take(pointerPos), true)
     }
