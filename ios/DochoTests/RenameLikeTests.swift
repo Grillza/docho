@@ -53,6 +53,15 @@ final class RenameLikeTests: XCTestCase {
         )
     }
 
+    func testTheSeriesTitleIsMatchedLoosely() {
+        XCTAssertEqual(
+            like(nil, "Vol. 3", "Kaiju No. 8 (Digital) (1r0n)", volume: true, "Kaiju No.8 v04 (2022)", "kaiju no 8 Vol 5", "Kaiju No. 8 120"),
+            ["Vol. 4|4", "Vol. 5|5", "Vol. 120|120"]
+        )
+        XCTAssertEqual(RenameLike.asKind("Kaiju No.8 v10 Ch. 074–081", seriesTitle: "Kaiju No. 8 (Digital)", volume: true, fallbackNumber: -1)?.name, "Vol. 10")
+        XCTAssertEqual(RenameLike.asKind("Kaiju No. 8 120 (2025)", seriesTitle: "Kaiju No. 8 (Digital) (1r0n)", volume: false, fallbackNumber: -1)?.name, "Ch. 120")
+    }
+
     func testNamesThatDontSayTheNumberAreLeft() {
         XCTAssertEqual(like("S ch 12", "Chapter 12", "S", volume: false, "Extra", "Vol. 2"), [nil, nil])
         XCTAssertEqual(like("S v1 ch 1", "Vol. 1 Ch. 1", "S", volume: false, "S ch 4"), [nil])

@@ -231,21 +231,19 @@ enum RenameLike {
         regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length)) != nil
     }
 
-    /// Where `title` appears in `name`, so a number in a series title like "Kaiju No. 8" isn't read
-    /// as a chapter.
+    /// Where the series `title` appears in `name`, so a number in it, like the 8 in "Kaiju No. 8",
+    /// isn't read as a volume or chapter. It's matched loosely: tags like "(Digital)" are left off
+    /// the title, and spaces and punctuation between its words can differ, so "Kaiju No.8" and
+    /// "kaiju no 8" count too.
     private static func titleRanges(_ name: String, _ title: String) -> [NSRange] {
-        guard !title.isBlank, title.contains(where: \.isNumber) else { return [] }
-        let text = name as NSString
-        var ranges: [NSRange] = []
-        var search = NSRange(location: 0, length: text.length)
-        while true {
-            let found = text.range(of: title, options: .caseInsensitive, range: search)
-            if found.location == NSNotFound { break }
-            ranges.append(found)
-            let next = NSMaxRange(found)
-            search = NSRange(location: next, length: text.length - next)
-        }
-        return ranges
+        let core = title.replacingOccurrences(of: #"\s*(?:\([^)]*\)|\[[^\]]*\])"#, with: "", options: .regularExpression)
+        let words = core.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        guard words.contains(where: { $0.contains(where: \.isNumber) }) else { return [] }
+        let pattern = #"(?<![\p{L}\p{N}])"#
+            + words.map(NSRegularExpression.escapedPattern(for:)).joined(separator: #"[^\p{L}\p{N}]*"#)
+            + #"(?!\p{N})"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        return matches(regex, name).map(\.range)
     }
 
     private static func splitRange(_ text: String) -> [String] {
