@@ -28,6 +28,17 @@ data class Chapter(
     val fileName: String
         get() = memo[MEMO_FILE_NAME]?.jsonPrimitive?.contentOrNull ?: name
 
+    /**
+     * Whether this is a whole volume rather than a chapter: as the user set it in Docho, else read from a name like
+     * "Vol. 3" or "Volume 3 - Title" that names no chapter.
+     */
+    val isVolume: Boolean
+        get() = when (memo[MEMO_KIND]?.jsonPrimitive?.contentOrNull) {
+            KIND_VOLUME -> true
+            KIND_CHAPTER -> false
+            else -> looksLikeVolume(name)
+        }
+
     fun copyFrom(other: Chapter): Chapter {
         return copy(
             name = other.name,
@@ -41,6 +52,18 @@ data class Chapter(
     companion object {
         /** Memo key a source can set to the chapter's file name, for sorting by file name. */
         const val MEMO_FILE_NAME = "fileName"
+
+        /** Memo key Docho sets to [KIND_VOLUME] or [KIND_CHAPTER] when the user says which a chapter is. */
+        const val MEMO_KIND = "kind"
+        const val KIND_VOLUME = "volume"
+        const val KIND_CHAPTER = "chapter"
+
+        private val VOLUME_NAME = Regex("""^\s*(?:vol(?:ume)?\.?|v\.?)\s*[0-9]""", RegexOption.IGNORE_CASE)
+        private val CHAPTER_IN_NAME = Regex("""\b(?:ch|chap|chapter)\.?\s*[0-9]""", RegexOption.IGNORE_CASE)
+
+        /** "Vol. 3", "Volume 3 - Title" or "v03", but not "Vol. 3 Ch. 12", which is a chapter in a volume. */
+        fun looksLikeVolume(name: String): Boolean =
+            VOLUME_NAME.containsMatchIn(name) && !CHAPTER_IN_NAME.containsMatchIn(name)
 
         fun create() = Chapter(
             id = -1,

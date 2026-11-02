@@ -7,6 +7,7 @@ import docho.kavita.KavitaApi
 import docho.kavita.KavitaSource
 import docho.komga.KomgaApi
 import docho.komga.KomgaSource
+import docho.rename.ChapterRenames.Companion.withKind
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.source.Source
@@ -23,7 +24,7 @@ import tachiyomi.source.local.LocalSource
 /**
  * Renames chapters in Docho, and where the chapter lives somewhere Docho can change it too: the file itself for the
  * Local source, the title and number on Komga and BookOrbit (its series index), the title on Kavita. Other sources
- * keep the new name in Docho only.
+ * keep the new name in Docho only. Whether a chapter is a volume is kept in Docho only.
  */
 @Inject
 class RenameChapters(
@@ -36,7 +37,17 @@ class RenameChapters(
     private val bookOrbitApi: BookOrbitApi,
 ) {
 
-    data class Request(val chapter: Chapter, val name: String, val number: Double)
+    /** [kind] is [Chapter.KIND_VOLUME] or [Chapter.KIND_CHAPTER] to say which the chapter is, or null to leave it. */
+    data class Request(val chapter: Chapter, val name: String, val number: Double, val kind: String? = null) {
+        val renames: Boolean
+            get() = name.trim().let { it.isNotEmpty() && (it != chapter.name || number != chapter.chapterNumber) }
+
+        val changesKind: Boolean
+            get() = kind != null && (kind == Chapter.KIND_VOLUME) != chapter.isVolume
+
+        val changes: Boolean
+            get() = renames || changesKind
+    }
 
     /**
      * How a rename went: [renamed] chapters were renamed in Docho, [failed] weren't at all, and [serverError] is why
@@ -50,26 +61,33 @@ class RenameChapters(
         var serverError: Throwable? = null
         for (request in requests) {
             val old = request.chapter
-            val name = request.name.trim()
-            if (name.isEmpty() || (name == old.name && request.number == old.chapterNumber)) continue
+            if (!request.changes) continue
             try {
-                val url = if (source is LocalSource) source.renameChapter(old.url, name) else old.url
-                try {
-                    updateServer(source, old.url, name, request.number)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logcat(LogPriority.WARN, e) { "Server didn't rename ${old.url}" }
-                    if (serverError == null) serverError = e
+                var new = old
+                if (request.renames) {
+                    val name = request.name.trim()
+                    val url = if (source is LocalSource) source.renameChapter(old.url, name) else old.url
+                    try {
+                        updateServer(source, old.url, name, request.number)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logcat(LogPriority.WARN, e) { "Server didn't rename ${old.url}" }
+                        if (serverError == null) serverError = e
+                    }
+                    new = old.copy(url = url, name = name, chapterNumber = request.number)
+                    chapterRenames.put(source.id, old.url, url, ChapterRenames.Rename(name, request.number))
+                    if (source !is LocalSource && downloadProvider.isChapterDirNameChanged(old, new) &&
+                        downloadManager.isChapterDownloaded(old.name, old.scanlator, old.url, manga.title, manga.source)
+                    ) {
+                        downloadManager.renameChapter(source, manga, old, new)
+                    }
                 }
-                val new = old.copy(url = url, name = name, chapterNumber = request.number)
-                chapterRenames.put(source.id, old.url, url, ChapterRenames.Rename(name, request.number))
-                if (source !is LocalSource && downloadProvider.isChapterDirNameChanged(old, new) &&
-                    downloadManager.isChapterDownloaded(old.name, old.scanlator, old.url, manga.title, manga.source)
-                ) {
-                    downloadManager.renameChapter(source, manga, old, new)
+                if (request.changesKind && request.kind != null) {
+                    new = new.withKind(request.kind)
+                    chapterRenames.putKind(source.id, new.url, request.kind)
                 }
-                chapterRepository.rename(old.id, url, name, request.number)
+                chapterRepository.rename(old.id, new.url, new.name, new.chapterNumber, new.memo)
                 renamed++
             } catch (e: CancellationException) {
                 throw e

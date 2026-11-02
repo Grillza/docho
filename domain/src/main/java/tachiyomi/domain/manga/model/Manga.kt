@@ -79,6 +79,10 @@ data class Manga(
     val hideMissingChapters: Boolean
         get() = chapterFlags and CHAPTER_HIDE_MISSING_MASK == CHAPTER_HIDE_MISSING
 
+    /** Whether volumes or chapters are listed first, or both mixed in the sort order. */
+    val kindOrder: Long
+        get() = chapterFlags and CHAPTER_KIND_ORDER_MASK
+
     fun sortDescending(): Boolean {
         return chapterFlags and CHAPTER_SORT_DIR_MASK == CHAPTER_SORT_DESC
     }
@@ -116,6 +120,12 @@ data class Manga(
 
         const val CHAPTER_HIDE_MISSING = 0x00200000L
         const val CHAPTER_HIDE_MISSING_MASK = 0x00200000L
+
+        /** Volumes and chapters in one list, as the sort puts them. */
+        const val CHAPTER_KIND_MIXED = 0x00000000L
+        const val CHAPTER_VOLUMES_FIRST = 0x00400000L
+        const val CHAPTER_CHAPTERS_FIRST = 0x00800000L
+        const val CHAPTER_KIND_ORDER_MASK = 0x00C00000L
 
         /**
          * [favoriteAt] of an entry added to the library before the time it was added was recorded.

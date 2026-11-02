@@ -675,8 +675,7 @@ class MangaViewModel(
 
     private fun getUnreadChaptersSorted(): List<Chapter> {
         val manga = successState?.manga ?: return emptyList()
-        val chaptersSorted = getUnreadChapters().sortedWith(getChapterSort(manga))
-        return if (manga.sortDescending()) chaptersSorted.reversed() else chaptersSorted
+        return getUnreadChapters().sortedWith(getChapterSort(manga, sortDescending = false, readingOrder = true))
     }
 
     private fun getBookmarkedChapters(): List<Chapter> {
@@ -999,6 +998,15 @@ class MangaViewModel(
 
         appScope.launch {
             setMangaChapterFlags.awaitSetSortingModeOrFlipOrder(manga, sort)
+        }
+    }
+
+    /** Lists volumes or chapters first, or both mixed in the sort order. */
+    fun setKindOrder(order: Long) {
+        val manga = successState?.manga ?: return
+
+        appScope.launch {
+            setMangaChapterFlags.awaitSetKindOrder(manga, order)
         }
     }
 

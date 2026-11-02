@@ -316,6 +316,7 @@ class MangaScreen(
                 onUnreadFilterChanged = viewModel::setUnreadFilter,
                 onBookmarkedFilterChanged = viewModel::setBookmarkedFilter,
                 onSortModeChanged = viewModel::setSorting,
+                onKindOrderChanged = viewModel::setKindOrder,
                 onDisplayModeChanged = viewModel::setDisplayMode,
                 onSetAsDefault = viewModel::setCurrentSettingsAsDefault,
                 onResetToDefault = viewModel::resetToDefaultSettings,

@@ -136,5 +136,6 @@ rename:
 UPDATE chapter
 SET remote_url = :remoteUrl,
     remote_name = :remoteName,
-    remote_chapter_number = :remoteChapterNumber
+    remote_chapter_number = :remoteChapterNumber,
+    remote_memo = :remoteMemo
 WHERE id = :id;
