@@ -40,8 +40,11 @@ object RenameLike {
     )
     private val BARE = Regex("""(?<![\p{L}\d.])($RANGE)(?![\p{L}\d])""")
     private val NUMBER_IN_NAME = Regex("""(?<![\d.])$RANGE(?![\d])""")
-    private val VOLUME_LABEL = Regex("""(?:volume|vol|v)\.?\s*$""", RegexOption.IGNORE_CASE)
-    private val CHAPTER_LABEL = Regex("""(?:chapter|chap|ch|c|episode|ep|#)\.?\s*$""", RegexOption.IGNORE_CASE)
+    private val VOLUME_LABEL = Regex("""(?<!\p{L})(?:volume|vol|v)\.?\s*$""", RegexOption.IGNORE_CASE)
+    private val CHAPTER_LABEL = Regex(
+        """(?<!\p{L})(?:chapter|chap|ch|c|episode|ep|#)\.?\s*$""",
+        RegexOption.IGNORE_CASE,
+    )
     private val RANGE_SEPARATOR = Regex("""[-–~]""")
     private const val SEPARATORS = " \t-–—:·|_,;"
 
@@ -157,7 +160,7 @@ object RenameLike {
                 Piece.Title -> if (parts.title != null) {
                     result.append(parts.title)
                 } else {
-                    // No title: drop the separator that led up to it, and the one after if it ended the name
+                    // No title: drop the separator that led up to it, and the one after if it began the name
                     val trimmed = result.trimEnd { it in SEPARATORS }
                     result.setLength(trimmed.length)
                     trimNext = result.isEmpty()
