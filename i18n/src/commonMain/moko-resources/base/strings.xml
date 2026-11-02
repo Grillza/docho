@@ -99,6 +99,14 @@
     <string name="rename_kind_volume">Volume</string>
     <string name="rename_kind_chapter">Chapter</string>
     <string name="rename_kind_hint">Sort the series by volumes or chapters first in its sort settings.</string>
+    <string name="rename_mode_name">Name</string>
+    <string name="rename_mode_find">Find and replace</string>
+    <string name="rename_mode_like">Like another</string>
+    <string name="rename_like_example">Rename like</string>
+    <string name="rename_like_was">Was %s</string>
+    <string name="rename_like_hint">Each keeps its own volume or chapter number, and title, in this one\'s style.</string>
+    <string name="rename_like_no_style">This name has no volume or chapter number to follow. Pick another.</string>
+    <string name="rename_like_left">%s (no number to use, left as it is)</string>
     <string name="rename_find">Find</string>
     <string name="rename_replace">Replace with</string>
     <string name="rename_preview">Preview</string>
@@ -441,7 +449,7 @@
     <string name="pref_mark_duplicate_read_chapter_read_existing">After reading a chapter</string>
     <string name="pref_mark_duplicate_read_chapter_read_new">After fetching new chapter</string>
 
-    <string name="pref_hide_missing_chapter_indicators">Hide missing chapter indicators</string>
+    <string name="pref_hide_missing_chapter_indicators">Hide missing file indicators</string>
     <string name="pref_disallow_non_ascii_filenames">Disallow non-ASCII filenames</string>
     <string name="pref_disallow_non_ascii_filenames_details">Ensures compatibility with certain storage media that don't support Unicode. When this is enabled, you'll need to manually rename source and manga folders by replacing non-ASCII characters with their lowercase UTF-8 hexadecimal representations. Chapter files don't need to be renamed.</string>
     <string name="pref_enable_chapter_name_hash">Enable chapter name hash suffix</string>
@@ -1243,8 +1251,8 @@
     <string name="donationCampaign.dismiss">Dismiss</string>
 
     <!-- Docho: per-manga missing chapters -->
-    <string name="action_hide_missing_chapters">Hide missing chapters</string>
-    <string name="action_show_missing_chapters">Show missing chapters</string>
+    <string name="action_hide_missing_chapters">Hide missing files</string>
+    <string name="action_show_missing_chapters">Show missing files</string>
 
     <!-- Docho: Kavita -->
     <string name="pref_category_kavita" translatable="false">Kavita</string>

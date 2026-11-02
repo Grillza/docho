@@ -21,8 +21,9 @@ class ChapterRenames(
     preferenceStore: PreferenceStore,
 ) {
 
+    /** [original] is the source's name before the user's first rename, and [at] when it was last renamed. */
     @Serializable
-    data class Rename(val name: String, val number: Double)
+    data class Rename(val name: String, val number: Double, val original: String? = null, val at: Long = 0)
 
     /** Keyed by [key], so that a chapter is found again by its source and url. */
     val renames: Preference<Map<String, Rename>> = preferenceStore.getObjectFromString(
@@ -39,6 +40,9 @@ class ChapterRenames(
         serializer = { Json.encodeToString(it) },
         deserializer = { runCatching { Json.decodeFromString<Map<String, String>>(it) }.getOrDefault(emptyMap()) },
     )
+
+    /** What the user renamed the chapter at [url] to, if they did. */
+    fun get(sourceId: Long, url: String): Rename? = renames.get()[key(sourceId, url)]
 
     /** Remembers [rename] for the chapter at [newUrl], which was at [oldUrl] before its file was renamed. */
     fun put(sourceId: Long, oldUrl: String, newUrl: String, rename: Rename) {

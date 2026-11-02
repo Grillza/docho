@@ -22,6 +22,7 @@ fun ChapterHeader(
     enabled: Boolean,
     chapterCount: Int?,
     missingChapterCount: Int,
+    missingVolumeCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -45,18 +46,21 @@ fun ChapterHeader(
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        MissingChaptersWarning(missingChapterCount)
+        MissingChaptersWarning(missingChapterCount, missingVolumeCount)
     }
 }
 
 @Composable
-private fun MissingChaptersWarning(count: Int) {
-    if (count == 0) {
+private fun MissingChaptersWarning(chapters: Int, volumes: Int) {
+    if (chapters == 0 && volumes == 0) {
         return
     }
 
     Text(
-        text = pluralStringResource(MR.plurals.missing_chapters, count = count, count),
+        text = listOfNotNull(
+            volumes.takeIf { it > 0 }?.let { pluralStringResource(MR.plurals.missing_volumes, count = it, it) },
+            chapters.takeIf { it > 0 }?.let { pluralStringResource(MR.plurals.missing_chapters, count = it, it) },
+        ).joinToString(" · "),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         style = MaterialTheme.typography.bodySmall,

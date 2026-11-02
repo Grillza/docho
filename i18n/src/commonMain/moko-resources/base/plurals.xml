@@ -54,6 +54,10 @@
         <item quantity="one">Missing %1$s chapter</item>
         <item quantity="other">Missing %1$s chapters</item>
     </plurals>
+    <plurals name="missing_volumes">
+        <item quantity="one">Missing %1$s volume</item>
+        <item quantity="other">Missing %1$s volumes</item>
+    </plurals>
 
     <plurals name="manga_num_chapters">
         <item quantity="one">%1$s chapter</item>

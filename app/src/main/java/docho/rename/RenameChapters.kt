@@ -50,6 +50,14 @@ class RenameChapters(
     }
 
     /**
+     * A chapter to rename others like, see [tachiyomi.domain.chapter.service.RenameLike]: [original] is its name
+     * before the user renamed it, if they did, at [renamedAt] (0 if not).
+     */
+    data class Example(val chapter: Chapter, val original: String?, val renamedAt: Long) {
+        val renamed: Boolean get() = original != null
+    }
+
+    /**
      * How a rename went: [renamed] chapters were renamed in Docho, [failed] weren't at all, and [serverError] is why
      * the server didn't take some of them, which Docho still shows renamed.
      */
@@ -76,7 +84,13 @@ class RenameChapters(
                         if (serverError == null) serverError = e
                     }
                     new = old.copy(url = url, name = name, chapterNumber = request.number)
-                    chapterRenames.put(source.id, old.url, url, ChapterRenames.Rename(name, request.number))
+                    val original = chapterRenames.get(source.id, old.url)?.original ?: old.name
+                    chapterRenames.put(
+                        source.id,
+                        old.url,
+                        url,
+                        ChapterRenames.Rename(name, request.number, original, System.currentTimeMillis()),
+                    )
                     if (source !is LocalSource && downloadProvider.isChapterDirNameChanged(old, new) &&
                         downloadManager.isChapterDownloaded(old.name, old.scanlator, old.url, manga.title, manga.source)
                     ) {

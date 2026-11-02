@@ -233,6 +233,7 @@ class MangaScreen(
                 val source = successState.source
                 RenameChaptersDialog(
                     chapters = dialog.chapters,
+                    examples = dialog.examples,
                     mangaTitle = successState.manga.title,
                     sourceName = source.name,
                     reach = when {

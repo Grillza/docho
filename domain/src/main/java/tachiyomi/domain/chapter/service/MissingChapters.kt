@@ -47,3 +47,34 @@ fun calculateChapterGap(higherChapterNumber: Double, lowerChapterNumber: Double)
     if (higherChapterNumber < 0.0 || lowerChapterNumber < 0.0) return 0
     return floor(higherChapterNumber).toInt() - floor(lowerChapterNumber).toInt() - 1
 }
+
+/** [count] volumes, or chapters, missing between [previousId] (null at the start) and [chapterId]. */
+data class ChapterGap(val previousId: Long?, val chapterId: Long, val count: Int, val volumes: Boolean)
+
+/**
+ * The gaps in numbering in [ascending], the chapters as listed but lowest first. Volumes are only counted against
+ * volumes and chapters against chapters, so turning a chapter into a volume moves it out of the chapters' gaps and
+ * into the volumes'. The first volume also counts the ones missing before it, as does the first chapter when there
+ * are no volumes; a series' chapters usually carry on where its volumes end, so they don't start from 1 then.
+ */
+fun findChapterGaps(ascending: List<Chapter>): List<ChapterGap> {
+    val hasVolumes = ascending.any { it.isVolume }
+    var lastVolume: Chapter? = null
+    var lastChapter: Chapter? = null
+    val gaps = mutableListOf<ChapterGap>()
+    for (chapter in ascending) {
+        val volume = chapter.isVolume
+        val previous = if (volume) lastVolume else lastChapter
+        val count = when {
+            previous != null -> calculateChapterGap(chapter, previous)
+            !chapter.isRecognizedNumber -> 0
+            volume || !hasVolumes -> floor(chapter.chapterNumber).toInt() - 1
+            else -> 0
+        }
+        if (count > 0) gaps += ChapterGap(previous?.id, chapter.id, count, volume)
+        if (chapter.isRecognizedNumber) {
+            if (volume) lastVolume = chapter else lastChapter = chapter
+        }
+    }
+    return gaps
+}

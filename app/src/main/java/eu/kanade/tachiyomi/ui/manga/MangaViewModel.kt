@@ -19,11 +19,11 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
+import docho.rename.ChapterRenames
 import docho.rename.RenameChapters
 import docho.sync.ProgressSync
 import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
-import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.chapter.interactor.GetAvailableScanlators
 import eu.kanade.domain.chapter.interactor.SetReadStatus
 import eu.kanade.domain.manga.interactor.GetExcludedScanlators
@@ -93,9 +93,8 @@ import tachiyomi.domain.chapter.interactor.UpdateChapter
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
 import tachiyomi.domain.chapter.model.NoChaptersException
-import tachiyomi.domain.chapter.service.calculateChapterGap
+import tachiyomi.domain.chapter.service.findChapterGaps
 import tachiyomi.domain.chapter.service.getChapterSort
-import tachiyomi.domain.chapter.service.missingChaptersCount
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
 import tachiyomi.domain.manga.interactor.GetMangaWithChapters
@@ -108,7 +107,6 @@ import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.i18n.MR
 import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.isLocal
-import kotlin.math.floor
 import kotlin.time.Duration.Companion.seconds
 
 @AssistedInject
@@ -145,6 +143,7 @@ class MangaViewModel(
     private val coverCache: CoverCache,
     private val progressSync: ProgressSync,
     private val renameChaptersInteractor: RenameChapters,
+    private val chapterRenames: ChapterRenames,
 ) : ViewModel() {
 
     private val subscriberGate = SubscriberGate()
@@ -299,6 +298,7 @@ class MangaViewModel(
             it.hasUnreadChapters
             it.hasReadChapters
             it.missingChapterCount
+            it.missingVolumeCount
         }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope + subscriberGate, subscriberGate.whileSubscribed(5.seconds), State.Loading)
@@ -867,9 +867,32 @@ class MangaViewModel(
         toggleAllSelection(false)
     }
 
+    /**
+     * A series listed mixed shows no change when a chapter is made a volume, so once it has both it lists volumes
+     * first, where the volume's own gaps are. Sorting it Mixed again in the sort tab sticks.
+     */
+    private suspend fun listVolumesFirstIfMixed(state: State.Success, requests: List<RenameChapters.Request>) {
+        if (state.manga.kindOrder != Manga.CHAPTER_KIND_MIXED || requests.none { it.changesKind }) return
+        val kinds = requests.associate { it.chapter.id to (it.kind?.let { k -> k == Chapter.KIND_VOLUME }) }
+        val volumes = state.chapters.map { kinds[it.chapter.id] ?: it.chapter.isVolume }
+        if (volumes.any { it } && volumes.any { !it }) {
+            setMangaChapterFlags.awaitSetKindOrder(state.manga, Manga.CHAPTER_VOLUMES_FIRST)
+        }
+    }
+
     fun showRenameChaptersDialog(chapters: List<Chapter>) {
+        val state = successState ?: return
         if (chapters.isEmpty()) return
-        dialog.value = Dialog.RenameChapters(chapters)
+        val selected = chapters.mapTo(HashSet()) { it.id }
+        // The series' other chapters, to rename like, the last one renamed first
+        val examples = state.chapters
+            .filter { it.chapter.id !in selected }
+            .map { (chapter) ->
+                val rename = chapterRenames.get(state.source.id, chapter.url)
+                RenameChapters.Example(chapter, rename?.original, rename?.at ?: 0)
+            }
+            .sortedByDescending { it.renamedAt }
+        dialog.value = Dialog.RenameChapters(chapters, examples)
     }
 
     /** Renames chapters in Docho, and the files or server titles behind them where possible, see [RenameChapters]. */
@@ -879,6 +902,7 @@ class MangaViewModel(
         // Outlives the screen, so a rename isn't left half done
         appScope.launch {
             val result = renameChaptersInteractor.await(state.manga, state.source, requests)
+            listVolumesFirstIfMixed(state, requests)
             val message = when {
                 result.failed > 0 -> context.stringResource(MR.strings.rename_failed, result.failed)
                 result.serverError != null -> context.stringResource(
@@ -1111,7 +1135,10 @@ class MangaViewModel(
             val initialSelection: List<CheckboxState<Category>>,
         ) : Dialog
         data class DeleteChapters(val chapters: List<Chapter>) : Dialog
-        data class RenameChapters(val chapters: List<Chapter>) : Dialog
+        data class RenameChapters(
+            val chapters: List<Chapter>,
+            val examples: List<docho.rename.RenameChapters.Example>,
+        ) : Dialog
         data class DeleteLocalFiles(val chapters: List<Chapter>) : Dialog
         data object DeleteLocalManga : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
@@ -1231,39 +1258,43 @@ class MangaViewModel(
                 chapters.fastAny { it.chapter.read }
             }
 
-            val missingChapterCount by lazy {
-                if (hideMissingChapters || manga.hideMissingChapters) return@lazy 0
-                processedChapters.fastMap { it.chapter.chapterNumber }.missingChaptersCount()
+            private val hidesMissing: Boolean
+                get() = hideMissingChapters || manga.hideMissingChapters
+
+            /** Gaps among volumes and among chapters, keyed by the chapter each one comes before (lowest first). */
+            private val gaps by lazy {
+                if (hidesMissing) return@lazy emptyList()
+                val chapters = processedChapters.fastMap { it.chapter }
+                findChapterGaps(if (manga.sortDescending()) chapters.asReversed() else chapters)
             }
 
-            val chapterListItems by lazy {
-                if (hideMissingChapters || manga.hideMissingChapters) {
-                    return@lazy processedChapters
-                }
+            val missingChapterCount by lazy {
+                gaps.filterNot { it.volumes }.sumOf { it.count }
+            }
 
-                processedChapters.insertSeparators { before, after ->
-                    val (lowerChapter, higherChapter) = if (manga.sortDescending()) {
-                        after to before
-                    } else {
-                        before to after
-                    }
-                    if (higherChapter == null) return@insertSeparators null
+            val missingVolumeCount by lazy {
+                gaps.filter { it.volumes }.sumOf { it.count }
+            }
 
-                    if (lowerChapter == null) {
-                        floor(higherChapter.chapter.chapterNumber)
-                            .toInt()
-                            .minus(1)
-                            .coerceAtLeast(0)
-                    } else {
-                        calculateChapterGap(higherChapter.chapter, lowerChapter.chapter)
-                    }
-                        .takeIf { it > 0 }
-                        ?.let { missingCount ->
+            val chapterListItems: List<ChapterList> by lazy {
+                if (gaps.isEmpty()) return@lazy processedChapters
+                val gapsByChapter = gaps.associateBy { it.chapterId }
+                val descending = manga.sortDescending()
+                buildList<ChapterList> {
+                    for (item in processedChapters) {
+                        val gap = gapsByChapter[item.id]?.let {
                             ChapterList.MissingCount(
-                                id = "${lowerChapter?.id}-${higherChapter.id}",
-                                count = missingCount,
+                                id = "${it.previousId}-${it.chapterId}",
+                                count = it.count,
+                                volumes = it.volumes,
                             )
                         }
+                        // The gap sits between the chapter and the one below it, which is listed after it when
+                        // the list runs highest first
+                        if (gap != null && !descending) add(gap)
+                        add(item)
+                        if (gap != null && descending) add(gap)
+                    }
                 }
             }
 
@@ -1299,6 +1330,7 @@ sealed class ChapterList {
     data class MissingCount(
         val id: String,
         val count: Int,
+        val volumes: Boolean = false,
     ) : ChapterList()
 
     @Immutable
