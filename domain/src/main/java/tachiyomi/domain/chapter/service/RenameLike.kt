@@ -50,6 +50,7 @@ object RenameLike {
     private val RANGE_SEPARATOR = Regex("""[-–~]""")
 
     /** Tags like "(2024)" or "[Digital]" after the numbers, which aren't part of a title. */
+    private val NOT_WORD = Regex("""[^\p{L}\p{N}]+""")
     private val TAGS = Regex("""\s*(?:\([^)]*\)|\[[^\]]*])""")
     private const val SEPARATORS = " \t-–—:·|_,;"
 
@@ -214,12 +215,22 @@ object RenameLike {
         return Number(group.value, value, group.range)
     }
 
-    /** Where [title] appears in [name], so a number in a series title like "Kaiju No. 8" isn't read as a chapter. */
+    /**
+     * Where the series [title] appears in [name], so a number in it, like the 8 in "Kaiju No. 8", isn't read as a
+     * volume or chapter. It's matched loosely: tags like "(Digital)" are left off the title, and spaces and
+     * punctuation between its words can differ, so "Kaiju No.8" and "kaiju no 8" count too.
+     */
     private fun titleRanges(name: String, title: String): List<IntRange> {
-        if (title.isBlank() || !title.any { it.isDigit() }) return emptyList()
-        return generateSequence(name.indexOf(title, ignoreCase = true).takeIf { it >= 0 }) { start ->
-            name.indexOf(title, start + title.length, ignoreCase = true).takeIf { it >= 0 }
-        }.map { it until it + title.length }.toList()
+        val words = title.replace(TAGS, "").split(NOT_WORD).filter { it.isNotEmpty() }
+        if (words.none { word -> word.any { it.isDigit() } }) return emptyList()
+        val pattern = words.joinToString(
+            """[^\p{L}\p{N}]*""",
+            prefix = """(?<![\p{L}\p{N}])""",
+            postfix = """(?!\p{N})""",
+        ) {
+            Regex.escape(it)
+        }
+        return Regex(pattern, RegexOption.IGNORE_CASE).findAll(name).map { it.range }.toList()
     }
 
     private fun padOf(number: String): Int {

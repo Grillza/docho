@@ -63,6 +63,23 @@ class RenameLikeTest {
     }
 
     @Test
+    fun `the series title is matched loosely`() {
+        like(
+            null,
+            "Vol. 3",
+            "Kaiju No. 8 (Digital) (1r0n)",
+            true,
+            "Kaiju No.8 v04 (2022)",
+            "kaiju no 8 Vol 5",
+            "Kaiju No. 8 120",
+        )
+            .shouldBe(listOf("Vol. 4|4.0", "Vol. 5|5.0", "Vol. 120|120.0"))
+        RenameLike.asKind("Kaiju No.8 v10 Ch. 074–081", "Kaiju No. 8 (Digital)", true, -1.0)?.name shouldBe "Vol. 10"
+        RenameLike.asKind("Kaiju No. 8 120 (2025)", "Kaiju No. 8 (Digital) (1r0n)", false, -1.0)?.name shouldBe
+            "Ch. 120"
+    }
+
+    @Test
     fun `names that don't say the number are left`() {
         like("S ch 12", "Chapter 12", "S", false, "Extra", "Vol. 2").shouldBe(listOf(null, null))
         like("S v1 ch 1", "Vol. 1 Ch. 1", "S", false, "S ch 4").shouldBe(listOf(null))
