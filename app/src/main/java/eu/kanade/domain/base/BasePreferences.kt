@@ -50,4 +50,10 @@ class BasePreferences(
         Preference.appStateKey("skipped_app_update"),
         "",
     )
+
+    /** Only offer releases that change the major or minor version, not bug-fix (patch) ones. */
+    val skipPatchAppUpdates: Preference<Boolean> = preferenceStore.getBoolean(
+        "pref_skip_patch_app_updates",
+        false,
+    )
 }

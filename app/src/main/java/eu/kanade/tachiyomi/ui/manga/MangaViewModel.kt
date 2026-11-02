@@ -19,6 +19,7 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
+import docho.rename.RenameChapters
 import docho.sync.ProgressSync
 import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
@@ -105,6 +106,7 @@ import tachiyomi.domain.manga.model.applyFilter
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.i18n.MR
+import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.isLocal
 import kotlin.math.floor
 import kotlin.time.Duration.Companion.seconds
@@ -142,6 +144,7 @@ class MangaViewModel(
     private val refreshTracks: RefreshTracks,
     private val coverCache: CoverCache,
     private val progressSync: ProgressSync,
+    private val renameChaptersInteractor: RenameChapters,
 ) : ViewModel() {
 
     private val subscriberGate = SubscriberGate()
@@ -859,6 +862,33 @@ class MangaViewModel(
         toggleAllSelection(false)
     }
 
+    fun showRenameChaptersDialog(chapters: List<Chapter>) {
+        if (chapters.isEmpty()) return
+        dialog.value = Dialog.RenameChapters(chapters)
+    }
+
+    /** Renames chapters in Docho, and the files or server titles behind them where possible, see [RenameChapters]. */
+    fun renameChapters(requests: List<RenameChapters.Request>) {
+        val state = successState ?: return
+        toggleAllSelection(false)
+        // Outlives the screen, so a rename isn't left half done
+        appScope.launch {
+            val result = renameChaptersInteractor.await(state.manga, state.source, requests)
+            val message = when {
+                result.failed > 0 -> context.stringResource(MR.strings.rename_failed, result.failed)
+                result.serverError != null -> context.stringResource(
+                    MR.strings.rename_server_failed,
+                    state.source.name,
+                    with(context) { result.serverError.formattedMessage },
+                )
+                else -> context.stringResource(MR.strings.rename_done)
+            }
+            snackbarHostState.showSnackbar(message = message)
+            // The Local source lists its files again, now under their new names
+            if (state.source is LocalSource) fetchAllFromSource()
+        }
+    }
+
     /**
      * Deletes the given list of chapter.
      *
@@ -1067,6 +1097,9 @@ class MangaViewModel(
             val initialSelection: List<CheckboxState<Category>>,
         ) : Dialog
         data class DeleteChapters(val chapters: List<Chapter>) : Dialog
+        data class RenameChapters(val chapters: List<Chapter>) : Dialog
+        data class DeleteLocalFiles(val chapters: List<Chapter>) : Dialog
+        data object DeleteLocalManga : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class Migrate(val target: Manga, val current: Manga) : Dialog
         data class SetFetchInterval(val manga: Manga) : Dialog
@@ -1081,7 +1114,44 @@ class MangaViewModel(
     }
 
     fun showDeleteChapterDialog(chapters: List<Chapter>) {
-        dialog.value = Dialog.DeleteChapters(chapters)
+        dialog.value =
+            if (source?.isLocal() == true) Dialog.DeleteLocalFiles(chapters) else Dialog.DeleteChapters(chapters)
+    }
+
+    fun showDeleteLocalMangaDialog() {
+        dialog.value = Dialog.DeleteLocalManga
+    }
+
+    /** Deletes Local source chapters' files from the device; the refresh then drops them from the list. */
+    fun deleteLocalFiles(chapters: List<Chapter>) {
+        val local = source as? LocalSource ?: return
+        toggleAllSelection(false)
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { local.deleteChapters(chapters.map { it.url }) }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar(message = with(context) { e.formattedMessage })
+            }
+            fetchAllFromSource()
+        }
+    }
+
+    /** Deletes a Local source series' folder from the device and takes it out of the library. */
+    fun deleteLocalManga(onDeleted: () -> Unit) {
+        val local = source as? LocalSource ?: return
+        val manga = manga ?: return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { local.deleteManga(manga.url) }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar(message = with(context) { e.formattedMessage })
+                return@launch
+            }
+            if (manga.favorite) updateManga.awaitUpdateFavorite(manga.id, false)
+            onDeleted()
+        }
     }
 
     fun showSettingsDialog() {

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.SingleIn
 import eu.kanade.domain.ui.model.AppTheme
 import eu.kanade.domain.ui.model.CustomTheme
 import eu.kanade.domain.ui.model.NavBarAlignment
+import eu.kanade.domain.ui.model.NavBarPosition
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.domain.ui.model.TimeFormat
@@ -84,6 +85,22 @@ class UiPreferences(
         NavBarAlignment.CENTER,
     )
 
+    /** Tablet layout: a rail on the left or a bar at the bottom. Portrait's when landscape has its own. */
+    val navBarPosition: Preference<NavBarPosition> = preferenceStore.getEnum("nav_bar_position", NavBarPosition.LEFT)
+
+    /** Tablet layout: whether landscape has its own bar and tab position. */
+    val navBarSplitOrientation: Preference<Boolean> = preferenceStore.getBoolean("nav_bar_split_orientation", false)
+
+    val navBarPositionLandscape: Preference<NavBarPosition> = preferenceStore.getEnum(
+        "nav_bar_position_landscape",
+        NavBarPosition.LEFT,
+    )
+
+    val navBarAlignmentLandscape: Preference<NavBarAlignment> = preferenceStore.getEnum(
+        "nav_bar_alignment_landscape",
+        NavBarAlignment.CENTER,
+    )
+
     companion object {
         fun dateFormat(format: String, locale: Locale): DateTimeFormatter = when (format) {
             "" -> DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(locale)
@@ -127,4 +144,14 @@ class UiPreferences(
                 .toFormatter(locale)
         }
     }
+
+    /** Whether series show Mihon's next-release estimate (the hourglass next to In library). */
+    val showReleasePrediction: Preference<Boolean> = preferenceStore.getBoolean("show_release_prediction", true)
+
+    /** Library ids of series the estimate is hidden on, one at a time from its dialog. */
+    val hiddenReleasePrediction: Preference<Set<String>> = preferenceStore.getStringSet("release_prediction_hidden")
+
+    /** Source ids whose series don't show the estimate, whether in the library or not. */
+    val hiddenReleasePredictionSources: Preference<Set<String>> =
+        preferenceStore.getStringSet("release_prediction_hidden_sources")
 }

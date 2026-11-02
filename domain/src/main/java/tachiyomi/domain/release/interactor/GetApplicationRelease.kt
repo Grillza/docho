@@ -11,46 +11,19 @@ class GetApplicationRelease(
     suspend fun await(arguments: Arguments): Result {
         val release = service.latest(arguments) ?: return Result.NoNewUpdate
 
-        // Check if latest version is different from current version
-        val isNewVersion = isNewVersion(
-            arguments.isNightly,
-            arguments.commitCount,
-            arguments.versionName,
-            release.version,
-        )
-        return when {
-            isNewVersion -> Result.NewUpdate(release)
-            else -> Result.NoNewUpdate
+        if (arguments.isNightly) {
+            val newCount = release.version.replace("[^\\d]".toRegex(), "").toIntOrNull() ?: return Result.NoNewUpdate
+            return if (newCount > arguments.commitCount) Result.NewUpdate(release) else Result.NoNewUpdate
         }
-    }
 
-    private fun isNewVersion(
-        isNightly: Boolean,
-        commitCount: Int,
-        versionName: String,
-        versionTag: String,
-    ): Boolean {
-        // Removes prefixes like "r" or "v"
-        val newVersion = versionTag.replace("[^\\d.]".toRegex(), "")
-        return if (isNightly) {
-            // Nightly builds: based on releases in "mihonapp/mihon-preview" repo
-            // tagged as something like "r1234"
-            newVersion.toInt() > commitCount
-        } else {
-            // Release builds: based on releases in "mihonapp/mihon" repo
-            // tagged as something like "v0.1.2"
-            val oldVersion = versionName.replace("[^\\d.]".toRegex(), "")
+        val current = parseVersion(arguments.versionName) ?: return Result.NoNewUpdate
+        val latest = parseVersion(release.version) ?: return Result.NoNewUpdate
 
-            val newSemVer = newVersion.split(".").map { it.toInt() }
-            val oldSemVer = oldVersion.split(".").map { it.toInt() }
-
-            oldSemVer.mapIndexed { index, i ->
-                if (newSemVer[index] > i) {
-                    return true
-                }
-            }
-
-            false
+        return when {
+            compareVersions(latest, current) <= 0 -> Result.NoNewUpdate
+            // Only the patch number changed (0.27.1 to 0.27.2): a bug fix the user opted out of.
+            arguments.skipPatchUpdates && latest.take(2) == current.take(2) -> Result.NoNewUpdate
+            else -> Result.NewUpdate(release)
         }
     }
 
@@ -61,11 +34,34 @@ class GetApplicationRelease(
         val versionName: String,
         val repository: String,
         val forceCheck: Boolean = false,
+        val skipPatchUpdates: Boolean = false,
     )
 
     sealed interface Result {
         data class NewUpdate(val release: Release) : Result
         data object NoNewUpdate : Result
         data object OsTooOld : Result
+    }
+
+    companion object {
+        private val versionRegex = """\d+(?:\.\d+)*""".toRegex()
+
+        /**
+         * The first dotted number in [name], padded to major.minor.patch:
+         * "v0.27.1" and "0.27.1-1234" both give [0, 27, 1].
+         */
+        fun parseVersion(name: String): List<Int>? {
+            val parts = versionRegex.find(name)?.value?.split(".")?.map { it.toIntOrNull() ?: return null }
+                ?: return null
+            return (parts + List(3) { 0 }).take(maxOf(3, parts.size))
+        }
+
+        fun compareVersions(a: List<Int>, b: List<Int>): Int {
+            for (i in 0 until maxOf(a.size, b.size)) {
+                val diff = a.getOrElse(i) { 0 } - b.getOrElse(i) { 0 }
+                if (diff != 0) return diff
+            }
+            return 0
+        }
     }
 }

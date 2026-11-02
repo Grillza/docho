@@ -12,6 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -24,6 +25,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import tachiyomi.domain.manga.interactor.FetchInterval
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.WheelTextPicker
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.pluralStringResource
@@ -69,8 +71,16 @@ fun SetIntervalDialog(
     nextUpdate: Instant?,
     onDismissRequest: () -> Unit,
     onValueChanged: ((Int) -> Unit)? = null,
+    stopped: Boolean = false,
+    canStop: Boolean = true,
+    sourceName: String? = null,
+    onApply: ((stop: Boolean, hide: Boolean, hideSource: Boolean) -> Unit)? = null,
+    onHideForAll: (() -> Unit)? = null,
 ) {
     var selectedInterval by rememberSaveable { mutableIntStateOf(if (interval < 0) -interval else 0) }
+    var stop by rememberSaveable { mutableStateOf(stopped) }
+    var hide by rememberSaveable { mutableStateOf(false) }
+    var hideSource by rememberSaveable { mutableStateOf(false) }
 
     val nextUpdateDays = remember(nextUpdate) {
         return@remember if (nextUpdate != null) {
@@ -86,7 +96,9 @@ fun SetIntervalDialog(
         title = { Text(stringResource(MR.strings.pref_library_update_smart_update)) },
         text = {
             Column {
-                if (nextUpdateDays != null && nextUpdateDays >= 0 && interval >= 0) {
+                if (stopped) {
+                    Text(stringResource(MR.strings.release_prediction_stopped_summary))
+                } else if (nextUpdateDays != null && nextUpdateDays >= 0 && interval >= 0) {
                     Text(
                         stringResource(
                             MR.strings.manga_interval_expected_update,
@@ -134,6 +146,38 @@ fun SetIntervalDialog(
                         )
                     }
                 }
+
+                if (onApply != null) {
+                    if (canStop) {
+                        LabeledCheckbox(
+                            label = stringResource(MR.strings.release_prediction_stop),
+                            checked = stop,
+                            onCheckedChange = { stop = it },
+                        )
+                    }
+                    LabeledCheckbox(
+                        label = stringResource(MR.strings.release_prediction_hide),
+                        checked = hide,
+                        onCheckedChange = { hide = it },
+                    )
+                    if (sourceName != null) {
+                        LabeledCheckbox(
+                            label = stringResource(MR.strings.release_prediction_hide_source, sourceName),
+                            checked = hideSource,
+                            onCheckedChange = { hideSource = it },
+                        )
+                    }
+                }
+                if (onHideForAll != null) {
+                    TextButton(
+                        onClick = {
+                            onDismissRequest()
+                            onHideForAll()
+                        },
+                    ) {
+                        Text(stringResource(MR.strings.release_prediction_hide_all))
+                    }
+                }
             }
         },
         dismissButton = {
@@ -144,6 +188,7 @@ fun SetIntervalDialog(
         confirmButton = {
             TextButton(onClick = {
                 onValueChanged?.invoke(selectedInterval)
+                onApply?.invoke(stop, hide, hideSource)
                 onDismissRequest()
             }) {
                 Text(text = stringResource(MR.strings.action_ok))

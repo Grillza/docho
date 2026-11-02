@@ -29,8 +29,8 @@ val Project.Config: BuildConfig get() = object : BuildConfig {
 
     override val uploadCrashlyticsMapping: Boolean = includeTelemetry && (distribution == Distribution.GITHUB)
 
-    override val enableUpdater: Boolean = project.flag("enable-updater")
-        ?: (distribution != Distribution.LOCAL)
+    // Dōchō releases are built locally and published by hand, so the updater is on unless -Penable-updater=false.
+    override val enableUpdater: Boolean = project.flag("enable-updater") ?: true
 
     override val includeDependencyInfo: Boolean = project.flag("include-dependency-info") ?: false
 }

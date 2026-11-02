@@ -137,6 +137,31 @@ class KomgaApi(
         client.newCall(request).awaitSuccess().close()
     }
 
+    /**
+     * Sets a book's title, and its number when given, locking them so Komga's scans keep them. Needs an admin
+     * account.
+     */
+    suspend fun setBookTitle(bookId: String, title: String, number: Double?) {
+        val update = buildJsonObject {
+            put("title", title)
+            put("titleLock", true)
+            if (number != null && number >= 0) {
+                put("number", formatNumber(number))
+                put("numberLock", true)
+                put("numberSort", number.toFloat())
+                put("numberSortLock", true)
+            }
+        }
+        val request = Request.Builder()
+            .url("${apiUrl()}/v1/books/$bookId/metadata")
+            .patch(update.toString().toRequestBody(jsonMime))
+            .build()
+        client.newCall(request).awaitSuccess().close()
+    }
+
+    private fun formatNumber(number: Double): String =
+        if (number % 1.0 == 0.0) number.toLong().toString() else number.toString()
+
     private suspend fun patchProgress(bookId: String, update: KomgaReadProgressUpdateDto) {
         val body = json.encodeToString(update).toRequestBody(jsonMime)
         val request = Request.Builder().url("${apiUrl()}/v1/books/$bookId/read-progress").patch(body).build()

@@ -25,6 +25,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.LogoHeader
+import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
@@ -54,6 +55,7 @@ import tachiyomi.presentation.core.components.LinkIcon
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
@@ -65,8 +67,7 @@ object AboutScreen : Screen() {
 
     private const val PRIVACY_POLICY_URL = "$REPO_URL/blob/main/docs/privacy-policy.md"
 
-    /** GitHub's relay address for the repository owner. */
-    private const val CONTACT_EMAIL = "174673301+Grillza@users.noreply.github.com"
+    private const val ISSUES_URL = "$REPO_URL/issues"
 
     @Composable
     override fun Content() {
@@ -78,6 +79,8 @@ object AboutScreen : Screen() {
         var isCheckingUpdates by remember { mutableStateOf(false) }
         val crashLogUtil = remember { context.appGraph.crashLogUtil }
         val is24HourSystem = rememberIs24HourSystem()
+        val basePreferences = remember { context.appGraph.basePreferences }
+        val skipPatchUpdates by basePreferences.skipPatchAppUpdates.collectAsState()
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -147,6 +150,14 @@ object AboutScreen : Screen() {
                             },
                         )
                     }
+                    item {
+                        SwitchPreferenceWidget(
+                            title = stringResource(MR.strings.pref_skip_patch_app_updates),
+                            subtitle = stringResource(MR.strings.pref_skip_patch_app_updates_summary),
+                            checked = skipPatchUpdates,
+                            onCheckedChanged = basePreferences.skipPatchAppUpdates::set,
+                        )
+                    }
                 }
 
                 item {
@@ -173,8 +184,8 @@ object AboutScreen : Screen() {
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.about_contact),
-                        subtitle = stringResource(MR.strings.about_contact_summary, CONTACT_EMAIL),
-                        onPreferenceClick = { context.copyToClipboard(CONTACT_EMAIL, CONTACT_EMAIL) },
+                        subtitle = stringResource(MR.strings.about_contact_summary),
+                        onPreferenceClick = { uriHandler.openUri(ISSUES_URL) },
                     )
                 }
 

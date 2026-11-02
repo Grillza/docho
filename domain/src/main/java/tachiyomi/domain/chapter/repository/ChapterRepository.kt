@@ -12,6 +12,9 @@ interface ChapterRepository {
 
     suspend fun updateAll(chapterUpdates: List<ChapterUpdate>)
 
+    /** Renames a chapter the user renamed, moving it to [url] when its file was renamed too. */
+    suspend fun rename(id: Long, url: String, name: String, chapterNumber: Double)
+
     suspend fun updateFromRemote(
         removedIds: List<Long>,
         added: List<Chapter>,

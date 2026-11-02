@@ -178,6 +178,8 @@ fun MangaActionRow(
     trackingCount: Int,
     nextUpdate: Instant?,
     isUserIntervalMode: Boolean,
+    showReleasePrediction: Boolean,
+    releasePredictionStopped: Boolean,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -210,20 +212,27 @@ fun MangaActionRow(
             onClick = onAddToLibraryClicked,
             onLongClick = onEditCategory,
         )
-        MangaActionButton(
-            title = when (nextUpdateDays) {
-                null -> stringResource(MR.strings.not_applicable)
-                0 -> stringResource(MR.strings.manga_interval_expected_update_soon)
-                else -> pluralStringResource(
-                    MR.plurals.day,
-                    count = nextUpdateDays,
-                    nextUpdateDays,
-                )
-            },
-            icon = MaterialSymbols.Rounded.HourglassEmpty,
-            color = if (isUserIntervalMode) MaterialTheme.colorScheme.primary else defaultActionButtonColor,
-            onClick = { onEditIntervalClicked?.invoke() },
-        )
+        if (showReleasePrediction) {
+            MangaActionButton(
+                title = when {
+                    releasePredictionStopped -> stringResource(MR.strings.release_prediction_stopped_short)
+                    nextUpdateDays == null -> stringResource(MR.strings.not_applicable)
+                    nextUpdateDays == 0 -> stringResource(MR.strings.manga_interval_expected_update_soon)
+                    else -> pluralStringResource(
+                        MR.plurals.day,
+                        count = nextUpdateDays,
+                        nextUpdateDays,
+                    )
+                },
+                icon = MaterialSymbols.Rounded.HourglassEmpty,
+                color = if (isUserIntervalMode && !releasePredictionStopped) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    defaultActionButtonColor
+                },
+                onClick = { onEditIntervalClicked?.invoke() },
+            )
+        }
         MangaActionButton(
             title = if (trackingCount == 0) {
                 stringResource(MR.strings.manga_tracking_tab)

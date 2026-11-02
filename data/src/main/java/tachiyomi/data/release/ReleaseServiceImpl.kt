@@ -36,14 +36,29 @@ class ReleaseServiceImpl(
 
         val downloadLink = getDownloadLink(release = release, isFoss = arguments.isFoss) ?: return null
 
+        // One release carries both apps, and the iOS version can run a patch ahead of Android's,
+        // so the Android version comes from the APK names (docho-0.27.1-arm64-v8a.apk), not the tag.
+        val version = release.assets.firstNotNullOfOrNull { apkVersionRegex.find(it.name)?.groupValues?.get(1) }
+            ?.let { "v$it" }
+            ?: release.version
+
         return Release(
-            version = release.version,
-            info = release.info.substringBeforeLast("<!-->").replace(gitHubUsernameMentionRegex) { mention ->
+            version = version,
+            info = androidSection(release.info).replace(gitHubUsernameMentionRegex) { mention ->
                 "[${mention.value}](https://github.com/${mention.value.substring(1)})"
             },
             releaseLink = release.releaseLink,
             downloadLink = downloadLink,
         )
+    }
+
+    /** The "## Android" part of the notes, without the iOS one. Falls back to the whole body. */
+    private fun androidSection(body: String): String {
+        val text = body.substringBeforeLast("<!-->")
+        val start = androidHeadingRegex.find(text) ?: return text
+        val rest = text.substring(start.range.last + 1)
+        val end = nextH2Regex.find(rest)?.range?.first ?: rest.length
+        return rest.substring(0, end).trim()
     }
 
     private fun getDownloadLink(release: GithubRelease, isFoss: Boolean): String? {
@@ -61,6 +76,10 @@ class ReleaseServiceImpl(
     companion object {
         private const val FOSS = "foss"
         private val BUILD_TYPES = listOf(FOSS, "arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+
+        private val apkVersionRegex = """-(\d+\.\d+\.\d+)-[^/]*\.apk$""".toRegex()
+        private val androidHeadingRegex = """^##\s+Android\b.*$""".toRegex(RegexOption.MULTILINE)
+        private val nextH2Regex = """^##\s""".toRegex(RegexOption.MULTILINE)
 
         /**
          * Regular expression that matches a mention to a valid GitHub username, like it's

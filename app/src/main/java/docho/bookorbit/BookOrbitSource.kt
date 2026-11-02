@@ -256,6 +256,15 @@ class BookOrbitSource(
 
         fun fileIdOrNull(url: String): Int? = url.substringAfterLast("/file/", "").substringBefore('?').toIntOrNull()
 
+        /**
+         * The book title in a chapter name made by [chapterName], so that a renamed "Vol. 8 - Title" sends only
+         * "Title" back, the index going separately.
+         */
+        fun titleFromChapterName(name: String): String =
+            name.replaceFirst(VOLUME_PREFIX, "").trim().ifEmpty { name.trim() }
+
+        private val VOLUME_PREFIX = Regex("""^Vol\. *[0-9]+(?:\.[0-9]+)? *(?:- *|$)""")
+
         /** "Vol. 3 - Title", or whichever half the book has. */
         fun chapterName(title: String?, seriesIndex: String?): String {
             val cleanTitle = title?.trim()?.takeIf { it.isNotEmpty() }

@@ -27,6 +27,7 @@ import mihon.icons.materialsymbols.rounded.UpdateDisabled
 import mihon.icons.materialsymbols.rounded.Verified
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.InfoScreen
@@ -40,15 +41,27 @@ fun NewUpdateScreen(
     onOpenInBrowser: () -> Unit,
     onAcceptUpdate: () -> Unit,
     onRejectUpdate: () -> Unit,
-    onSkipUpdate: () -> Unit,
+    onSkipUpdate: (skipPatchUpdates: Boolean) -> Unit,
+    skipPatchUpdates: Boolean = false,
 ) {
     var showSkipDialog by remember { mutableStateOf(false) }
     if (showSkipDialog) {
         val dismiss = { showSkipDialog = false }
+        var skipPatches by remember { mutableStateOf(skipPatchUpdates) }
         AlertDialog(
             onDismissRequest = dismiss,
             title = { Text(text = stringResource(MR.strings.update_check_skip_title, versionName)) },
-            text = { Text(text = stringResource(MR.strings.update_check_skip_message)) },
+            text = {
+                Column {
+                    Text(text = stringResource(MR.strings.update_check_skip_message))
+                    LabeledCheckbox(
+                        label = stringResource(MR.strings.update_check_skip_patches),
+                        checked = skipPatches,
+                        onCheckedChange = { skipPatches = it },
+                        modifier = Modifier.padding(top = MaterialTheme.padding.small),
+                    )
+                }
+            },
             dismissButton = {
                 TextButton(onClick = dismiss) {
                     Text(text = stringResource(MR.strings.action_cancel))
@@ -58,7 +71,7 @@ fun NewUpdateScreen(
                 TextButton(
                     onClick = {
                         dismiss()
-                        onSkipUpdate()
+                        onSkipUpdate(skipPatches)
                     },
                 ) {
                     Text(text = stringResource(MR.strings.action_ok))
@@ -134,7 +147,7 @@ private fun NewUpdateScreenPreview() {
             onOpenInBrowser = {},
             onAcceptUpdate = {},
             onRejectUpdate = {},
-            onSkipUpdate = {},
+            onSkipUpdate = { _ -> },
         )
     }
 }

@@ -1,0 +1,67 @@
+{
+  "name": "Dōchō",
+  "identifier": "io.github.grillza.docho.source",
+  "subtitle": "A manga reader for your own servers.",
+  "description": "The iOS and iPadOS app of Dōchō, a fork of the manga reader Mihon. Read straight from Kavita, Komga or BookOrbit and keep your place in sync with them, or with KOReader on your e-reader.",
+  "iconURL": "https://raw.githubusercontent.com/Grillza/docho/54c74f7d8c7317316ff217850f64453878ec4128/ios/Docho/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+  "website": "https://github.com/Grillza/docho",
+  "tintColor": "#06599D",
+  "apps": [
+    {
+      "name": "Dōchō",
+      "bundleIdentifier": "io.github.grillza.docho",
+      "developerName": "Grillza",
+      "subtitle": "A manga reader for your own servers.",
+      "localizedDescription": "Dōchō is a fork of Mihon, the free and open source manga reader. Read straight from Kavita, Komga or BookOrbit and keep your place in sync with them, or with KOReader on your e-reader. It also has Mihon's trackers and reads and writes Mihon backups, so your library moves between Android and iOS.",
+      "iconURL": "https://raw.githubusercontent.com/Grillza/docho/54c74f7d8c7317316ff217850f64453878ec4128/ios/Docho/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "tintColor": "#06599D",
+      "category": "entertainment",
+      "screenshots": [],
+      "versions": [
+        {
+          "version": "0.29.2",
+          "buildVersion": "53",
+          "date": "2026-11-01T07:56:07Z",
+          "localizedDescription": "Version 0.29.2. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.29.2.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• A different position in landscape on iPad. Settings → Appearance → Navigation bar → Different position in landscape sets the bar and tab position for portrait and landscape separately, for example a bar at the bottom in portrait and a rail on the left in landscape, with its tabs at the bottom.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.29.2/docho-0.29.2.ipa",
+          "size": 6340913,
+          "minOSVersion": "18.0"
+        },
+        {
+          "version": "0.29.1",
+          "buildVersion": "52",
+          "date": "2026-11-01T07:28:22Z",
+          "localizedDescription": "Version 0.29.1. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.29.1.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nChanged\n\n• Update in AltStore or SideStore. When AltStore or SideStore is on your device, the new-version dialog's button is Update in AltStore (or SideStore), which opens it to install the new version over the current one. Without either, Download still opens this page.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.29.1/docho-0.29.1.ipa",
+          "size": 6332746,
+          "minOSVersion": "18.0"
+        },
+        {
+          "version": "0.29.0",
+          "buildVersion": "51",
+          "date": "2026-11-01T07:09:03Z",
+          "localizedDescription": "Version 0.29.0. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.29.0.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Release prediction. Series in your library show Android's hourglass next to In library, with when the next chapter is expected. Tap it to stop predicting for that series, hide it on that series, or both. Hide for all series… opens Settings → Appearance, which has a Show release prediction switch. A series with it hidden can show it again from its ⋮ menu.\n• Reset the navigation bar. Settings → Appearance → Navigation bar → Reset to default shows every tab again, in the original order and position.\n\nFixed\n\n• Opening the app after an update no longer shows a \"Download completed\" notification when nothing was downloading.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.29.0/docho-0.29.0.ipa",
+          "size": 6329291,
+          "minOSVersion": "18.0"
+        },
+        {
+          "version": "0.28.0",
+          "buildVersion": "49",
+          "date": "2026-10-31T22:09:31Z",
+          "localizedDescription": "Version 0.28.0. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.28.0.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Update checks. Dōchō now checks this page for a new release when it opens, and again when you come back to it after 6 hours, then shows the iOS notes. Download opens this page, since the IPA has to go through your sideloader. More → About → Check for updates checks right away.\n• Skip this version, or bug-fix updates. Skip this version won't remind you about it again until there's a newer release. Skip bug-fix updates (0.0.x), in the update dialog or About, only reminds you about 0.x.0 releases. Checking by hand still shows everything.\n• Contact us in About opens GitHub Issues, for bug reports and suggestions.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.28.0/docho-0.28.0.ipa",
+          "size": 6293511,
+          "minOSVersion": "18.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSLocalNetworkUsageDescription": "Dōchō connects to your Kavita, Komga, BookOrbit or KOReader sync server on your local network."
+        }
+      }
+    }
+  ],
+  "news": []
+}

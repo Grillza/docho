@@ -38,6 +38,7 @@ class SettingsScreen(
                     Destination.About.id -> AboutScreen
                     Destination.DataAndStorage.id -> SettingsDataScreen
                     Destination.Tracking.id -> SettingsTrackingScreen
+                    Destination.Appearance.id -> SettingsAppearanceScreen
                     else -> SettingsMainScreen
                 },
                 onBackPressed = null,
@@ -59,6 +60,7 @@ class SettingsScreen(
                     Destination.About.id -> AboutScreen
                     Destination.DataAndStorage.id -> SettingsDataScreen
                     Destination.Tracking.id -> SettingsTrackingScreen
+                    Destination.Appearance.id -> SettingsAppearanceScreen
                     else -> SettingsAppearanceScreen
                 },
                 onBackPressed = null,
@@ -83,5 +85,6 @@ class SettingsScreen(
         data object About : Destination(0)
         data object DataAndStorage : Destination(1)
         data object Tracking : Destination(2)
+        data object Appearance : Destination(3)
     }
 }

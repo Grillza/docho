@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
@@ -129,6 +132,22 @@ class KavitaApi(
 
     suspend fun getChapter(chapterId: Int): KavitaChapterDto =
         get("${apiUrl()}/Chapter?chapterId=$chapterId")
+
+    /**
+     * Sets a chapter's title on the server and locks it so scans keep it. Kavita replaces all of a chapter's metadata
+     * at once, so the chapter is read first and sent back with only the title changed. Needs an admin account.
+     */
+    suspend fun setChapterTitle(chapterId: Int, title: String) {
+        val current = client.newCall(GET("${apiUrl()}/Chapter?chapterId=$chapterId")).awaitSuccess().use {
+            json.parseToJsonElement(it.body.string()).jsonObject
+        }
+        val update = JsonObject(
+            current + mapOf("titleName" to JsonPrimitive(title), "titleNameLocked" to JsonPrimitive(true)),
+        )
+        client.newCall(POST("${apiUrl()}/Chapter/update", body = update.toString().toRequestBody(jsonMime)))
+            .awaitSuccess()
+            .close()
+    }
 
     /** Page the server has for one chapter; `pages` means read. Servers without the endpoint fall back to [getVolumes]. */
     suspend fun getPagesRead(seriesId: Int, chapterId: Int): Int {
