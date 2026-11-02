@@ -84,3 +84,20 @@ KOReader sync. The download isn't kept, but large books can use a lot of data.
 Each section ends with **Delete**, which erases that server's address, sign-in details, sync
 options and any progress not yet sent. Nothing is deleted on the server, and your other settings
 stay as they are.
+
+## Dōchō Sync
+
+Dōchō Sync keeps your library and categories, chapter renames and Volume/Chapter types, read
+progress and history the same on every phone and tablet, Android or iOS, signed in to the same
+account. It's a small server you run yourself: see [`sync-server/`](../sync-server/README.md).
+
+1. Start the server, e.g. `cd sync-server && docker compose up -d --build` (port 8090).
+2. In Dōchō, open **Dōchō Sync** and enter the **Server address** (e.g. `http://arch.lan:8090`), a
+   **Username** and a **Password**, then tap **Create account**.
+3. On each other device, enter the same three. It signs in and syncs.
+
+Dōchō syncs when it opens and when it goes to the background (and every hour on Android), or
+when you tap **Sync now**. Series are matched by their source, so set up the same sources (the
+same Kavita, Komga or BookOrbit server, or the same files for the Local source) on every device.
+A device's first sync merges with what's on the server: chapters read on either side stay read,
+and libraries and categories are joined. After that, the most recent change wins.
