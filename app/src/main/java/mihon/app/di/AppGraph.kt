@@ -10,6 +10,9 @@ import docho.bookorbit.BookOrbitApi
 import docho.bookorbit.BookOrbitPreferences
 import docho.bookorbit.BookOrbitSource
 import docho.bookorbit.BookOrbitSync
+import docho.dochosync.DochoSync
+import docho.dochosync.DochoSyncApi
+import docho.dochosync.DochoSyncPreferences
 import docho.kavita.KavitaApi
 import docho.kavita.KavitaPreferences
 import docho.kavita.KavitaSource
@@ -149,6 +152,10 @@ interface AppGraph : ViewModelGraph {
     val kavitaApi: KavitaApi
     val kavitaSource: KavitaSource
     val kavitaSync: KavitaSync
+
+    val dochoSyncPreferences: DochoSyncPreferences
+    val dochoSyncApi: DochoSyncApi
+    val dochoSync: DochoSync
 
     val koreaderPreferences: KoreaderPreferences
     val koreaderApi: KoreaderApi

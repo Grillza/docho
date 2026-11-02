@@ -16,6 +16,7 @@ import eu.kanade.tachiyomi.util.lang.chop
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
+import tachiyomi.core.common.i18n.pluralStringResource
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import java.util.regex.Pattern
@@ -74,7 +75,7 @@ class DownloadNotifier(
      * @param download download object containing download information.
      */
     @Synchronized
-    fun onProgressChange(download: Download) {
+    fun onProgressChange(download: Download, remaining: Int = 1) {
         val now = SystemClock.elapsedRealtime()
         val isComplete = download.downloadedImages == download.pages?.size
         if (!isComplete && now - lastProgressNotificationTime < PROGRESS_NOTIFICATION_INTERVAL_MS) return
@@ -122,6 +123,16 @@ class DownloadNotifier(
             }
 
             setProgress(download.pages!!.size, download.downloadedImages, false)
+            // How many chapters are left, this one included, so the shade shows the whole queue
+            setSubText(
+                if (remaining >
+                    1
+                ) {
+                    context.pluralStringResource(MR.plurals.download_chapters_left, remaining, remaining)
+                } else {
+                    null
+                },
+            )
             setOngoing(true)
 
             show(Notifications.ID_DOWNLOAD_CHAPTER_PROGRESS)

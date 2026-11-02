@@ -55,6 +55,15 @@ class ChapterRenames(
         kinds.set(kinds.get() + (key(sourceId, url) to kind))
     }
 
+    /** Forgets the user's name and number for the chapter at [url]; Dōchō Sync, when another device dropped it. */
+    fun remove(sourceId: Long, url: String) {
+        renames.set(renames.get() - key(sourceId, url))
+    }
+
+    fun removeKind(sourceId: Long, url: String) {
+        kinds.set(kinds.get() - key(sourceId, url))
+    }
+
     private fun moveKind(sourceId: Long, oldUrl: String, newUrl: String) {
         if (oldUrl == newUrl) return
         val all = kinds.get()

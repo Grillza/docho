@@ -479,7 +479,13 @@ class Downloader(
                         }
 
                         getOrDownloadImage(page, download, tmpDir)
-                        notifier.onProgressChange(download)
+                        notifier.onProgressChange(
+                            download,
+                            queueState.value.count {
+                                it.status !=
+                                    Download.State.DOWNLOADED
+                            },
+                        )
                     }.invokeOnCompletion { slots.release() }
                 }
                 pagesStarted.complete(Unit)

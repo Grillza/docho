@@ -72,6 +72,7 @@ object SettingsSyncScreen : SearchableSettings {
             KomgaSettingsGroup.getGroup(),
             SuwayomiSettingsGroup.getGroup(),
             KoreaderSettingsGroup.getGroup(),
+            DochoSyncSettingsGroup.getGroup(),
             getSettingsFileGroup(),
         )
     }
