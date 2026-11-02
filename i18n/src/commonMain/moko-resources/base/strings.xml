@@ -98,7 +98,7 @@
     <string name="rename_kind_keep">Keep</string>
     <string name="rename_kind_volume">Volume</string>
     <string name="rename_kind_chapter">Chapter</string>
-    <string name="rename_kind_hint">Sort the series by volumes or chapters first in its sort settings.</string>
+    <string name="rename_kind_hint">Volume or Chapter also names them Vol. N or Ch. N, keeping any title. The series lists volumes first once it has both.</string>
     <string name="rename_mode_name">Name</string>
     <string name="rename_mode_find">Find and replace</string>
     <string name="rename_mode_like">Like another</string>

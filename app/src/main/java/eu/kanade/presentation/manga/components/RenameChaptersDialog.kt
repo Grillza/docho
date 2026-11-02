@@ -111,8 +111,16 @@ fun RenameChaptersDialog(
             listOf(RenameChapters.Request(single, name.trim(), numberFor(single, name.trim(), number), kind))
         } else {
             chapters.map { chapter ->
-                val newName = if (find.isEmpty()) chapter.name else chapter.name.replace(find, replace).trim()
-                RenameChapters.Request(chapter, newName, numberFor(chapter, newName, null), kind)
+                val replaced = if (find.isEmpty()) chapter.name else chapter.name.replace(find, replace).trim()
+                // Volume or Chapter names them so too: "Vol. 10", "Ch. 74-81 - Title"
+                val asKind = kind?.let {
+                    RenameLike.asKind(replaced, mangaTitle, it == Chapter.KIND_VOLUME, chapter.chapterNumber)
+                }
+                if (asKind != null) {
+                    RenameChapters.Request(chapter, asKind.name, asKind.number, kind)
+                } else {
+                    RenameChapters.Request(chapter, replaced, numberFor(chapter, replaced, null), kind)
+                }
             }
         }
     }
@@ -253,7 +261,17 @@ fun RenameChaptersDialog(
                     }.forEach { (value, label) ->
                         FilterChip(
                             selected = kind == value,
-                            onClick = { kind = value },
+                            onClick = {
+                                kind = value
+                                // One chapter: write its name as a volume or chapter, to edit further if need be
+                                if (single != null && value != null && mode == RenameMode.NAME) {
+                                    val typed = number.replace(',', '.').toDoubleOrNull() ?: single.chapterNumber
+                                    RenameLike.asKind(name, mangaTitle, value == Chapter.KIND_VOLUME, typed)?.let {
+                                        name = it.name
+                                        number = numberFormat.format(it.number)
+                                    }
+                                }
+                            },
                             label = { Text(stringResource(label)) },
                         )
                     }

@@ -18,6 +18,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -174,6 +175,11 @@ class BookOrbitApi(
         val update = buildJsonObject {
             putJsonObject("metadata") {
                 put("title", title)
+                // A series index makes BookOrbit file the book again under its series name, so the name it has now
+                // goes with it and the book stays in the series it's in
+                current["seriesName"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }?.let {
+                    put("seriesName", it)
+                }
                 if (seriesIndex != null && seriesIndex >= 0) {
                     put("seriesIndex", formatSeriesIndex(seriesIndex))
                     locks += "seriesIndex"

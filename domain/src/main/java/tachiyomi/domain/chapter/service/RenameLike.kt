@@ -1,5 +1,7 @@
 package tachiyomi.domain.chapter.service
 
+import java.math.BigDecimal
+
 /**
  * Renames chapters the way the user renamed another one. [learn] reads the style from that example, e.g. "Chainsaw v10
  * ch 10-15" renamed to "Vol. 10 - Chainsaw" gives "Vol. {volume} - Chainsaw", and [apply] fills it in from each
@@ -46,6 +48,9 @@ object RenameLike {
         RegexOption.IGNORE_CASE,
     )
     private val RANGE_SEPARATOR = Regex("""[-–~]""")
+
+    /** Tags like "(2024)" or "[Digital]" after the numbers, which aren't part of a title. */
+    private val TAGS = Regex("""\s*(?:\([^)]*\)|\[[^\]]*])""")
     private const val SEPARATORS = " \t-–—:·|_,;"
 
     fun parse(name: String, mangaTitle: String): Parts {
@@ -63,7 +68,7 @@ object RenameLike {
         val chapter = chapterMatch?.number()
         val bare = bareMatch?.number()
         val end = listOfNotNull(volumeMatch, chapterMatch, bareMatch).maxOfOrNull { it.range.last + 1 }
-        val title = end?.let { name.substring(it).trim { c -> c in SEPARATORS || c.isWhitespace() } }
+        val title = end?.let { name.substring(it).replace(TAGS, "").trim { c -> c in SEPARATORS || c.isWhitespace() } }
             ?.trimEnd(')', ']')
             ?.trim { c -> c in SEPARATORS || c.isWhitespace() }
             ?.takeIf { it.isNotEmpty() && !it.equals(mangaTitle, ignoreCase = true) }
@@ -178,6 +183,29 @@ object RenameLike {
             else -> ChapterRecognition.parseChapterNumber(mangaTitle, newName)
         }
         return Renamed(newName, number)
+    }
+
+    /**
+     * [name] as a volume ("Vol. 10", or "Vol. 10 - Title" when the name has a title after its numbers) or a chapter
+     * ("Ch. 74-81 - Title"), from the volume or chapter number in it, else [fallbackNumber]. Null when there's no
+     * number to use.
+     */
+    fun asKind(name: String, mangaTitle: String, volume: Boolean, fallbackNumber: Double): Renamed? {
+        val parts = parse(name, mangaTitle)
+        val found = if (volume) {
+            parts.volume ?: parts.bare?.takeIf { parts.chapter == null }
+        } else {
+            parts.chapter ?: parts.bare
+        }
+        val written = found?.text?.split(RANGE_SEPARATOR)?.let { numbers ->
+            val separator = RANGE_SEPARATOR.find(found.text)?.value ?: "-"
+            (if (volume) numbers.take(1) else numbers).joinToString(separator) { format(it, 0) }
+        } ?: fallbackNumber.takeIf { it >= 0 }?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() }
+            ?: return null
+        val value = found?.value ?: fallbackNumber
+        val label = if (volume) "Vol." else "Ch."
+        val title = parts.title?.takeIf { found != null }
+        return Renamed(if (title != null) "$label $written - $title" else "$label $written", value)
     }
 
     private fun MatchResult.number(): Number {
