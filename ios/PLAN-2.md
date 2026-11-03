@@ -644,3 +644,33 @@ is kept in its memo). Pages and covers come from the server with the sign-in att
 reading, downloads and library updates work as for the other sources. Suwayomi's own Local
 source is left out (Dōchō has its own). `SuwayomiLiveTests` runs against a real server
 (`scripts/test-servers.sh` starts one) and is skipped otherwise.
+
+### 2026-11-03: on-device extensions, in parts (milestones 16–18)
+
+Worked in parts so each can be picked up where it stopped; each part ends in a commit on `ios`.
+Tick them off here as they land.
+
+- [ ] **G1. Runtime build.** `scripts/build-runtime.sh macos simulator device package`, started
+  detached (`nohup … > build/runtime-logs/all.log`). The 30 Oct build had been configured under
+  the old `~/claude/mihonka` path, so its macOS config was deleted and rebuilt. Check progress with
+  `tail build/runtime-logs/all.log`; a failed step's log is `build/runtime-logs/<step>.log`. Re-run
+  only the missing steps. Output: `ios/Embedded/` (jre, host jar, link flags, licences).
+- [ ] **G2. Protocol types.** `Docho/Extensions/ExtensionProtocol.swift`: Codable types for the
+  host's JSON-RPC (`extension-host/host-core/.../rpc/Protocol.kt`), checked against every file in
+  `Vendor/docho-runtime/contract/fixtures` by `ExtensionContractTests`.
+- [ ] **G3. Host client.** `ExtensionTransport` (call + events) with an HTTP/SSE transport for the
+  runtime's desktop dev host (`./gradlew :host-desktop:run`, 127.0.0.1:4568), and the
+  `ExtensionHost` actor: typed calls, `net.fetch` answered through URLSession, cookies. Lets the
+  Swift side be built and tested before the JVM is linked.
+- [ ] **G4. Extensions in the app.** `ExtensionSource` (a `MangaSource`), extension repos and the
+  extension list (install, update, uninstall, trust) beside Suwayomi's, sources in Browse with
+  filters and settings; Settings → Browse → Extensions switch, off by default (App Store route).
+- [ ] **G5. Embedded transport.** The C shim (JNI: start, call, fetchResult; complete, emit,
+  fetch, fetchCancel registered as natives), linking OpenJ9 from G1, bundling `Embedded/`, and
+  `jvm-ios/smoke-openj9-ios.sh` in the simulator. Then the trial measurements (milestone 16):
+  JVM cold start, first page, peak memory, .ipa size, SideStore signing.
+- [ ] **G6. Cloudflare and WebViews.** `challenge.required` solved in a WKWebView, extension
+  WebView commands, QuickJS on JavaScriptCore.
+
+Memory: this Mac has 8 GB. While G1 runs (JOBS=4), keep other builds small (one Gradle worker,
+`-Xmx1g`) and check `memory_pressure` before starting an Xcode test run.
