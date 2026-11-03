@@ -143,7 +143,9 @@ class LibrarySource(
                         file[DochoLibraryFileTable.chapter]
                             ?: file[DochoLibraryFileTable.volume]
                             ?: (index + 1).toFloat()
-                    scanlator = file[DochoLibraryFileTable.releaseGroup]
+                    // The release group in the file name (e.g. "(1r0n)") is kept on the file, not
+                    // shown as the chapter's scanlator: these are the user's own books.
+                    scanlator = null
                 }
             }.reversed() // newest first, as sources list them
     }

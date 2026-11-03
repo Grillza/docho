@@ -27,6 +27,12 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.select
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import org.jetbrains.exposed.v1.core.isNotNull
+import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.greaterEq
 import suwayomi.tachidesk.docho.DochoLibraryTable
@@ -162,6 +168,12 @@ object Libraries {
         transaction {
             SourceTable.update({ (SourceTable.id greaterEq SOURCE_ID_BASE) and (SourceTable.lang eq "all") }) { it[lang] = SOURCE_LANG }
             ExtensionTable.update({ (ExtensionTable.pkgName eq EXTENSION_PKG) and (ExtensionTable.lang eq "all") }) { it[lang] = SOURCE_LANG }
+            // Library chapters stored before 0.32.4 had the release group as their scanlator.
+            val libraryManga =
+                MangaTable
+                    .select(MangaTable.id)
+                    .where { (MangaTable.sourceReference greater SOURCE_ID_BASE) and (MangaTable.sourceReference lessEq SOURCE_ID_BASE + Int.MAX_VALUE) }
+            ChapterTable.update({ (ChapterTable.manga inSubQuery libraryManga) and ChapterTable.scanlator.isNotNull() }) { it[scanlator] = null }
         }
         list().forEach { library ->
             runCatching { register(library) }.onFailure { logger.error(it) { "Couldn't set up library ${library.name}" } }
