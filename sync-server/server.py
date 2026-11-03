@@ -27,7 +27,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 VERSION = "1"
-KINDS = {"manga", "category", "rename", "kind", "chapter", "history"}
+KINDS = {"manga", "category", "rename", "kind", "chapter", "history", "details"}
 MAX_BODY = 32 * 1024 * 1024
 MAX_CHANGES = 50_000
 PAGE = 5_000

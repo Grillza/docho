@@ -35,6 +35,10 @@ class DochoSyncWorker(context: Context, workerParams: WorkerParameters) :
     companion object {
         private const val TAG = "DochoSync"
         private const val PERIODIC_TAG = "DochoSyncPeriodic"
+        private const val SOON_TAG = "DochoSyncSoon"
+
+        /** How long after a change [syncSoon] syncs; changes made meanwhile go in the same sync. */
+        private const val SOON_SECONDS = 15L
 
         private val constraints = Constraints(requiredNetworkType = NetworkType.CONNECTED)
 
@@ -49,6 +53,23 @@ class DochoSyncWorker(context: Context, workerParams: WorkerParameters) :
                 .build()
             // A sync already waiting picks up whatever changed by the time it starts
             context.workManager.enqueueUniqueWork(TAG, ExistingWorkPolicy.KEEP, request)
+        }
+
+        /**
+         * Syncs a few seconds after something changed here, such as the page being read, so other
+         * devices and Dōchō Server see it while you read. Changes made before then go in the same
+         * sync instead of each starting one.
+         */
+        fun syncSoon(context: Context) {
+            val preferences = context.metroGraph<AppGraph>().dochoSyncPreferences
+            if (!preferences.isConfigured() || !preferences.automatic.get()) return
+            val request = OneTimeWorkRequestBuilder<DochoSyncWorker>()
+                .setConstraints(constraints)
+                .setInitialDelay(SOON_SECONDS, TimeUnit.SECONDS)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .addTag(SOON_TAG)
+                .build()
+            context.workManager.enqueueUniqueWork(SOON_TAG, ExistingWorkPolicy.KEEP, request)
         }
 
         /** Keeps the hourly sync scheduled while Dōchō Sync is set up and automatic. */

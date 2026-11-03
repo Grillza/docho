@@ -116,6 +116,7 @@ fun MangaScreen(
     onDeleteFromDeviceClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
+    onEditDetailsClicked: () -> Unit,
     onToggleMissingChaptersClicked: () -> Unit,
 
     // For bottom action menu
@@ -172,6 +173,7 @@ fun MangaScreen(
             onDeleteFromDeviceClicked = onDeleteFromDeviceClicked,
             onMigrateClicked = onMigrateClicked,
             onEditNotesClicked = onEditNotesClicked,
+            onEditDetailsClicked = onEditDetailsClicked,
             onToggleMissingChaptersClicked = onToggleMissingChaptersClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -215,6 +217,7 @@ fun MangaScreen(
             onDeleteFromDeviceClicked = onDeleteFromDeviceClicked,
             onMigrateClicked = onMigrateClicked,
             onEditNotesClicked = onEditNotesClicked,
+            onEditDetailsClicked = onEditDetailsClicked,
             onToggleMissingChaptersClicked = onToggleMissingChaptersClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -268,6 +271,7 @@ private fun MangaScreenSmallImpl(
     onDeleteFromDeviceClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
+    onEditDetailsClicked: () -> Unit,
     onToggleMissingChaptersClicked: () -> Unit,
 
     // For bottom action menu
@@ -326,6 +330,7 @@ private fun MangaScreenSmallImpl(
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
                 onClickEditNotes = onEditNotesClicked,
+                onClickEditDetails = onEditDetailsClicked,
                 onClickShowReleasePrediction = onShowReleasePrediction,
                 onClickDeleteFromDevice = onDeleteFromDeviceClicked,
                 hideMissingChapters = state.manga.hideMissingChapters,
@@ -515,6 +520,7 @@ fun MangaScreenLargeImpl(
     onDeleteFromDeviceClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
+    onEditDetailsClicked: () -> Unit,
     onToggleMissingChaptersClicked: () -> Unit,
 
     // For bottom action menu
@@ -566,6 +572,7 @@ fun MangaScreenLargeImpl(
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
                 onClickEditNotes = onEditNotesClicked,
+                onClickEditDetails = onEditDetailsClicked,
                 onClickShowReleasePrediction = onShowReleasePrediction,
                 onClickDeleteFromDevice = onDeleteFromDeviceClicked,
                 hideMissingChapters = state.manga.hideMissingChapters,

@@ -1254,6 +1254,21 @@
     <string name="action_hide_missing_chapters">Hide missing files</string>
     <string name="action_show_missing_chapters">Show missing files</string>
 
+    <!-- Docho: edit series details -->
+    <string name="action_edit_details">Edit details</string>
+    <string name="edit_details_info">Edited fields stay over what the source sends when the series refreshes. They reach your other devices and Dōchō Server through Dōchō Sync, and edits made there show here.</string>
+    <string name="edit_details_title">Title</string>
+    <string name="edit_details_author">Author</string>
+    <string name="edit_details_artist">Artist</string>
+    <string name="edit_details_description">Description</string>
+    <string name="edit_details_genres">Genres</string>
+    <string name="edit_details_genres_hint">Separated by commas</string>
+    <string name="edit_details_status">Status</string>
+    <string name="edit_details_edited">Edited</string>
+    <string name="edit_details_reset">Use the source\'s details</string>
+    <string name="edit_details_reset_summary">Forgets your edits; the source\'s details come back now</string>
+    <string name="edit_details_saved">Details saved</string>
+
     <!-- Docho: Dōchō Sync -->
     <string name="pref_category_docho_sync">Dōchō Sync</string>
     <string name="pref_docho_sync_info">Keeps your library and categories, chapter renames and types, read progress and history the same on every phone and tablet signed in to the same Dōchō Sync server. Series are matched by their source, so set up the same sources on each device.</string>

@@ -38,7 +38,6 @@ import ShareIcon from '@mui/icons-material/Share';
 import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
 import { ShareGuard } from '@/base/components/guard/ShareGuard.tsx';
 import EditNoteIcon from '@mui/icons-material/EditNote';
-import { isDochoLibrarySource } from '@/features/docho/DochoApi.ts';
 import { DochoEditSeriesDialog } from '@/features/docho/components/DochoEditSeriesDialog.tsx';
 
 interface IProps {
@@ -55,9 +54,9 @@ export const MangaToolbarMenu = ({ manga, onRefresh, refreshing }: IProps) => {
     const { settings } = useMetadataServerSettings();
 
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-    // Dōchō Server: library series' details can be edited, as in Kavita.
+    // Dōchō Server: series' details can be edited, as in Kavita, and are shared with the apps.
     const [editing, setEditing] = React.useState(false);
-    const canEdit = isDochoLibrarySource(manga.sourceId);
+    const canEdit = true;
     const open = Boolean(anchorEl);
     const handleClose = () => {
         setAnchorEl(null);

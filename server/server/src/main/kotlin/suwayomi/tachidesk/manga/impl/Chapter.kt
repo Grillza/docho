@@ -154,6 +154,9 @@ object Chapter {
             chapter.name = chapter.name.sanitize(mangaEntry[MangaTable.title])
             chapter.scanlator = chapter.scanlator?.ifBlank { null }?.trim()
         }
+        // Dōchō: chapters renamed or typed in the apps keep that over what the source says.
+        suwayomi.tachidesk.docho.sync.SyncBridge
+            .applyChapterOverrides(mangaEntry[MangaTable.sourceReference], uniqueChapters)
 
         val now = Instant.now()
         // Used to not set upload date of older chapters

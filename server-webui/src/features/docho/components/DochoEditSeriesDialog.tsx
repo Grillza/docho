@@ -205,7 +205,12 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
         </InputAdornment>
     );
 
-    const text = (key: keyof Form, label: string, props: Partial<Parameters<typeof TextField>[0]> = {}) => (
+    // Series from extensions: only the fields the apps share; the source's details come back on unlock.
+    const fromLibrary = details.libraryId != null;
+    const can = (key: keyof Form) => details.editableFields.includes(FIELD_OF[key]);
+
+    const text = (key: keyof Form, label: string, props: Partial<Parameters<typeof TextField>[0]> = {}) =>
+        can(key) && (
         <TextField
             label={label}
             value={form[key] as string}
@@ -214,7 +219,7 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
             slotProps={{ input: { endAdornment: lock(key) } }}
             {...props}
         />
-    );
+        );
 
     const names = (key: 'writers' | 'artists' | 'genres', label: string) => (
         <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
@@ -268,13 +273,17 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
             <DialogContent dividers>
                 <Stack sx={{ gap: 2 }}>
                     <Typography variant="body2" color="text.secondary">
-                        {t`Edited fields are locked, so scans keep them. The apps get the changes when they next sync.`}
+                        {fromLibrary
+                            ? t`Edited fields are locked, so scans keep them. The apps get the changes when they next sync.`
+                            : t`Edited fields are locked, so refreshing from the source keeps them. The apps get the changes when they next sync, and edits made in the apps show here.`}
                     </Typography>
                     {text('title', t`Title`)}
-                    <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
-                        {text('localizedName', t`Localised name`)}
-                        {text('sortName', t`Sort name`, { helperText: t`Left as it is, it follows the title` })}
-                    </Stack>
+                    {fromLibrary && (
+                        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
+                            {text('localizedName', t`Localised name`)}
+                            {text('sortName', t`Sort name`, { helperText: t`Left as it is, it follows the title` })}
+                        </Stack>
+                    )}
                     {text('summary', t`Summary`, { multiline: true, minRows: 4, maxRows: 14 })}
                     {names('writers', t`Writers`)}
                     {names('artists', t`Artists`)}
@@ -294,8 +303,9 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
                                 </MenuItem>
                             ))}
                         </TextField>
-                        {text('releaseYear', t`Release year`, { type: 'number' })}
+                        {fromLibrary && text('releaseYear', t`Release year`, { type: 'number' })}
                     </Stack>
+                    {fromLibrary && (
                     <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
                         {text('publisher', t`Publisher`)}
                         <Autocomplete
@@ -325,6 +335,7 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
                         />
                         {text('language', t`Language`, { helperText: t`A code such as en or ja` })}
                     </Stack>
+                    )}
                 </Stack>
             </DialogContent>
             <DialogActions>

@@ -24,7 +24,7 @@ object SyncValues {
     const val RENAME = "rename"
     const val KIND = "kind"
 
-    /** A series' details edited on Dōchō Server; only the server writes these. */
+    /** A series' edited details (SeriesEdits): only the edited fields, blank ones as "". */
     const val DETAILS = "details"
 
     fun key(sourceId: Long, url: String) = "$sourceId|$url"

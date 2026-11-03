@@ -304,6 +304,8 @@ class MangaViewModel(
         .stateIn(viewModelScope + subscriberGate, subscriberGate.whileSubscribed(5.seconds), State.Loading)
 
     init {
+        // Dōchō Sync: progress from other devices before a chapter is picked
+        docho.dochosync.DochoSyncWorker.syncNow(context)
         viewModelScope.launch(Dispatchers.Default) {
             downloadManager.statusFlow()
                 .filter { it.manga.id == mangaId }
@@ -902,6 +904,7 @@ class MangaViewModel(
         // Outlives the screen, so a rename isn't left half done
         appScope.launch {
             val result = renameChaptersInteractor.await(state.manga, state.source, requests)
+            docho.dochosync.DochoSyncWorker.syncSoon(context)
             listVolumesFirstIfMixed(state, requests)
             val message = when {
                 result.failed > 0 -> context.stringResource(MR.strings.rename_failed, result.failed)

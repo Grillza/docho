@@ -30,6 +30,7 @@ import suwayomi.tachidesk.docho.library.LibrarySettings
 import suwayomi.tachidesk.docho.library.LibraryType
 import suwayomi.tachidesk.docho.library.SeriesMetadata
 import suwayomi.tachidesk.docho.library.Shelf
+import suwayomi.tachidesk.docho.sync.SyncBridge
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -183,10 +184,19 @@ class DochoSeriesInfo(
     fun status(): Int? = manga?.get(MangaTable.status)
 
     /** Fields edited on the server, which scans leave alone. */
-    fun editedFields(): List<SeriesMetadata.Field> = SeriesMetadata.Overrides.parse(row?.get(DochoSeriesInfoTable.overrides)).values.keys.toList()
+    fun editedFields(): List<SeriesMetadata.Field> =
+        if (row != null) {
+            SeriesMetadata.Overrides.parse(row?.get(DochoSeriesInfoTable.overrides)).values.keys.toList()
+        } else {
+            SyncBridge.editedDetails(mangaId).mapNotNull(SeriesMetadata.syncedFields::get)
+        }
 
-    /** Library series can be edited; series from extensions can't. */
-    fun editable(): Boolean = row != null
+    /** Every series can be edited; series from extensions only in the fields the apps share. */
+    fun editable(): Boolean = manga != null
+
+    /** The fields that can be edited: all of them on library series. */
+    fun editableFields(): List<SeriesMetadata.Field> =
+        if (row != null) SeriesMetadata.Field.entries.toList() else SeriesMetadata.syncedFields.values.toList()
 
     fun collections(): List<DochoCollection> = Collections.ofManga(mangaId).map(::DochoCollection)
 
@@ -261,6 +271,10 @@ class DochoQuery {
 
     @RequireAuth
     fun dochoSeriesInfo(mangaId: Int): DochoSeriesInfo = DochoSeriesInfo(mangaId)
+
+    /** Chapters of a series renamed or given a Volume/Chapter type, in the WebUI or the apps. */
+    @RequireAuth
+    fun dochoChapterEdits(mangaId: Int): List<SyncBridge.ChapterEdit> = SyncBridge.chapterEdits(mangaId)
 
     /** Series as stacks of their books' covers, as BookOrbit shows them. */
     @RequireAuth
@@ -338,6 +352,22 @@ class DochoMutation {
         val reset = input.reset.orEmpty().toSet()
         SeriesMetadata.edit(input.mangaId, SeriesMetadata.Edit(set - reset, reset))
         return DochoSeriesInfo(input.mangaId)
+    }
+
+    /**
+     * Renames a chapter or sets its Volume/Chapter type, as the apps do, and sends that to them.
+     * A null name drops the rename; a null kind lets the chapter's name decide.
+     */
+    @RequireAuth
+    fun renameDochoChapter(
+        chapterId: Int,
+        name: String? = null,
+        number: Double? = null,
+        kind: String? = null,
+    ): Boolean {
+        require(kind == null || kind == "volume" || kind == "chapter") { "kind is volume or chapter" }
+        SyncBridge.renameChapter(chapterId, name?.trim()?.ifEmpty { null }, number?.toFloat(), kind)
+        return true
     }
 
     @RequireAuth

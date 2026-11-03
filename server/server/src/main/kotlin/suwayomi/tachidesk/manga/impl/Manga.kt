@@ -193,6 +193,9 @@ object Manga {
         source: Source,
         sManga: SManga,
     ): SManga {
+        // Dōchō: details edited in the apps stay over what the source says.
+        suwayomi.tachidesk.docho.sync.SyncBridge
+            .applyDetailsOverride(mangaEntry[MangaTable.sourceReference], mangaEntry[MangaTable.url], sManga)
         suspendTransaction {
             val mangaId = mangaEntry[MangaTable.id].value
             val currentTitle = mangaEntry[MangaTable.title]

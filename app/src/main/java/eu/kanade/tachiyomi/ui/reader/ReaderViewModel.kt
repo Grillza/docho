@@ -324,6 +324,8 @@ class ReaderViewModel(
     }
 
     override fun onCleared() {
+        // Dōchō Sync: where you stopped, right away
+        docho.dochosync.DochoSyncWorker.syncNow(context)
         val currentChapters = state.value.viewerChapters
         if (currentChapters != null) {
             currentChapters.unref()
@@ -721,6 +723,8 @@ class ReaderViewModel(
                         chapterRead = chapter.read,
                     )
                 }
+                // Dōchō Sync: the page reaches other devices and Dōchō Server within seconds
+                docho.dochosync.DochoSyncWorker.syncSoon(context)
             }
         }
     }
