@@ -8,6 +8,7 @@ package suwayomi.tachidesk.docho.groups
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.UnmeteredSource
+import suwayomi.tachidesk.docho.library.Libraries
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -33,7 +34,7 @@ import java.io.InputStream
 object GroupSource : FileBackedSource, UnmeteredSource {
     override val id: Long = SeriesGroups.SOURCE_ID
     override val name: String = SeriesGroups.SOURCE_NAME
-    override val lang: String = "all"
+    override val lang: String = Libraries.SOURCE_LANG
     override val supportsLatest: Boolean = false
 
     override fun toString() = name

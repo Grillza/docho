@@ -640,7 +640,7 @@ object SeriesGroups {
                                 it[pkgName] = "docho.libraries"
                                 it[versionName] = "1.0"
                                 it[versionCode] = 0
-                                it[lang] = "all"
+                                it[lang] = Libraries.SOURCE_LANG
                                 it[extensionLib] = "1.5"
                                 it[contentWarning] = 0
                                 it[isInstalled] = true
@@ -648,7 +648,7 @@ object SeriesGroups {
                 SourceTable.insert {
                     it[id] = SOURCE_ID
                     it[name] = SOURCE_NAME
-                    it[lang] = "all"
+                    it[lang] = Libraries.SOURCE_LANG
                     it[SourceTable.extension] = extension
                 }
             }

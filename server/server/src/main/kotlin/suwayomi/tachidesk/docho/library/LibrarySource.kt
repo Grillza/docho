@@ -54,7 +54,7 @@ class LibrarySource(
 ) : FileBackedSource,
     UnmeteredSource {
     override val id: Long = Libraries.sourceId(libraryId)
-    override val lang: String = "all"
+    override val lang: String = Libraries.SOURCE_LANG
     override val supportsLatest: Boolean = true
 
     override fun toString() = name

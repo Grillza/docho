@@ -62,6 +62,9 @@ import javax.crypto.spec.PBEKeySpec
  */
 object DochoSync {
     const val VERSION = "1"
+
+    /** The account made for syncing through the server's own authentication. */
+    private const val SERVER_ACCOUNT = "docho-server"
     private val KINDS = setOf("manga", "category", "rename", "kind", "chapter", "history", SyncBridge.DETAILS)
     private const val MAX_BODY = 32 * 1024 * 1024
     private const val MAX_CHANGES = 50_000
@@ -248,8 +251,13 @@ object DochoSync {
         }
     }
 
+    /**
+     * The account a request syncs as. The apps send no token: the server's own authentication
+     * (none, or its login) has let them in, and they sync as the server's account. A token (apps
+     * before 0.33, which made accounts of their own) still picks its account.
+     */
     fun userFor(token: String?): Pair<Int, String> {
-        if (token.isNullOrEmpty()) throw ApiError(HttpStatus.UNAUTHORIZED, "Sign in first")
+        if (token.isNullOrEmpty()) return serverAccount()
         val hash = hashToken(token)
         return transaction {
             val row =
@@ -260,6 +268,31 @@ object DochoSync {
                     .firstOrNull() ?: throw ApiError(HttpStatus.UNAUTHORIZED, "Signed out, sign in again")
             DochoSyncTokenTable.update({ DochoSyncTokenTable.tokenHash eq hash }) { it[lastUsedAt] = now() }
             row[DochoSyncUserTable.id].value to row[DochoSyncUserTable.username]
+        }
+    }
+
+    /** The account the server's own reading follows (SyncBridge), made the first time it's needed. */
+    @Synchronized
+    fun serverAccount(): Pair<Int, String> {
+        SyncBridge.linkedUserId()?.let { id ->
+            val name = transaction { DochoSyncUserTable.selectAll().where { DochoSyncUserTable.id eq id }.first()[DochoSyncUserTable.username] }
+            return id to name
+        }
+        return transaction {
+            DochoSyncUserTable.selectAll().where { DochoSyncUserTable.username eq SERVER_ACCOUNT }.firstOrNull()?.let {
+                return@transaction it[DochoSyncUserTable.id].value to SERVER_ACCOUNT
+            }
+            // No password signs in to it: the server's authentication stands in for one.
+            val salt = ByteArray(16).also(random::nextBytes)
+            val id =
+                DochoSyncUserTable
+                    .insertAndGetId {
+                        it[username] = SERVER_ACCOUNT
+                        it[DochoSyncUserTable.salt] = hex(salt)
+                        it[passwordHash] = hashPassword(Base64.getEncoder().encodeToString(ByteArray(32).also(random::nextBytes)), salt)
+                        it[createdAt] = now()
+                    }.value
+            id to SERVER_ACCOUNT
         }
     }
 
