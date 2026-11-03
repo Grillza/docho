@@ -266,9 +266,7 @@ class SuwayomiApi(
                     url = node.string("url").orEmpty()
                     name = node.string("name").orEmpty()
                     chapter_number = node.string("chapterNumber")?.toFloatOrNull() ?: -1f
-                    // Blank rather than null: the chapter update keeps an old scanlator when given
-                    // null, so one the server no longer sends (Dōchō Server's release groups) would stay.
-                    scanlator = node.string("scanlator") ?: ""
+                    scanlator = node.string("scanlator")
                     date_upload = node.string("uploadDate")?.toLongOrNull()?.takeIf { it > 0 } ?: 0L
                     node.int("id")?.let { memo = buildJsonObject { put(MEMO_CHAPTER_ID, it) } }
                 }
