@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.3",
+          "buildVersion": "62",
+          "date": "2026-11-03T20:41:17Z",
+          "localizedDescription": "Version 0.32.3. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.3.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nFixed\n\n• Syncing with Dōchō Server after the standalone sync server. As on Android: the first sync with Dōchō Server starts over and merges, so nothing synced to the old server is skipped.\n• Update checks are for iOS only. The check looks for the newest release with an IPA, so an Android-only release can't hide a newer iOS one.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.3/docho-0.32.3.ipa",
+          "size": 88212806,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.2",
           "buildVersion": "61",
           "date": "2026-11-03T19:27:21Z",
