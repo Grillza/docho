@@ -24,7 +24,11 @@ struct ReaderView: View {
         .persistentSystemOverlays(model.overlayVisible ? .automatic : .hidden)
         .task { await model.prepare() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = model.settings.keepScreenOn }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            // Dōchō Sync: where you stopped, right away.
+            model.app.dochoSync.syncInBackground()
+        }
         .onChange(of: model.page) { _, page in sliderPage = Double(page) }
         .onKeyPress(.escape) {
             dismiss()

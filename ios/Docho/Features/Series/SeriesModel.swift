@@ -164,6 +164,7 @@ final class SeriesModel {
             }
         }
         await listVolumesFirstIfMixed(requests)
+        app.dochoSync.syncSoon(after: 3)
         // The Local source lists its files again, now under their new names.
         if isLocal { await refresh() }
         return result
@@ -230,6 +231,8 @@ final class SeriesModel {
 
     /// Opening a series refreshes it if it's never been fetched, else just syncs progress.
     func load() async {
+        // Dōchō Sync: progress from other devices before a chapter is picked.
+        app.dochoSync.syncInBackground()
         while series == nil {
             try? await Task.sleep(for: .milliseconds(50))
             if Task.isCancelled { return }
@@ -253,6 +256,7 @@ final class SeriesModel {
         guard let series else { return }
         do {
             try await app.database.setChaptersRead(ids, read: read)
+            app.dochoSync.syncSoon(after: 3)
             let changed = try await app.database.chapters(ids: ids)
             await app.sync.readStatusChanged(series, chapters: changed, read: read)
             if read, !app.preferences.incognitoMode, let highest = changed.map(\.number).max() {

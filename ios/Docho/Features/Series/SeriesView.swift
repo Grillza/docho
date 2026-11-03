@@ -14,6 +14,7 @@ struct SeriesView: View {
     @State private var selection = Set<Int>()
     @State private var showSettings = false
     @State private var choosingCategories = false
+    @State private var editingDetails = false
     @State private var showTracking = false
     @State private var trackCount = 0
     @State private var confirmingRemove = false
@@ -104,6 +105,9 @@ struct SeriesView: View {
             ChapterSettingsSheet(display: model.display, hasFileNames: model.chapters.contains { $0.chapterMemo.string(ChapterMemo.fileName) != nil }) {
                 await model.setDisplay($0)
             }
+        }
+        .fullScreenCover(isPresented: $editingDetails) {
+            if let series = model.series { EditDetailsSheet(series: series) }
         }
         .sheet(isPresented: $choosingCategories) {
             CategoryPicker(seriesIds: [seriesId], addsToLibrary: model.series?.inLibrary == false) {}
@@ -307,6 +311,9 @@ struct SeriesView: View {
                     Button(String(localized: "Refresh")) { Task { await model.refresh() } }
                     if model.series?.inLibrary == true {
                         Button(String(localized: "Edit categories")) { choosingCategories = true }
+                    }
+                    if model.series != nil {
+                        Button(String(localized: "Edit details")) { editingDetails = true }
                     }
                     if let url = model.series.flatMap({ model.source.webURL($0.manga) }) {
                         Button(String(localized: "Open in browser")) { openURL(url) }

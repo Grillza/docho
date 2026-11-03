@@ -20,6 +20,7 @@ final class LibraryUpdater {
     @ObservationIgnored private let downloads: DownloadManager
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let renames: ChapterRenames
+    @ObservationIgnored private let seriesEdits: SeriesEdits
     @ObservationIgnored private let log = Logger(subsystem: "io.github.grillza.docho", category: "library-update")
 
     static let taskIdentifier = "io.github.grillza.docho.library-update"
@@ -34,9 +35,10 @@ final class LibraryUpdater {
 
     init(
         database: AppDatabase, sources: SourceManager, sync: ProgressSync, downloads: DownloadManager, preferences: AppPreferences,
-        renames: ChapterRenames
+        renames: ChapterRenames, seriesEdits: SeriesEdits
     ) {
         self.renames = renames
+        self.seriesEdits = seriesEdits
         self.database = database
         self.sources = sources
         self.sync = sync
@@ -52,7 +54,9 @@ final class LibraryUpdater {
         let (manga, fetched) = try await source.update(series.manga, details: details || !series.initialized, chapters: true)
         // Chapters renamed in Dōchō keep the user's name, number and kind over the source's.
         let chapters = fetched.map { renames.apply(source: series.source, $0) }
-        let added = try await database.saveFromSource(seriesId: series.id, manga: manga, chapters: chapters)
+        // Details the user edited stay over the source's.
+        let edited = seriesEdits.apply(source: series.source, manga)
+        let added = try await database.saveFromSource(seriesId: series.id, manga: edited, chapters: chapters)
         if let stored = try await database.seriesRecord(id: series.id) {
             await sync.syncSeries(stored)
         }

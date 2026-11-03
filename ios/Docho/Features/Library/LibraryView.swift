@@ -239,6 +239,7 @@ struct LibraryView: View {
                 try? await app.database.setChaptersRead(changed.map(\.id), read: read)
                 await app.sync.readStatusChanged(series, chapters: changed, read: read)
             }
+            app.dochoSync.syncSoon(after: 3)
         }
     }
 

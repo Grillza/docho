@@ -142,6 +142,8 @@ final class ReaderModel {
             chapterId: chapter.id, lastPageRead: page, read: read, pages: pageCount, history: !app.preferences.incognitoMode
         )
         await app.sync.pageChanged(series, chapter: chapter, page: page, pageCount: pageCount, read: read)
+        // Dōchō Sync: the page reaches other devices and Dōchō Server within seconds.
+        app.dochoSync.syncSoon()
         if read, !wasRead { await chapterFinished() }
     }
 

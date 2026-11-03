@@ -8,6 +8,7 @@ final class DochoSyncLiveTests: XCTestCase {
     private struct Device {
         let database: AppDatabase
         let renames: ChapterRenames
+        let edits: SeriesEdits
         let sync: DochoSync
     }
 
@@ -20,12 +21,13 @@ final class DochoSyncLiveTests: XCTestCase {
         settings.password = "password123"
         let database = try AppDatabase.inMemory()
         let renames = ChapterRenames(defaults: defaults)
+        let edits = SeriesEdits(defaults: defaults)
         let client = DochoSyncClient(settings: settings, session: .shared)
         let sync = DochoSync(
-            settings: settings, client: client, database: database, renames: renames,
+            settings: settings, client: client, database: database, renames: renames, seriesEdits: edits,
             stateURL: FileManager.default.temporaryDirectory.appending(path: "\(suite).json")
         ) { _ in }
-        return Device(database: database, renames: renames, sync: sync)
+        return Device(database: database, renames: renames, edits: edits, sync: sync)
     }
 
     private func addSeries(_ device: Device, chapters: [String]) async throws -> SeriesRecord {
@@ -120,5 +122,41 @@ final class DochoSyncLiveTests: XCTestCase {
         XCTAssertEqual(edited?.summary, "Edited")
         XCTAssertEqual(edited?.genres, "Action, Sci-Fi")
         XCTAssertEqual(edited?.status, 2)
+    }
+
+    func testDetailsEditedOnOneDeviceReachTheOtherAndSurviveARefresh() async throws {
+        guard let url = ProcessInfo.processInfo.environment["DOCHO_SYNC_TEST_URL"] else { throw XCTSkip("No test server") }
+        let user = "user\(Int.random(in: 0..<1_000_000))"
+        let a = try device("a", url: url, user: user)
+        let b = try device("b", url: url, user: user)
+        _ = try await addSeries(a, chapters: [])
+        let seriesB = try await addSeries(b, chapters: [])
+        guard case .connected = await a.sync.client.signIn(register: true) else { return XCTFail("register") }
+        guard case .done = await a.sync.sync() else { return XCTFail("a first sync") }
+        guard case .done = await b.sync.sync() else { return XCTFail("b first sync") }
+
+        // A edits the title and genres only
+        a.edits.put(source: KavitaSource.id, url: "/series/7", .init(title: "Kaiju No. 8 (Mine)", genres: ["Action"]))
+        guard case .done = await a.sync.sync() else { return XCTFail("a second sync") }
+        guard case .done = await b.sync.sync() else { return XCTFail("b second sync") }
+        XCTAssertEqual(b.edits.get(source: KavitaSource.id, url: "/series/7")?.title, "Kaiju No. 8 (Mine)")
+        let edited = try await b.database.writer.read { db in try SeriesRecord.fetchOne(db, key: seriesB.id) }
+        XCTAssertEqual(edited?.name, "Kaiju No. 8 (Mine)")
+        XCTAssertEqual(edited?.genres, "Action")
+
+        // A refresh from the source keeps the edited fields and takes the others
+        let fromSource = b.edits.apply(
+            source: KavitaSource.id,
+            SManga(url: "/series/7", title: "Kaiju No. 8", author: "Naoya Matsumoto", genre: "Sci-Fi", initialized: true)
+        )
+        XCTAssertEqual(fromSource.title, "Kaiju No. 8 (Mine)")
+        XCTAssertEqual(fromSource.genre, "Action")
+        XCTAssertEqual(fromSource.author, "Naoya Matsumoto")
+
+        // A resets; B unlocks
+        a.edits.put(source: KavitaSource.id, url: "/series/7", nil)
+        _ = await a.sync.sync()
+        _ = await b.sync.sync()
+        XCTAssertNil(b.edits.get(source: KavitaSource.id, url: "/series/7"))
     }
 }

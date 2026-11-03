@@ -24,6 +24,8 @@ final class AppModel {
     let localSource: LocalSource
     /// Names, numbers and kinds the user gave chapters.
     let renames: ChapterRenames
+    /// Series details the user edited, kept over the source's.
+    let seriesEdits: SeriesEdits
     let kavitaSource: KavitaSource
     let komgaSource: KomgaSource
     let bookOrbitSource: BookOrbitSource
@@ -112,15 +114,17 @@ final class AppModel {
         sync = ProgressSync(engines: [kavitaSync, komgaSync, bookOrbitSync, koreaderSync])
         downloads = DownloadManager(database: database, sources: sources, store: downloadStore, fetcher: pageFetcher, defaults: SendableDefaults(downloadDefaults))
         renames = ChapterRenames(defaults: downloadDefaults)
+        seriesEdits = SeriesEdits(defaults: downloadDefaults)
         library = LibraryUpdater(
-            database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences, renames: renames
+            database: database, sources: sources, sync: sync, downloads: downloads, preferences: self.preferences, renames: renames,
+            seriesEdits: seriesEdits
         )
         trackers = TrackerManager(database: database, session: session, defaults: downloadDefaults)
         let dochoSyncSettings = DochoSyncSettings()
         self.dochoSyncSettings = dochoSyncSettings
         dochoSyncClient = DochoSyncClient(settings: dochoSyncSettings, session: session)
         dochoSync = DochoSync(
-            settings: dochoSyncSettings, client: dochoSyncClient, database: database, renames: renames
+            settings: dochoSyncSettings, client: dochoSyncClient, database: database, renames: renames, seriesEdits: seriesEdits
         ) { [library] series in
             _ = try? await library.refresh(series)
         }

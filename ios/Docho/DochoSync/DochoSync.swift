@@ -210,7 +210,7 @@ enum SyncValues {
     static let history = "history"
     static let rename = "rename"
     static let kind = "kind"
-    /// A series' details edited on Dōchō Server; only the server writes these.
+    /// A series' edited details (`SeriesEdits`): only the edited fields, blank ones as "".
     static let details = "details"
 
     static func key(_ source: Int64, _ url: String) -> String { "\(source)|\(url)" }
@@ -442,6 +442,7 @@ final class DochoSync {
     @ObservationIgnored let client: DochoSyncClient
     @ObservationIgnored private let database: AppDatabase
     @ObservationIgnored private let renames: ChapterRenames
+    @ObservationIgnored private let seriesEdits: SeriesEdits
     @ObservationIgnored private let refresh: @MainActor (SeriesRecord) async -> Void
     @ObservationIgnored private let stateURL: URL
     @ObservationIgnored private var running: Task<Status, Never>?
@@ -455,6 +456,7 @@ final class DochoSync {
 
     init(
         settings: DochoSyncSettings, client: DochoSyncClient, database: AppDatabase, renames: ChapterRenames,
+        seriesEdits: SeriesEdits? = nil,
         stateURL: URL = URL.applicationSupportDirectory.appending(path: "docho-sync-state.json"),
         refresh: @escaping @MainActor (SeriesRecord) async -> Void
     ) {
@@ -462,11 +464,33 @@ final class DochoSync {
         self.client = client
         self.database = database
         self.renames = renames
+        self.seriesEdits = seriesEdits ?? SeriesEdits(defaults: UserDefaults(suiteName: "docho-series-edits-\(UUID().uuidString)")!)
         self.stateURL = stateURL
         self.refresh = refresh
     }
 
     var isEnabled: Bool { settings.isConfigured }
+
+    @ObservationIgnored private var soon: Task<Void, Never>?
+
+    /// Syncs a few seconds after something changed here, such as the page being read, so other
+    /// devices and Dōchō Server see it while you read. Changes made before then go in the same
+    /// sync. Only while syncing is automatic.
+    func syncSoon(after seconds: Double = 15) {
+        guard settings.isConfigured, settings.automatic, soon == nil else { return }
+        soon = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            self?.soon = nil
+            await self?.sync()
+        }
+    }
+
+    /// Syncs now in the background, while syncing is automatic: when a series or the reader opens
+    /// or closes.
+    func syncInBackground() {
+        guard settings.isConfigured, settings.automatic else { return }
+        Task { await sync() }
+    }
 
     /// Syncs now; a sync already running is waited for instead of starting another.
     @discardableResult
@@ -613,6 +637,9 @@ final class DochoSync {
         for (key, kind) in renames.kinds {
             put(SyncValues.kind, key, SyncValues.kind(kind, mangaURL: mangaURLByChapter[key]))
         }
+        for (key, details) in seriesEdits.edits where !details.isEmpty {
+            put(SyncValues.details, key, details.json)
+        }
         return records
     }
 
@@ -709,18 +736,16 @@ final class DochoSync {
             }
             return true
         case SyncValues.details:
-            guard let (source, url) = SyncValues.parseKey(record.key), let value else { return true }
-            // Series not here yet get the edited details from the server when they're added.
+            guard let (source, url) = SyncValues.parseKey(record.key) else { return true }
+            // Kept even for series not here yet: they take the edits when they're added.
+            let details = value.map(SeriesEdits.Details.init(json:))
+            seriesEdits.put(source: source, url: url, details)
+            // Unlocked fields come back from the source on its next refresh.
+            guard let details else { return true }
             try await database.writer.write { db in
                 guard var series = try SeriesRecord
                     .filter(SeriesRecord.Columns.source == source && SeriesRecord.Columns.url == url).fetchOne(db) else { return }
-                if let title = value["title"]?.string, !title.isEmpty { series.name = title }
-                series.authors = value["author"]?.string
-                series.artists = value["artist"]?.string
-                series.summary = value["description"]?.string
-                let genres = value["genres"]?.strings ?? []
-                series.genres = genres.isEmpty ? nil : genres.joined(separator: ", ")
-                if let status = value["status"]?.int { series.status = Int(status) }
+                SeriesEdits.write(details, to: &series)
                 try series.update(db)
             }
             return true

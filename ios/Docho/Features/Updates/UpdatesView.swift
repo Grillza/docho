@@ -176,6 +176,7 @@ struct UpdatesView: View {
             for (seriesId, group) in Dictionary(grouping: items, by: \.series.id) {
                 let chapters = group.map(\.chapter)
                 try? await app.database.setChaptersRead(chapters.map(\.id), read: read)
+                app.dochoSync.syncSoon(after: 3)
                 if let series = group.first?.series {
                     await app.sync.readStatusChanged(series, chapters: chapters, read: read)
                 }
