@@ -48,7 +48,7 @@ export const LoginPage = () => {
                 navigate(redirect ?? AppRoutes.root.path);
             }
         } catch (e) {
-            makeToast(t`Could not log in to Suwayomi`, 'error', getErrorMessage(e));
+            makeToast(t`Could not log in to Dōchō Server`, 'error', getErrorMessage(e));
         }
     };
 

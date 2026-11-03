@@ -101,6 +101,73 @@ export type DochoGroupSuggestion = {
     series: DochoManga[];
 };
 
+export type DochoSeriesField =
+    | 'TITLE'
+    | 'LOCALIZED_NAME'
+    | 'SORT_NAME'
+    | 'SUMMARY'
+    | 'WRITERS'
+    | 'ARTISTS'
+    | 'GENRES'
+    | 'STATUS'
+    | 'PUBLISHER'
+    | 'RELEASE_YEAR'
+    | 'AGE_RATING'
+    | 'LANGUAGE';
+
+export type DochoSeriesDetails = {
+    mangaId: number;
+    editable: boolean;
+    libraryId: number | null;
+    title: string | null;
+    localizedName: string | null;
+    sortName: string | null;
+    summary: string | null;
+    writers: string[];
+    artists: string[];
+    genres: string[];
+    status: number | null;
+    publisher: string | null;
+    releaseYear: number | null;
+    ageRating: string | null;
+    language: string | null;
+    format: string | null;
+    pageCount: number | null;
+    editedFields: DochoSeriesField[];
+    collections: { id: number; name: string }[];
+    group: { id: number; name: string; mangaId: number } | null;
+};
+
+export type DochoSeriesEditInput = {
+    mangaId: number;
+    title?: string;
+    localizedName?: string;
+    sortName?: string;
+    summary?: string;
+    writers?: string[];
+    artists?: string[];
+    genres?: string[];
+    status?: number;
+    publisher?: string;
+    releaseYear?: number;
+    ageRating?: string;
+    language?: string;
+    reset?: DochoSeriesField[];
+};
+
+/** Library sources have ids 0x0D0C000000000000 + library id; the Series Groups source is the base itself. */
+const LIBRARY_SOURCE_BASE = BigInt('0x0D0C000000000000');
+
+export const isDochoLibrarySource = (sourceId: string | number | null | undefined): boolean => {
+    if (sourceId === null || sourceId === undefined) return false;
+    try {
+        const id = BigInt(sourceId);
+        return id > LIBRARY_SOURCE_BASE && id <= LIBRARY_SOURCE_BASE + BigInt(0x7fffffff);
+    } catch {
+        return false;
+    }
+};
+
 export type DochoCollection = {
     id: number;
     name: string;
@@ -364,27 +431,48 @@ export const DELETE_DOCHO_COLLECTION = gql`
     }
 `;
 
+const SERIES_DETAILS_FIELDS = `
+    mangaId
+    editable
+    libraryId
+    title
+    localizedName
+    sortName
+    summary
+    writers
+    artists
+    genres
+    status
+    publisher
+    releaseYear
+    ageRating
+    language
+    format
+    pageCount
+    editedFields
+    collections {
+        id
+        name
+    }
+    group {
+        id
+        name
+        mangaId
+    }
+`;
+
 export const GET_DOCHO_SERIES_INFO = gql`
     query DochoSeriesInfo($mangaId: Int!) {
         dochoSeriesInfo(mangaId: $mangaId) {
-            libraryId
-            sortName
-            localizedName
-            format
-            ageRating
-            releaseYear
-            language
-            publisher
-            pageCount
-            collections {
-                id
-                name
-            }
-            group {
-                id
-                name
-                mangaId
-            }
+            ${SERIES_DETAILS_FIELDS}
+        }
+    }
+`;
+
+export const EDIT_DOCHO_SERIES = gql`
+    mutation EditDochoSeries($input: DochoSeriesEditInput!) {
+        editDochoSeries(input: $input) {
+            ${SERIES_DETAILS_FIELDS}
         }
     }
 `;

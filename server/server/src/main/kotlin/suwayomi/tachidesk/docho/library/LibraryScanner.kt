@@ -332,7 +332,7 @@ class LibraryScanner(
                     .thenBy { it.metadata.number ?: it.parsed.chapter ?: -1f },
             ).first()
         val meta = files.map { it.metadata }.firstOrNull { !it.isEmpty() } ?: BookMetadata.EMPTY
-        val title = files.groupingBy { it.seriesName }.eachCount().maxBy { it.value }.key
+        val fileTitle = files.groupingBy { it.seriesName }.eachCount().maxBy { it.value }.key
         val url = "/library/${library.id}/$key"
         val seriesFolder = first.found.seriesFolder
 
@@ -343,7 +343,11 @@ class LibraryScanner(
                         .selectAll()
                         .where { (MangaTable.sourceReference eq library.sourceId) and (MangaTable.url eq url) }
                         .firstOrNull()
-                val description = meta.summary
+                // Fields edited on the server win over the files (SeriesMetadata.apply, below).
+                val overrides = existing?.let { SeriesMetadata.overridesOf(it[MangaTable.id].value) } ?: SeriesMetadata.Overrides.NONE
+                val title = overrides.string(SeriesMetadata.Field.TITLE)?.ifBlank { null } ?: fileTitle
+                val description =
+                    if (SeriesMetadata.Field.SUMMARY in overrides) overrides.string(SeriesMetadata.Field.SUMMARY)?.ifBlank { null } else meta.summary
                 val id =
                     if (existing == null) {
                         MangaTable
@@ -432,6 +436,7 @@ class LibraryScanner(
                 } else {
                     DochoSeriesInfoTable.update({ DochoSeriesInfoTable.manga eq id }) { fill(it) }
                 }
+                SeriesMetadata.apply(id, overrides)
                 id
             }
 

@@ -44,7 +44,7 @@ object SuwayomiSettingsGroup {
         val graph = remember { context.appGraph }
         return serverGroup(
             title = stringResource(MR.strings.pref_category_suwayomi),
-            logo = R.drawable.brand_suwayomi,
+            logo = R.drawable.brand_docho_server,
             items = getItems(),
             onDelete = {
                 graph.suwayomiPreferences.reset()

@@ -83,6 +83,12 @@ object DochoSeriesInfoTable : IntIdTable("docho_series_info") {
     val pageCount = integer("page_count").default(0)
     val addedAt = long("added_at").default(0)
     val updatedAt = long("updated_at").default(0)
+
+    /** Fields edited on the server, as a JSON object; scans keep them (Kavita's locked fields). */
+    val overrides = unlimitedVarchar("overrides").default("{}")
+
+    /** When [overrides] last changed, in milliseconds. */
+    val editedAt = long("edited_at").default(0)
 }
 
 /**

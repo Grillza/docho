@@ -364,6 +364,10 @@ msgstr "{ttl, plural, one {Delete log files that are older than # day} other {De
 msgid "*: Active setting"
 msgstr "*: Active setting"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "A code such as en or ja"
+msgstr "A code such as en or ja"
+
 #: src/features/manga/services/Mangas.ts
 msgid "A migration is already in progress"
 msgstr "A migration is already in progress"
@@ -483,6 +487,7 @@ msgstr "Advanced search mode"
 msgid "After changing this setting go to the \"About\" page and check for a webUI update and install it"
 msgstr "After changing this setting go to the \"About\" page and check for a webUI update and install it"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/extension/info/components/Meta.tsx
 msgid "Age rating"
 msgstr "Age rating"
@@ -536,6 +541,10 @@ msgstr "Are you sure?"
 #: src/features/manga/components/details/MangaDetails.tsx
 msgid "Artist"
 msgstr "Artist"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Artists"
+msgstr "Artists"
 
 #: src/features/migration/Migration.constants.ts
 #: src/features/settings/screens/ServerSettings.tsx
@@ -805,6 +814,7 @@ msgstr "Can't migrate an entry to itself"
 #: src/features/category/components/CategoriesInclusionSetting.tsx
 #: src/features/category/components/CategorySelect.tsx
 #: src/features/category/components/CreateOrEditCategoryDialog.tsx
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 #: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -836,6 +846,7 @@ msgstr "Cancel download"
 msgid "Cancel downloads of selected"
 msgstr "Cancel downloads of selected"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/manga/Manga.constants.ts
 #: src/features/tracker/Tracker.constants.ts
 msgid "Cancelled"
@@ -995,6 +1006,7 @@ msgstr "Client data"
 
 #: src/base/components/feedback/SnackbarWithDescription.tsx
 #: src/features/app-updates/components/VersionUpdateInfoDialog.tsx
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/migration/components/migration-entry/MigrationDestinationEntry.tsx
 msgid "Close"
 msgstr "Close"
@@ -1040,6 +1052,7 @@ msgstr "Compact grid"
 msgid "Compatible"
 msgstr "Compatible"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Completed"
 msgstr "Completed"
@@ -1229,8 +1242,8 @@ msgid "Could not log in to {trackerName}"
 msgstr "Could not log in to {trackerName}"
 
 #: src/features/authentication/screens/LoginPage.tsx
-msgid "Could not log in to Suwayomi"
-msgstr "Could not log in to Suwayomi"
+msgid "Could not log in to Dōchō Server"
+msgstr "Could not log in to Dōchō Server"
 
 #. placeholder {0}: tracker.name
 #: src/features/tracker/components/cards/SettingsTrackerCard.tsx
@@ -1306,6 +1319,10 @@ msgstr "Could not save the collection"
 #: src/features/library/screens/LibrarySettings.tsx
 msgid "Could not save the default search settings to the server"
 msgstr "Could not save the default search settings to the server"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Could not save the details"
+msgstr "Could not save the details"
 
 #: src/features/docho/screens/DochoSeriesGroups.tsx
 msgid "Could not save the group"
@@ -1586,6 +1603,10 @@ msgstr "Desktop"
 msgid "Destination — {0}"
 msgstr "Destination — {0}"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Details saved"
+msgstr "Details saved"
+
 #: src/features/device/screens/DeviceSetting.tsx
 #: src/features/settings/screens/Settings.tsx
 msgid "Device"
@@ -1766,6 +1787,11 @@ msgstr "Edit category"
 msgid "Edit collection"
 msgstr "Edit collection"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/manga/components/MangaToolbarMenu.tsx
+msgid "Edit details"
+msgstr "Edit details"
+
 #: src/features/docho/screens/DochoSeriesGroups.tsx
 msgid "Edit group"
 msgstr "Edit group"
@@ -1781,6 +1807,14 @@ msgstr "Edit notes"
 #: src/features/theme/components/CreateThemeDialog.tsx
 msgid "Edit theme"
 msgstr "Edit theme"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Edited fields are locked, so scans keep them. The apps get the changes when they next sync."
+msgstr "Edited fields are locked, so scans keep them. The apps get the changes when they next sync."
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Edited here, so scans keep it. Unlock to use what the files say."
+msgstr "Edited here, so scans keep it. Unlock to use what the files say."
 
 #: src/features/settings/Settings.constants.ts
 msgid "Electron"
@@ -2099,6 +2133,10 @@ msgstr "Forget manga categories"
 msgid "Fourth to last read chapter"
 msgstr "Fourth to last read chapter"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "From the files. Edit it to lock it."
+msgstr "From the files. Edit it to lock it."
+
 #: src/features/reader/settings/general/ReaderGeneralSettings.tsx
 msgid "Fullscreen"
 msgstr "Fullscreen"
@@ -2112,6 +2150,10 @@ msgstr "Fuzzy search"
 #: src/features/reader/settings/ReaderSettings.constants.tsx
 msgid "General"
 msgstr "General"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Genres"
+msgstr "Genres"
 
 #: src/features/settings/screens/About.tsx
 msgid "GitHub Server"
@@ -2449,6 +2491,7 @@ msgstr "KOReader Sync"
 msgid "L-Shape"
 msgstr "L-Shape"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/extension/info/components/Meta.tsx
 #: src/features/settings/screens/Appearance.tsx
 msgid "Language"
@@ -2509,6 +2552,10 @@ msgstr "Layout"
 msgid "Left"
 msgstr "Left"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Left as it is, it follows the title"
+msgstr "Left as it is, it follows the title"
+
 #: src/features/docho/screens/DochoSeriesGroups.tsx
 msgid "Left empty, the group lists its parts."
 msgstr "Left empty, the group lists its parts."
@@ -2551,6 +2598,7 @@ msgstr "Library entries"
 msgid "Library saved"
 msgstr "Library saved"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Licensed"
 msgstr "Licensed"
@@ -2601,6 +2649,10 @@ msgstr "Local source guide"
 #: src/features/browse/screens/BrowseSettings.tsx
 msgid "Local source location"
 msgstr "Local source location"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Localised name"
+msgstr "Localised name"
 
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Log file cleanup"
@@ -3087,6 +3139,10 @@ msgstr "Offset double spreads"
 msgid "Ok"
 msgstr "Ok"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "On hiatus"
+msgstr "On hiatus"
+
 #: src/features/docho/screens/DochoLibraries.tsx
 msgid "One glob pattern per line, relative to the library folder, such as **/Scans/** or *.tmp"
 msgstr "One glob pattern per line, relative to the library folder, such as **/Scans/** or *.tmp"
@@ -3095,6 +3151,7 @@ msgstr "One glob pattern per line, relative to the library folder, such as **/Sc
 msgid "Oneshot"
 msgstr "Oneshot"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Ongoing"
 msgstr "Ongoing"
@@ -3245,6 +3302,10 @@ msgstr "PostgreSQL"
 msgid "Preload images"
 msgstr "Preload images"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Press Enter after each one"
+msgstr "Press Enter after each one"
+
 #: src/features/reader/hotkeys/settings/components/RecordHotkey.tsx
 msgid "Press keys"
 msgstr "Press keys"
@@ -3292,6 +3353,11 @@ msgstr "Progress bar style"
 msgid "Prompt"
 msgstr "Prompt"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Publisher"
+msgstr "Publisher"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Publishing finished"
 msgstr "Publishing finished"
@@ -3376,6 +3442,10 @@ msgstr "Red"
 #: src/features/app-updates/components/WebUIUpdateChecker.tsx
 msgid "Refresh"
 msgstr "Refresh"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Release year"
+msgstr "Release year"
 
 #: src/features/tracker/Tracker.constants.ts
 msgid "Releasing"
@@ -3506,6 +3576,7 @@ msgstr "Right to left"
 msgid "Rosegold"
 msgstr "Rosegold"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 #: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -3535,6 +3606,10 @@ msgstr "Save search"
 #: src/features/theme/components/CreateThemeDialog.tsx
 msgid "Saved theme changes"
 msgstr "Saved theme changes"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Saved; unlocked fields come back from the files after a scan"
+msgstr "Saved; unlocked fields come back from the files after a scan"
 
 #: src/features/theme/components/CreateThemeDialog.tsx
 msgid "Saving theme changes…"
@@ -3942,6 +4017,10 @@ msgstr "Something went wrong\n"
 msgid "Sort"
 msgstr "Sort"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Sort name"
+msgstr "Sort name"
+
 #: src/features/browse/screens/Browse.tsx
 #: src/features/browse/screens/BrowseSettings.tsx
 #: src/features/library/components/LibraryOptionsPanel.tsx
@@ -4013,6 +4092,7 @@ msgstr "Started"
 msgid "Static navigation"
 msgstr "Static navigation"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/library/components/LibraryOptionsPanel.tsx
 #: src/features/manga/components/details/MangaDetails.tsx
 #: src/features/tracker/components/cards/TrackerActiveCard.tsx
@@ -4055,6 +4135,7 @@ msgstr "Successfully migrated manga"
 msgid "Suggested"
 msgstr "Suggested"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 msgid "Summary"
 msgstr "Summary"
@@ -4266,6 +4347,10 @@ msgstr "This will remove the tracking locally."
 msgid "Tiny"
 msgstr "Tiny"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Title"
+msgstr "Title"
+
 #: src/base/utils/DateHelper.ts
 msgid "Today"
 msgstr "Today"
@@ -4414,6 +4499,7 @@ msgstr "Uninstall"
 msgid "Uninstalling"
 msgstr "Uninstalling"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
 #: src/features/manga/components/details/MangaDetails.tsx
 #: src/features/manga/Manga.constants.ts
 #: src/features/migration/components/migration-entry/MigrationEntryMetadataText.tsx
@@ -4651,6 +4737,10 @@ msgstr "With \"Completed\" status"
 #: src/features/settings/Settings.constants.ts
 msgid "With unread chapter(s)"
 msgstr "With unread chapter(s)"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Writers"
+msgstr "Writers"
 
 #: src/base/utils/DateHelper.ts
 msgid "Yesterday"

@@ -786,6 +786,12 @@ object Extension {
             }
         }
 
+        // Dōchō: the library sources (and Series Groups) show the server's own icon.
+        if (pkgName == "docho.libraries") {
+            val icon = Extension::class.java.getResourceAsStream("/icon/faviconlogo-128.png") ?: error("Dōchō icon missing")
+            return icon to "image/png"
+        }
+
         val iconUrl =
             transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }[ExtensionTable.iconUrl]
 

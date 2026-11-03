@@ -348,6 +348,7 @@ fun applicationSetup() {
     try {
         SeriesGroups.start()
         Libraries.start()
+        suwayomi.tachidesk.docho.sync.SyncBridge.start()
     } catch (e: Exception) {
         logger.error(e) { "Failed to set up the Dōchō libraries" }
     }

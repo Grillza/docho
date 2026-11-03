@@ -53,7 +53,7 @@ export function NavBarContextProvider({ children }: IProps) {
 
     const updateTitle = useCallback(
         (newTitle: string | React.ReactNode, browserTitle: string = typeof newTitle === 'string' ? newTitle : '') => {
-            document.title = `${browserTitle} - Suwayomi`;
+            document.title = `${browserTitle} - Dōchō Server`;
             setTitle(newTitle);
         },
         [setTitle],

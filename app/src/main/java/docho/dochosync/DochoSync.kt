@@ -34,6 +34,7 @@ import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.model.HistoryUpdate
 import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.manga.model.MangaRemoteUpdate
 import tachiyomi.domain.manga.model.MangaUpdate
 import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.source.service.SourceManager
@@ -279,6 +280,7 @@ class DochoSync(
         val order = listOf(
             SyncValues.CATEGORY,
             SyncValues.MANGA,
+            SyncValues.DETAILS,
             SyncValues.RENAME,
             SyncValues.KIND,
             SyncValues.CHAPTER,
@@ -370,6 +372,29 @@ class DochoSync(
                 findChapter(record.key, value.string("manga"))?.let {
                     chapterRepository.rename(it.id, it.url, it.name, it.chapterNumber, it.withKind(kind).memo)
                 }
+                true
+            }
+            SyncValues.DETAILS -> {
+                val (sourceId, url) = SyncValues.parseKey(record.key) ?: return true
+                // Series not here yet get the edited details from the server when they're added.
+                val manga = mangaRepository.getMangaByUrlAndSourceId(url, sourceId) ?: return true
+                if (value == null) return true
+                mangaRepository.updateRemote(
+                    MangaRemoteUpdate(
+                        id = manga.id,
+                        title = value.string("title")?.takeIf { it.isNotBlank() },
+                        author = value.string("author"),
+                        artist = value.string("artist"),
+                        description = value.string("description"),
+                        genre = value.strings("genres"),
+                        status = value.long("status") ?: manga.status,
+                        thumbnailUrl = manga.thumbnailUrl,
+                        updateStrategy = manga.updateStrategy,
+                        memo = manga.memo,
+                        initialized = manga.initialized,
+                        coverLastModified = null,
+                    ),
+                )
                 true
             }
             else -> true

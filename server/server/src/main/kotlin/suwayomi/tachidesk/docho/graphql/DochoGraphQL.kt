@@ -28,6 +28,10 @@ import suwayomi.tachidesk.docho.library.Libraries
 import suwayomi.tachidesk.docho.library.LibraryInput
 import suwayomi.tachidesk.docho.library.LibrarySettings
 import suwayomi.tachidesk.docho.library.LibraryType
+import suwayomi.tachidesk.docho.library.SeriesMetadata
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -160,6 +164,29 @@ class DochoSeriesInfo(
 
     fun addedAt(): Long? = row?.get(DochoSeriesInfoTable.addedAt)
 
+    private val manga by lazy { transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.firstOrNull() } }
+
+    private fun names(value: String?): List<String> = value.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+    fun title(): String? = manga?.get(MangaTable.title)
+
+    fun summary(): String? = manga?.get(MangaTable.description)
+
+    fun writers(): List<String> = names(manga?.get(MangaTable.author))
+
+    fun artists(): List<String> = names(manga?.get(MangaTable.artist))
+
+    fun genres(): List<String> = names(manga?.get(MangaTable.genre))
+
+    /** Suwayomi's status number: 0 unknown, 1 ongoing, 2 completed, 3 licensed, 4 publishing finished, 5 cancelled, 6 on hiatus. */
+    fun status(): Int? = manga?.get(MangaTable.status)
+
+    /** Fields edited on the server, which scans leave alone. */
+    fun editedFields(): List<SeriesMetadata.Field> = SeriesMetadata.Overrides.parse(row?.get(DochoSeriesInfoTable.overrides)).values.keys.toList()
+
+    /** Library series can be edited; series from extensions can't. */
+    fun editable(): Boolean = row != null
+
     fun collections(): List<DochoCollection> = Collections.ofManga(mangaId).map(::DochoCollection)
 
     /** The group the series is in, or the group it stands for. */
@@ -250,7 +277,53 @@ class DochoQuery {
 
 // ---- Mutations ----
 
+/** Series details to change: only the fields given are set; [reset] ones go back to the files'. */
+data class DochoSeriesEditInput(
+    val mangaId: Int,
+    val title: String? = null,
+    val localizedName: String? = null,
+    val sortName: String? = null,
+    val summary: String? = null,
+    val writers: List<String>? = null,
+    val artists: List<String>? = null,
+    val genres: List<String>? = null,
+    val status: Int? = null,
+    val publisher: String? = null,
+    val releaseYear: Int? = null,
+    val ageRating: String? = null,
+    val language: String? = null,
+    val reset: List<SeriesMetadata.Field>? = null,
+)
+
 class DochoMutation {
+    @RequireAuth
+    fun editDochoSeries(input: DochoSeriesEditInput): DochoSeriesInfo {
+        val set = mutableMapOf<SeriesMetadata.Field, JsonElement>()
+        fun text(
+            field: SeriesMetadata.Field,
+            value: String?,
+        ) = value?.let { set[field] = JsonPrimitive(it) }
+        fun list(
+            field: SeriesMetadata.Field,
+            value: List<String>?,
+        ) = value?.let { set[field] = JsonArray(it.map(::JsonPrimitive)) }
+        text(SeriesMetadata.Field.TITLE, input.title)
+        text(SeriesMetadata.Field.LOCALIZED_NAME, input.localizedName)
+        text(SeriesMetadata.Field.SORT_NAME, input.sortName)
+        text(SeriesMetadata.Field.SUMMARY, input.summary)
+        list(SeriesMetadata.Field.WRITERS, input.writers)
+        list(SeriesMetadata.Field.ARTISTS, input.artists)
+        list(SeriesMetadata.Field.GENRES, input.genres)
+        input.status?.let { set[SeriesMetadata.Field.STATUS] = JsonPrimitive(it) }
+        text(SeriesMetadata.Field.PUBLISHER, input.publisher)
+        input.releaseYear?.let { set[SeriesMetadata.Field.RELEASE_YEAR] = JsonPrimitive(it) }
+        text(SeriesMetadata.Field.AGE_RATING, input.ageRating)
+        text(SeriesMetadata.Field.LANGUAGE, input.language)
+        val reset = input.reset.orEmpty().toSet()
+        SeriesMetadata.edit(input.mangaId, SeriesMetadata.Edit(set - reset, reset))
+        return DochoSeriesInfo(input.mangaId)
+    }
+
     @RequireAuth
     fun createDochoLibrary(input: LibraryInput): DochoLibrary = DochoLibrary(Libraries.create(input))
 

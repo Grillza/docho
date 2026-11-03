@@ -66,6 +66,19 @@ login. The first account can be made by anyone who reaches the server; set
 `DOCHO_SYNC_REGISTRATION=open` to allow more. Devices moving from the standalone server merge
 again on their first sync, so nothing needs copying over.
 
+**The server reads along.** One sync account is linked to the server: the first one made, or
+the one `DOCHO_SYNC_SERVER_ACCOUNT` names (`none` turns this off). What that account reads in the
+apps is marked on the server, and what you read in the WebUI goes to the apps: read chapters,
+bookmarks, the page you're on and history, newest change winning. Series added in the apps also
+join the server's library (and leave it when removed), for extension series the server knows.
+A device that has just added a series doesn't wipe progress made elsewhere: its blank chapters
+are answered with the progress that's already there.
+
+**Editing details** (a library series → the edit button). Title, localised and sort names,
+summary, writers, artists, genres, status, publisher, year, age rating and language. As in
+Kavita, an edited field is locked so scans keep it; unlock it to go back to what the files say.
+Edits reach the apps as Dōchō Sync "details" records, and when the apps next fetch the series.
+
 **In the app**: Settings → Sync / Self-hosted sources → *Dōchō Server / Suwayomi*. Its
 libraries and Series Groups appear under Browse → Sources with the server's extensions.
 
@@ -76,7 +89,7 @@ GraphQL at `/api/graphql`, Suwayomi's schema plus:
 - queries: `dochoLibraries`, `dochoLibrary`, `dochoFolders`, `dochoSeriesGroups`,
   `dochoSeriesGroup`, `dochoGroupSuggestions`, `dochoSuggestLabels`, `dochoCollections`,
   `dochoCollection`, `dochoSeriesInfo`, `dochoServerInfo`
-- mutations: `create/update/deleteDochoLibrary`, `scanDochoLibrary`, `scanAllDochoLibraries`,
+- mutations: `editDochoSeries`, `create/update/deleteDochoLibrary`, `scanDochoLibrary`, `scanAllDochoLibraries`,
   `create/update/deleteDochoSeriesGroup`, `setDochoSeriesGroupMembers`,
   `setDochoSeriesGroupLabel`, `autoLabelDochoSeriesGroup`, `create/update/deleteDochoCollection`,
   `setDochoCollectionSeries`, `addToDochoCollection`, `removeFromDochoCollection`

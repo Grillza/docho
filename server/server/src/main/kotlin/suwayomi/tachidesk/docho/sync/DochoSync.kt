@@ -62,7 +62,7 @@ import javax.crypto.spec.PBEKeySpec
  */
 object DochoSync {
     const val VERSION = "1"
-    private val KINDS = setOf("manga", "category", "rename", "kind", "chapter", "history")
+    private val KINDS = setOf("manga", "category", "rename", "kind", "chapter", "history", SyncBridge.DETAILS)
     private const val MAX_BODY = 32 * 1024 * 1024
     private const val MAX_CHANGES = 50_000
     private const val PAGE = 5_000
@@ -269,7 +269,7 @@ object DochoSync {
 
     // ---- Records ----
 
-    private data class Change(
+    data class Change(
         val kind: String,
         val key: String,
         val value: String?,
@@ -291,7 +291,7 @@ object DochoSync {
     }
 
     /** JSON with sorted keys, so equal values are stored alike. */
-    private fun canonical(element: JsonElement): String =
+    fun canonical(element: JsonElement): String =
         when (element) {
             is JsonObject -> element.entries.sortedBy { it.key }.joinToString(",", "{", "}") { (k, v) -> JsonPrimitive(k).toString() + ":" + canonical(v) }
             is JsonArray -> element.joinToString(",", "[", "]") { canonical(it) }
@@ -309,39 +309,13 @@ object DochoSync {
         if (changes.size > MAX_CHANGES) throw ApiError(HttpStatus.CONTENT_TOO_LARGE, "Too many changes at once")
         val parsed = changes.map(::parseChange)
         return transaction {
-            var seq =
-                DochoSyncCounterTable.selectAll().where { DochoSyncCounterTable.user eq userId }.firstOrNull()?.get(DochoSyncCounterTable.seq) ?: 0L
-            var accepted = 0
-            for (change in parsed) {
-                val current =
-                    DochoSyncRecordTable
-                        .selectAll()
-                        .where {
-                            (DochoSyncRecordTable.user eq userId) and (DochoSyncRecordTable.kind eq change.kind) and (DochoSyncRecordTable.key eq change.key)
-                        }.firstOrNull()
-                // Newest wins; on the same millisecond, the device id breaks the tie the same way
-                // every time, so devices can't keep overwriting each other.
-                if (current != null) {
-                    val currentAt = current[DochoSyncRecordTable.updatedAt]
-                    val currentDevice = current[DochoSyncRecordTable.device]
-                    if (currentAt > change.updatedAt || (currentAt == change.updatedAt && currentDevice >= device)) continue
-                }
-                seq++
-                accepted++
-                DochoSyncRecordTable.upsert {
-                    it[user] = userId
-                    it[kind] = change.kind
-                    it[key] = change.key
-                    it[value] = change.value
-                    it[updatedAt] = change.updatedAt
-                    it[DochoSyncRecordTable.device] = device
-                    it[DochoSyncRecordTable.seq] = seq
-                }
+            val stored = store(userId, parsed, device)
+            // The server's own read progress follows the linked account (SyncBridge).
+            if (SyncBridge.isLinked(userId)) {
+                val corrections = SyncBridge.fromDevices(stored)
+                if (corrections.isNotEmpty()) store(userId, corrections, SyncBridge.DEVICE)
             }
-            DochoSyncCounterTable.upsert {
-                it[user] = userId
-                it[DochoSyncCounterTable.seq] = seq
-            }
+            val seq = currentSeq(userId)
             val rows =
                 DochoSyncRecordTable
                     .selectAll()
@@ -352,7 +326,7 @@ object DochoSync {
             val more = rows.size > PAGE
             val page = rows.take(PAGE)
             buildJsonObject {
-                put("accepted", accepted)
+                put("accepted", stored.count { it.device == device })
                 put("seq", if (more) page.last()[DochoSyncRecordTable.seq] else maxOf(seq, since))
                 put("more", more)
                 put(
@@ -373,5 +347,121 @@ object DochoSync {
                 )
             }
         }
+    }
+
+    /** Records the server itself makes (SyncBridge), stored like a device's. */
+    @Synchronized
+    fun storeFromServer(
+        userId: Int,
+        changes: List<Change>,
+    ): List<Stored> = if (changes.isEmpty()) emptyList() else transaction { store(userId, changes, SyncBridge.DEVICE) }
+
+    /** A change that was stored, with the value it replaced. */
+    data class Stored(
+        val kind: String,
+        val key: String,
+        val value: String?,
+        val updatedAt: Long,
+        val device: String,
+        val previous: String?,
+    )
+
+    private fun currentSeq(userId: Int): Long =
+        DochoSyncCounterTable.selectAll().where { DochoSyncCounterTable.user eq userId }.firstOrNull()?.get(DochoSyncCounterTable.seq) ?: 0L
+
+    /**
+     * Stores [changes] from [device], newest write winning; call inside a transaction, holding
+     * this object's lock. Returns the changes that were stored.
+     *
+     * A device that has just added a series sends each of its chapters as unread. Where another
+     * device (or the server) has progress for those chapters, that progress is kept and sent back
+     * to the device instead, so adding a series somewhere new doesn't wipe where you were.
+     */
+    private fun store(
+        userId: Int,
+        changes: List<Change>,
+        device: String,
+    ): List<Stored> {
+        var seq = currentSeq(userId)
+        val stored = mutableListOf<Stored>()
+        val justAdded = justAddedSeries(userId, changes)
+        for (change in changes) {
+            val current =
+                DochoSyncRecordTable
+                    .selectAll()
+                    .where {
+                        (DochoSyncRecordTable.user eq userId) and (DochoSyncRecordTable.kind eq change.kind) and (DochoSyncRecordTable.key eq change.key)
+                    }.firstOrNull()
+            // Newest wins; on the same millisecond, the device id breaks the tie the same way
+            // every time, so devices can't keep overwriting each other.
+            if (current != null) {
+                val currentAt = current[DochoSyncRecordTable.updatedAt]
+                val currentDevice = current[DochoSyncRecordTable.device]
+                if (currentAt > change.updatedAt || (currentAt == change.updatedAt && currentDevice >= device)) continue
+                if (change.kind == "chapter" && current[DochoSyncRecordTable.device] != device &&
+                    seriesKeyOf(change) in justAdded && isUntouched(change.value) && !isUntouched(current[DochoSyncRecordTable.value])
+                ) {
+                    // Send the progress back rather than taking the new device's blank state.
+                    seq++
+                    DochoSyncRecordTable.update({
+                        (DochoSyncRecordTable.user eq userId) and (DochoSyncRecordTable.kind eq change.kind) and (DochoSyncRecordTable.key eq change.key)
+                    }) {
+                        it[DochoSyncRecordTable.seq] = seq
+                    }
+                    continue
+                }
+            }
+            seq++
+            DochoSyncRecordTable.upsert {
+                it[user] = userId
+                it[kind] = change.kind
+                it[key] = change.key
+                it[value] = change.value
+                it[updatedAt] = change.updatedAt
+                it[DochoSyncRecordTable.device] = device
+                it[DochoSyncRecordTable.seq] = seq
+            }
+            stored += Stored(change.kind, change.key, change.value, change.updatedAt, device, current?.get(DochoSyncRecordTable.value))
+        }
+        DochoSyncCounterTable.upsert {
+            it[user] = userId
+            it[DochoSyncCounterTable.seq] = seq
+        }
+        return stored
+    }
+
+    /** "source|url" of the series in [changes] that the device has newly added to its library. */
+    private fun justAddedSeries(
+        userId: Int,
+        changes: List<Change>,
+    ): Set<String> =
+        changes
+            .filter { it.kind == "manga" && it.value != null }
+            .filter { change ->
+                val previous =
+                    DochoSyncRecordTable
+                        .selectAll()
+                        .where { (DochoSyncRecordTable.user eq userId) and (DochoSyncRecordTable.kind eq "manga") and (DochoSyncRecordTable.key eq change.key) }
+                        .firstOrNull()
+                        ?.get(DochoSyncRecordTable.value)
+                previous == null || addedAt(previous) != addedAt(change.value)
+            }.map { it.key }
+            .toSet()
+
+    private fun parseObject(value: String?): JsonObject? = value?.let { runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+
+    private fun addedAt(value: String?): Long? = (parseObject(value)?.get("addedAt") as? JsonPrimitive)?.longOrNull
+
+    private fun seriesKeyOf(change: Change): String? {
+        val manga = (parseObject(change.value)?.get("manga") as? JsonPrimitive)?.contentOrNull ?: return null
+        return change.key.substringBefore('|') + "|" + manga
+    }
+
+    /** A chapter record with nothing in it: unread, not bookmarked, no page. Deleted counts too. */
+    fun isUntouched(value: String?): Boolean {
+        val obj = parseObject(value) ?: return true
+        fun flag(name: String) = (obj[name] as? JsonPrimitive)?.booleanOrNull == true
+        val page = (obj["page"] as? JsonPrimitive)?.longOrNull ?: 0
+        return !flag("read") && !flag("bookmark") && page == 0L
     }
 }

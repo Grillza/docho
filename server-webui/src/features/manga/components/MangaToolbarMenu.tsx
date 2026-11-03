@@ -37,6 +37,9 @@ import type {
 import ShareIcon from '@mui/icons-material/Share';
 import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
 import { ShareGuard } from '@/base/components/guard/ShareGuard.tsx';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import { isDochoLibrarySource } from '@/features/docho/DochoApi.ts';
+import { DochoEditSeriesDialog } from '@/features/docho/components/DochoEditSeriesDialog.tsx';
 
 interface IProps {
     manga: MangaIdInfo & MangaInLibraryInfo & MangaSourceIdInfo & MangaTitleInfo & MangaUrlInfo;
@@ -52,6 +55,9 @@ export const MangaToolbarMenu = ({ manga, onRefresh, refreshing }: IProps) => {
     const { settings } = useMetadataServerSettings();
 
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+    // Dōchō Server: library series' details can be edited, as in Kavita.
+    const [editing, setEditing] = React.useState(false);
+    const canEdit = isDochoLibrarySource(manga.sourceId);
     const open = Boolean(anchorEl);
     const handleClose = () => {
         setAnchorEl(null);
@@ -70,8 +76,16 @@ export const MangaToolbarMenu = ({ manga, onRefresh, refreshing }: IProps) => {
 
     return (
         <>
+            {editing && <DochoEditSeriesDialog mangaId={manga.id} onClose={() => setEditing(false)} />}
             {isLargeScreen && (
                 <>
+                    {canEdit && (
+                        <CustomTooltip title={t`Edit details`}>
+                            <IconButton onClick={() => setEditing(true)} color="inherit">
+                                <EditNoteIcon />
+                            </IconButton>
+                        </CustomTooltip>
+                    )}
                     <CustomTooltip title={t`Reload data from source`} disabled={refreshing}>
                         <IconButton
                             onClick={() => {
@@ -177,6 +191,19 @@ export const MangaToolbarMenu = ({ manga, onRefresh, refreshing }: IProps) => {
                             </ListItemIcon>
                             <ListItemText>{t`Reload data from source`}</ListItemText>
                         </MenuItem>
+                        {canEdit && (
+                            <MenuItem
+                                onClick={() => {
+                                    setEditing(true);
+                                    handleClose();
+                                }}
+                            >
+                                <ListItemIcon>
+                                    <EditNoteIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText>{t`Edit details`}</ListItemText>
+                            </MenuItem>
+                        )}
                         {settings.mangaDynamicColorSchemes && (
                             <MenuItem onClick={saveDynamicColorTheme}>
                                 <ListItemIcon>
