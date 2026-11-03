@@ -9,7 +9,10 @@ RUN npm install -g pnpm@11.1.2
 COPY server-webui/package.json server-webui/pnpm-lock.yaml server-webui/pnpm-workspace.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY server-webui/ ./
-RUN pnpm build
+# The server reads the WebUI's version from build/revision (Suwayomi's release zips include it);
+# without it the WebUI's first query fails and it never leaves the splash screen.
+# r + the upstream WebUI release this is based on (v20260929.01).
+RUN pnpm build && echo r20260929 > build/revision
 
 # ---- Server ----
 FROM eclipse-temurin:21-jdk AS server
