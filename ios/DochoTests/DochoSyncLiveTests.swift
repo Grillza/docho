@@ -183,4 +183,27 @@ final class DochoSyncLiveTests: XCTestCase {
         let chaptersB = try await b.database.chapterList(seriesId: seriesB.id)
         XCTAssertEqual(chaptersB.first?.read, true)
     }
+
+    func testStateFromTheOldSyncServerStartsOver() async throws {
+        guard let url = ProcessInfo.processInfo.environment["DOCHO_SYNC_TEST_URL"] else { throw XCTSkip("No test server") }
+        let a = try device("a", url: url)
+        let b = try device("b", url: url)
+        let seriesA = try await addSeries(a, chapters: [c1])
+        let chaptersA = try await a.database.chapterList(seriesId: seriesA.id)
+        try await a.database.saveProgress(chapterId: try XCTUnwrap(chaptersA.first).id, lastPageRead: 239, read: false)
+        // A synced with the standalone sync server before: far ahead in its numbering, and
+        // remembering the page as sent.
+        a.sync.settings.since = 1_000_000
+        a.sync.settings.epoch = 0
+        guard case .done = await a.sync.sync() else { return XCTFail("a sync") }
+        XCTAssertEqual(a.sync.settings.epoch, DochoSyncSettings.serverEpoch)
+
+        guard case .done = await b.sync.sync() else { return XCTFail("b sync") }
+        let libraryB = try await b.database.librarySeriesRecords()
+        let seriesB = try XCTUnwrap(libraryB.first { $0.url == seriesURL })
+        _ = try await b.database.saveFromSource(seriesId: seriesB.id, manga: nil, chapters: [SChapter(url: c1, name: c1)])
+        guard case .done = await b.sync.sync() else { return XCTFail("b second sync") }
+        let chaptersB = try await b.database.chapterList(seriesId: seriesB.id)
+        XCTAssertEqual(chaptersB.first?.lastPageRead, 239)
+    }
 }

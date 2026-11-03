@@ -74,4 +74,20 @@ final class AppUpdateCheckerTests: XCTestCase {
         XCTAssertTrue(offered("0.28.1", "0.29.0", skipPatches: true))
         XCTAssertTrue(offered("0.28.1", "1.0.0", skipPatches: true))
     }
+
+    func testTheNewestReleaseWithAnIPAIsTheUpdate() throws {
+        func release(_ tag: String, _ assets: [String]) -> [String: Any] {
+            ["tag_name": tag, "body": body, "html_url": "https://github.com/Grillza/docho/releases/tag/\(tag)",
+             "assets": assets.map { ["name": $0, "browser_download_url": "https://example.test/\($0)"] }]
+        }
+        // Newest first: an Android-only release, then one with both apps.
+        let list = try JSONSerialization.data(withJSONObject: [
+            release("v0.33.0", ["docho-0.33.0-arm64-v8a.apk"]),
+            release("v0.32.2", ["docho-0.32.2.ipa"]),
+            release("v0.32.1", ["docho-0.32.1-arm64-v8a.apk", "docho-0.32.1.ipa"]),
+        ])
+        let found = try XCTUnwrap(AppUpdateChecker.parseList(list))
+        XCTAssertEqual(found.version, "0.32.2")
+        XCTAssertNil(try AppUpdateChecker.parseList(JSONSerialization.data(withJSONObject: [release("v0.33.0", ["docho-0.33.0-x86.apk"])])))
+    }
 }

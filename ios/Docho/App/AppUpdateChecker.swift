@@ -39,10 +39,11 @@ struct AppRelease: Equatable, Identifiable, Sendable {
 
 /// Checks GitHub for a newer release, as Android's AppUpdateChecker does.
 ///
-/// One release carries both apps, and the iOS version can be a patch ahead of or behind Android's,
-/// so the version comes from the IPA (`docho-0.28.0.ipa`), not the tag.
+/// A release can carry both apps or only one, and the iOS version can be a patch ahead of or
+/// behind Android's, so the update is the newest release with an IPA, and its version comes from
+/// the IPA (`docho-0.28.0.ipa`), not the tag.
 struct AppUpdateChecker: Sendable {
-    static let latestURL = URL(string: "https://api.github.com/repos/Grillza/docho/releases/latest")!
+    static let releasesURL = URL(string: "https://api.github.com/repos/Grillza/docho/releases?per_page=20")!
 
     var session: URLSession = .shared
 
@@ -56,13 +57,13 @@ struct AppUpdateChecker: Sendable {
     ///   - skipped: A version the user chose to skip; it isn't offered again.
     ///   - skipPatchUpdates: Leave out releases that only change the patch number (0.27.1 to 0.27.2).
     func check(current: String, skipped: String? = nil, skipPatchUpdates: Bool = false) async throws -> Result {
-        var request = URLRequest(url: Self.latestURL)
+        var request = URLRequest(url: Self.releasesURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw URLError(.badServerResponse)
         }
-        guard let release = try Self.parse(data) else { return .noNewUpdate }
+        guard let release = try Self.parseList(data) else { return .noNewUpdate }
         return Self.evaluate(release, current: current, skipped: skipped, skipPatchUpdates: skipPatchUpdates)
     }
 
@@ -87,9 +88,17 @@ struct AppUpdateChecker: Sendable {
         let assets: [Asset]
     }
 
+    /// The newest release with an IPA in GitHub's list (newest first), skipping Android-only ones.
+    static func parseList(_ data: Data) throws -> AppRelease? {
+        try JSONDecoder().decode([GitHubRelease].self, from: data).lazy.compactMap(release).first
+    }
+
     /// The iOS release in GitHub's JSON, or nil if it has no IPA.
     static func parse(_ data: Data) throws -> AppRelease? {
-        let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
+        release(try JSONDecoder().decode(GitHubRelease.self, from: data))
+    }
+
+    private static func release(_ release: GitHubRelease) -> AppRelease? {
         guard let asset = release.assets.first(where: { ipaVersion(of: $0.name) != nil }),
               let version = ipaVersion(of: asset.name) else { return nil }
         return AppRelease(

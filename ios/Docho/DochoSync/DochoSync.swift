@@ -63,6 +63,17 @@ final class DochoSyncSettings: Sendable {
 
     var isConfigured: Bool { enabled && server.isConfigured }
 
+    /// Which server the sync state belongs to: before `serverEpoch` it was the standalone sync
+    /// server's, whose change numbers mean nothing to Dōchō Server. A device that synced with that
+    /// one starts over with a first sync (which merges) the first time it syncs with Dōchō Server.
+    var epoch: Int {
+        get { Int(store.string("epoch")) ?? 0 }
+        set { store.setString("epoch", String(newValue)) }
+    }
+
+    /// The sync state is Dōchō Server's (0.32.3).
+    static let serverEpoch = 2
+
     /// Before 0.32.1 Dōchō Sync had its own server address and account. The address moves to
     /// Dōchō Server's settings if those are empty; the account isn't needed any more.
     func migrate() {
@@ -502,6 +513,11 @@ final class DochoSync {
         status = .syncing
         let result: Status
         do {
+            // State from the standalone sync server: start over here with a first sync.
+            if settings.epoch < DochoSyncSettings.serverEpoch {
+                resetState()
+                settings.epoch = DochoSyncSettings.serverEpoch
+            }
             result = try await run()
             settings.lastSyncAt = Date().timeIntervalSince1970
             settings.lastError = ""
