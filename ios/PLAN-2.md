@@ -650,7 +650,7 @@ source is left out (Dōchō has its own). `SuwayomiLiveTests` runs against a rea
 Worked in parts so each can be picked up where it stopped; each part ends in a commit on `ios`.
 Tick them off here as they land.
 
-- [ ] **G1. Runtime build.** `scripts/build-runtime.sh macos simulator device package`, started
+- [x] **G1. Runtime build.** `scripts/build-runtime.sh macos simulator device package`, started
   detached (`nohup … > build/runtime-logs/all.log`). The 30 Oct build had been configured under
   the old `~/claude/mihonka` path, so its macOS config was deleted and rebuilt. Check progress with
   `tail build/runtime-logs/all.log`; a failed step's log is `build/runtime-logs/<step>.log`. Re-run
@@ -658,19 +658,37 @@ Tick them off here as they land.
 - [x] **G2. Protocol types.** `Docho/Extensions/ExtensionProtocol.swift`: Codable types for the
   host's JSON-RPC (`extension-host/host-core/.../rpc/Protocol.kt`), checked against every file in
   `Vendor/docho-runtime/contract/fixtures` by `ExtensionContractTests`.
-- [ ] **G3. Host client.** `ExtensionTransport` (call + events) with an HTTP/SSE transport for the
+- [x] **G3. Host client.** `ExtensionTransport` (call + events) with an HTTP/SSE transport for the
   runtime's desktop dev host (`./gradlew :host-desktop:run`, 127.0.0.1:4568), and the
   `ExtensionHost` actor: typed calls, `net.fetch` answered through URLSession, cookies. Lets the
   Swift side be built and tested before the JVM is linked.
-- [ ] **G4. Extensions in the app.** `ExtensionSource` (a `MangaSource`), extension repos and the
+- [~] **G4. Extensions in the app.** `ExtensionSource` (a `MangaSource`), extension repos and the
   extension list (install, update, uninstall, trust) beside Suwayomi's, sources in Browse with
   filters and settings; Settings → Browse → Extensions switch, off by default (App Store route).
-- [ ] **G5. Embedded transport.** The C shim (JNI: start, call, fetchResult; complete, emit,
+- [~] **G5. Embedded transport.** The C shim (JNI: start, call, fetchResult; complete, emit,
   fetch, fetchCancel registered as natives), linking OpenJ9 from G1, bundling `Embedded/`, and
   `jvm-ios/smoke-openj9-ios.sh` in the simulator. Then the trial measurements (milestone 16):
   JVM cold start, first page, peak memory, .ipa size, SideStore signing.
-- [ ] **G6. Cloudflare and WebViews.** `challenge.required` solved in a WKWebView, extension
+- [~] **G6. Cloudflare and WebViews.** `challenge.required` solved in a WKWebView, extension
   WebView commands, QuickJS on JavaScriptCore.
 
 Memory: this Mac has 8 GB. While G1 runs (JOBS=4), keep other builds small (one Gradle worker,
 `-Xmx1g`) and check `memory_pressure` before starting an Xcode test run.
+
+**Where it stands (2026-11-03, end of the night):**
+
+- G1 done: `ios/Embedded` (built for iOS 18, class library uncompressed; see build-runtime.sh).
+- G3 done, tested with a scripted transport (`ExtensionHostTests`). The live test against the
+  desktop host (`ExtensionHostLiveTests`) installs a real extension, which needs the user's go-ahead
+  to run: it wasn't run.
+- G4 screens done (Browse → Extensions "On this device", Settings → Browse switch, off by default);
+  seen in the simulator with no repos. **Not yet seen with a real extension installed**, nor a
+  series read from one (filters and source settings screens still to do).
+- G5: the JVM and host start in the app (simulator: 1.1 s start, 0.1 s first answer, +46 MB);
+  the device .ipa links and is 88 MB (183 MB installed). Not yet run on the iPad. The JS
+  (JavaScriptCore) and graphics (CoreGraphics) natives aren't in the shim yet, so extensions that
+  decode or descramble images, or need QuickJS, fall back or fail.
+- G6: Cloudflare solved headlessly in a WKWebView; extension WebViews not supported.
+- Next: with the user, install one simple extension in the simulator (`ExtensionHostLiveTests`, or
+  through the app), browse, open a series, read a chapter, download it; then the iPad; then decide
+  on the release.
