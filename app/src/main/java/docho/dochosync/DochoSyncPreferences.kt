@@ -32,6 +32,13 @@ class DochoSyncPreferences(
 
     val lastError: Preference<String> = preferenceStore.getString(Preference.appStateKey("docho_sync_last_error"), "")
 
+    /**
+     * Which server the sync state belongs to: before [SERVER_EPOCH] it was the standalone sync
+     * server's, whose change numbers mean nothing to Dōchō Server. A device that synced with that
+     * one starts over with a first sync (which merges) the first time it syncs with Dōchō Server.
+     */
+    val epoch: Preference<Int> = preferenceStore.getInt(Preference.appStateKey("docho_sync_epoch"), 0)
+
     private val deviceId: Preference<String> = preferenceStore.getString(
         Preference.appStateKey("docho_sync_device_id"),
         "",
@@ -52,6 +59,11 @@ class DochoSyncPreferences(
 
     fun deviceId(): String = deviceId.get().ifBlank {
         UUID.randomUUID().toString().also { deviceId.set(it) }
+    }
+
+    companion object {
+        /** The sync state is Dōchō Server's (0.32.3); see [epoch]. */
+        const val SERVER_EPOCH = 2
     }
 
     /** Forgets where syncing is up to, so the next sync is a first sync, which merges. */
