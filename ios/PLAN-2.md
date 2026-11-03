@@ -692,3 +692,32 @@ Memory: this Mac has 8 GB. While G1 runs (JOBS=4), keep other builds small (one 
 - Next: with the user, install one simple extension in the simulator (`ExtensionHostLiveTests`, or
   through the app), browse, open a series, read a chapter, download it; then the iPad; then decide
   on the release.
+
+## Extensions on iOS: potential fixes (not planned; do when users report problems)
+
+The embedded runtime works (G1–G5, released in 0.32.0–0.32.3). Three bridges Android gives
+extensions aren't in the app's shim (`Docho/Native/DochoJVM/docho_jvm.c`). The host reports what
+it falls back to in `host.hello` → `engines` (today: `js: rhino`, `graphics: awt`,
+`webview: unsupported`). The user doesn't use extensions themselves (2026-11-04): fix these when
+someone reports an extension failing or slow, starting with the bridge that extension needs.
+
+| Bridge | Symptoms if missing | What to build | Size |
+|---|---|---|---|
+| **JavaScript** (QuickJS API on JavaScriptCore) | Extensions that run a site's JS to get image URLs or decode data are slow (Rhino on an interpreted JVM, seconds per page) or time out | Register the natives of `extension-host/android-compat/.../platform/NativeJs.java` (`version`, `create`, `release`, `evaluate`, `compile`, `bind`, `liveContexts`, `stackSizes`) on JSContext, run scripts on a worker thread with a big stack, and call back into Java for bound methods | ~1 day |
+| **Graphics** (Android Bitmap/Canvas on CoreGraphics, ImageIO, CoreText) | Extensions that unscramble or stitch tiled pages fail or are very slow (AWT fallback, untested on iOS) | Register the natives of `NativeGraphics.java` (~17: `create`, `free`, `probe`, `decode`, `getPixels`/`setPixels`, `readRaw`/`writeRaw`, `encode`, `drawBitmap`, `drawPath`, `drawColor`, `drawText`, `measureText`, `fontMetrics`, `textBounds`); array layouts are in `PaintSpec`, `FontSpec`, `CanvasState` | ~2–3 days |
+| **WebViews** (`android.webkit.WebView` on WKWebView) | The few extensions that drive a hidden browser fail | Handle `webview.command` events (`load`, `loadData`, `reload`, `evaluate`, `touch`, `stop`, `goBack`, `goForward`, `destroy`) with a WKWebView each, and send `webview.event` / `intercept` / `overrideUrl` / `jsCall` back; then set `webView: true` in `host.init`. Contract fixtures `webview_*` (skipped in `ExtensionContractTests`) describe every message | ~1–2 days |
+
+**How to find which one an extension needs:** reproduce in the simulator with the extension
+installed (it needs the user's go-ahead: installing runs third-party code), and check the host's
+errors. JS failures mention QuickJs/Rhino or time out on `source.pages`; graphics ones mention
+`Bitmap`, `Canvas` or `NativeGraphicsBackend`; WebView ones `WebView` or `webview.command`.
+`ExtensionHostLiveTests` takes `DOCHO_EXTENSION_REPO` and `DOCHO_EXTENSION_PKG` for a repeatable
+test. Oneechan's app has working shims for all three (`OneechanJVM/oneechan_js.c`,
+`oneechan_graphics.c`), but check its licence before reusing any of it.
+
+Also worth knowing:
+- **Size:** the IPA is ~88 MB (183 MB installed), mostly the uncompressed class library
+  (`Embedded/jre/lib/modules`, 91 MB). Compressing it (`--compress zip-6`) crashes the static VM
+  on start (no inflate in jimage's decompressor); fixing that in the runtime would save ~50 MB.
+- **Not yet seen on a device by the developer:** the user runs it on their iPad; start-up there
+  hasn't been measured (simulator: 1.1 s, +46 MB).
