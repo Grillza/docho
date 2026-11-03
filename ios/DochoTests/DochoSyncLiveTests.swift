@@ -88,4 +88,37 @@ final class DochoSyncLiveTests: XCTestCase {
         let libraryA = try await a.database.librarySeriesRecords()
         XCTAssertTrue(libraryA.isEmpty)
     }
+
+    func testDetailsEditedOnTheServerReachTheSeries() async throws {
+        guard let url = ProcessInfo.processInfo.environment["DOCHO_SYNC_TEST_URL"] else { throw XCTSkip("No test server") }
+        let user = "user\(Int.random(in: 0..<1_000_000))"
+        let a = try device("a", url: url, user: user)
+        let series = try await addSeries(a, chapters: ["/c/1"])
+        guard case .connected = await a.sync.client.signIn(register: true) else { return XCTFail("register") }
+        guard case .done = await a.sync.sync() else { return XCTFail("first sync") }
+
+        // Dōchō Server sends a "details" record after its WebUI edits the series
+        let server = try device("server", url: url, user: user)
+        guard case .connected = await server.sync.client.signIn() else { return XCTFail("server sign-in") }
+        let details = SyncJSON.object([
+            "title": .string("Kaiju No. 8 (Edited)"), "author": .string("Naoya Matsumoto"), "description": .string("Edited"),
+            "genres": .array([.string("Action"), .string("Sci-Fi")]), "status": .int(2),
+        ])
+        do {
+            _ = try await server.sync.client.sync(since: 0, changes: [SyncRecord(
+                kind: SyncValues.details, key: SyncValues.key(KavitaSource.id, "/series/7"), value: details,
+                updatedAt: Int64(Date().timeIntervalSince1970 * 1000), device: nil
+            )])
+        } catch let error as DochoSyncError where error.message.hasPrefix("Unknown kind") {
+            throw XCTSkip("Only Dōchō Server takes details records")
+        }
+
+        guard case .done = await a.sync.sync() else { return XCTFail("second sync") }
+        let edited = try await a.database.writer.read { db in try SeriesRecord.fetchOne(db, key: series.id) }
+        XCTAssertEqual(edited?.name, "Kaiju No. 8 (Edited)")
+        XCTAssertEqual(edited?.authors, "Naoya Matsumoto")
+        XCTAssertEqual(edited?.summary, "Edited")
+        XCTAssertEqual(edited?.genres, "Action, Sci-Fi")
+        XCTAssertEqual(edited?.status, 2)
+    }
 }

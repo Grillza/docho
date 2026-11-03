@@ -533,7 +533,7 @@ private struct DochoSyncSection: View {
             VStack(spacing: 16) {
                 M3TextField(
                     label: String(localized: "Server address"), text: $server, keyboard: .URL,
-                    supporting: String(localized: "e.g. http://arch.lan:8090")
+                    supporting: String(localized: "Your Dōchō Server, e.g. http://arch.lan:4567 (or a standalone sync server)")
                 )
                 M3TextField(label: String(localized: "Username"), text: $username)
                 M3TextField(label: String(localized: "Password"), text: $password, secure: true, supporting: String(localized: "Your Dōchō Sync account"))

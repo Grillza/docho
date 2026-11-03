@@ -210,6 +210,8 @@ enum SyncValues {
     static let history = "history"
     static let rename = "rename"
     static let kind = "kind"
+    /// A series' details edited on Dōchō Server; only the server writes these.
+    static let details = "details"
 
     static func key(_ source: Int64, _ url: String) -> String { "\(source)|\(url)" }
     static func id(_ kind: String, _ key: String) -> String { "\(kind)\t\(key)" }
@@ -296,7 +298,8 @@ struct SyncPage: Sendable {
     var changes: [SyncRecord]
 }
 
-/// Talks to the Dōchō Sync server.
+/// Talks to Dōchō Sync: built into Dōchō Server (`server/`, at /api/docho/sync/v1), or the
+/// standalone sync server (`sync-server/`, at /api/v1). Which one is found on first contact.
 @MainActor
 final class DochoSyncClient {
     private let settings: DochoSyncSettings
@@ -336,7 +339,7 @@ final class DochoSyncClient {
         guard !settings.token.isEmpty else { return await signIn() }
         connection = .checking
         do {
-            let me = try await send(request("me"))
+            let me = try await send(await request("me"))
             connection = .connected(me["username"] as? String ?? settings.username)
         } catch let error as DochoSyncError where error.signedOut {
             return await signIn()
@@ -370,15 +373,37 @@ final class DochoSyncClient {
     }
 
     private func post(_ path: String, _ body: [String: Any], authorized: Bool) async throws -> [String: Any] {
-        var request = try request(path, authorized: authorized)
+        var request = try await request(path, authorized: authorized)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return try await send(request)
     }
 
-    private func request(_ path: String, authorized: Bool = true) throws -> URLRequest {
-        guard let base = ServerAddress.normalize(settings.serverURL, apiPath: "/api/v1"), let url = URL(string: "\(base)/\(path)") else {
+    /// API root per server address: Dōchō Server's built-in sync, or the standalone sync server.
+    private var apiRoots: [String: String] = [:]
+
+    private func apiRoot(_ base: String) async -> String {
+        if let root = apiRoots[base] { return root }
+        let builtIn = "\(base)/api/docho/sync/v1"
+        guard let url = URL(string: "\(builtIn)/health") else { return "\(base)/api/v1" }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        request.setValue(ServerAddress.userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await session.data(for: request) else {
+            // Unreachable: don't remember a guess; the request after this reports the error.
+            return "\(base)/api/v1"
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let root = (200..<300).contains(status) && body?["name"] != nil ? builtIn : "\(base)/api/v1"
+        apiRoots[base] = root
+        return root
+    }
+
+    private func request(_ path: String, authorized: Bool = true) async throws -> URLRequest {
+        guard let base = ServerAddress.normalize(settings.serverURL, apiPath: ""),
+              let url = URL(string: "\(await apiRoot(base))/\(path)") else {
             throw DochoSyncError(message: String(localized: "No server address"))
         }
         var request = URLRequest(url: url)
@@ -594,7 +619,7 @@ final class DochoSync {
     // MARK: Applying
 
     private func applyAll(_ records: [SyncRecord], firstSync: Bool, added: inout [SeriesRecord]) async -> Set<String> {
-        let order = [SyncValues.category, SyncValues.manga, SyncValues.rename, SyncValues.kind, SyncValues.chapter, SyncValues.history]
+        let order = [SyncValues.category, SyncValues.manga, SyncValues.details, SyncValues.rename, SyncValues.kind, SyncValues.chapter, SyncValues.history]
         var applied = Set<String>()
         for record in records.sorted(by: { (order.firstIndex(of: $0.kind) ?? 9) < (order.firstIndex(of: $1.kind) ?? 9) }) {
             do {
@@ -681,6 +706,22 @@ final class DochoSync {
                 var memo = chapter.chapterMemo
                 memo[ChapterMemo.kind] = .string(kind)
                 try await database.renameChapter(id: chapter.id, url: chapter.url, name: chapter.name, number: chapter.number, memo: memo)
+            }
+            return true
+        case SyncValues.details:
+            guard let (source, url) = SyncValues.parseKey(record.key), let value else { return true }
+            // Series not here yet get the edited details from the server when they're added.
+            try await database.writer.write { db in
+                guard var series = try SeriesRecord
+                    .filter(SeriesRecord.Columns.source == source && SeriesRecord.Columns.url == url).fetchOne(db) else { return }
+                if let title = value["title"]?.string, !title.isEmpty { series.name = title }
+                series.authors = value["author"]?.string
+                series.artists = value["artist"]?.string
+                series.summary = value["description"]?.string
+                let genres = value["genres"]?.strings ?? []
+                series.genres = genres.isEmpty ? nil : genres.joined(separator: ", ")
+                if let status = value["status"]?.int { series.status = Int(status) }
+                try series.update(db)
             }
             return true
         default:

@@ -19,11 +19,11 @@ struct SuwayomiSection: View {
 
     var body: some View {
         let settings = app.suwayomiSettings
-        ServerSection(name: "Suwayomi", icon: "brand.suwayomi", status: status, configured: settings.isConfigured) {
+        ServerSection(name: "Dōchō Server / Suwayomi", icon: "brand.dochoserver", status: status, configured: settings.isConfigured) {
             VStack(spacing: 16) {
                 M3TextField(
                     label: String(localized: "Server address"), text: $server, keyboard: .URL,
-                    supporting: String(localized: "The address you open Suwayomi at, e.g. http://192.168.1.20:4567")
+                    supporting: String(localized: "The address you open Dōchō Server or Suwayomi at, e.g. http://192.168.1.20:4567")
                 )
                 M3TextField(label: String(localized: "Username"), text: $username)
                 M3TextField(
@@ -62,7 +62,7 @@ struct SuwayomiSection: View {
                 })
             }
             PreferenceRow(
-                title: String(localized: "Delete"), subtitle: String(localized: "Erase the Suwayomi settings on this device"),
+                title: String(localized: "Delete"), subtitle: String(localized: "Erase the Dōchō Server / Suwayomi settings on this device"),
                 icon: "delete", iconTint: m3.error, action: { confirmingDelete = true }
             )
         }
@@ -90,7 +90,7 @@ struct SuwayomiSection: View {
                 }
             }
         }
-        .m3Dialog(isPresented: $confirmingDelete, title: String(localized: "Delete Suwayomi settings?")) {
+        .m3Dialog(isPresented: $confirmingDelete, title: String(localized: "Delete Dōchō Server / Suwayomi settings?")) {
             Text("This erases the server address and sign-in on this device. Extensions stay installed on the server.")
                 .padding(.horizontal, 24)
         } buttons: {
@@ -152,7 +152,7 @@ struct ExtensionsView: View {
                 LoadingScreen()
             } else if model.extensions.isEmpty {
                 EmptyScreen(message: model.error ?? (model.stores.isEmpty
-                    ? String(localized: "No extension repos on the server. Add one in Settings → Sync / Self-hosted sources → Suwayomi.")
+                    ? String(localized: "No extension repos on the server. Add one in Settings → Sync / Self-hosted sources → Dōchō Server / Suwayomi.")
                     : String(localized: "No extensions found"))) {
                     M3TextButton(title: String(localized: "Retry")) { Task { await model.loadExtensions(refresh: true) } }
                 }
