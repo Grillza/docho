@@ -162,7 +162,10 @@ class SyncChaptersWithSource(
                             id = dbChapter.id,
                             name = chapter.name,
                             chapterNumber = chapter.chapterNumber,
-                            scanlator = chapter.scanlator,
+                            // The update keeps the stored scanlator when given null, so one the
+                            // source stopped sending (Dōchō Server's release groups) is cleared
+                            // with a blank instead.
+                            scanlator = chapter.scanlator ?: dbChapter.scanlator?.let { "" },
                             sourceOrder = chapter.sourceOrder,
                             dateUpload = chapter.dateUpload,
                             memo = chapter.memo,
