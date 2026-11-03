@@ -121,6 +121,12 @@ msgstr "{0, plural, one {Could not reorder download} other {Could not reorder do
 msgid "{0, plural, one {Second} other {Seconds}}"
 msgstr "{0, plural, one {Second} other {Seconds}}"
 
+#. placeholder {0}: suggestion.name
+#. placeholder {1}: suggestion.series.length
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "{0} ({1} series)"
+msgstr "{0} ({1} series)"
+
 #. placeholder {0}: searchProgress.completed
 #. placeholder {1}: searchProgress.total
 #: src/features/migration/screens/MigrationSearch.tsx
@@ -133,6 +139,13 @@ msgstr "{0} / {1}"
 #: src/features/migration/screens/MigrationExecute.tsx
 msgid "{0} / {1}{2}"
 msgstr "{0} / {1}{2}"
+
+#. placeholder {0}: collection.seriesCount
+#. placeholder {0}: library.seriesCount
+#: src/features/docho/screens/DochoCollections.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "{0} series"
+msgstr "{0} series"
 
 #. placeholder {0}: updateStatus.progress
 #: src/features/app-updates/components/WebUIUpdateChecker.tsx
@@ -359,6 +372,10 @@ msgstr "A migration is already in progress"
 msgid "A preview focused web frontend built with svelte"
 msgstr "A preview focused web frontend built with svelte"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "A series group reads several series as one, such as the parts of JoJo's Bizarre Adventure. The group appears in the library and in the apps as a single series whose chapters run through every part, named and ordered the way you choose. Reading a chapter in the group marks it read in its own series too."
+msgstr "A series group reads several series as one, such as the parts of JoJo's Bizarre Adventure. The group appears in the library and in the apps as a single series whose chapters run through every part, named and ordered the way you choose. Reading a chapter in the group marks it read in its own series too."
+
 #: src/features/library/components/LibraryOptionsPanel.tsx
 msgid "A—Z"
 msgstr "A—Z"
@@ -396,6 +413,7 @@ msgid "Active setting ({title})"
 msgstr "Active setting ({title})"
 
 #: src/base/components/settings/MutableListSetting.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/extension/store/screens/ExtensionStores.tsx
 #: src/features/manga/components/details/MangaNotes.tsx
 #: src/features/manga/hooks/useManageMangaLibraryState.tsx
@@ -405,9 +423,17 @@ msgstr "Active setting ({title})"
 msgid "Add"
 msgstr "Add"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Add a folder of manga, comics or books, and it is scanned into series like Kavita does."
+msgstr "Add a folder of manga, comics or books, and it is scanned into series like Kavita does."
+
 #: src/features/manga/components/details/MangaNotes.tsx
 msgid "Add a private note about this manga"
 msgstr "Add a private note about this manga"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Add a series from the library"
+msgstr "Add a series from the library"
 
 #: src/features/chapter/Chapter.constants.ts
 msgid "Add bookmark"
@@ -417,6 +443,14 @@ msgstr "Add bookmark"
 #: src/features/extension/store/screens/ExtensionStores.tsx
 msgid "Add extension store"
 msgstr "Add extension store"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Add folder"
+msgstr "Add folder"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Add library"
+msgstr "Add library"
 
 #: src/features/manga/components/details/MangaNotes.tsx
 msgid "Add notes"
@@ -436,6 +470,7 @@ msgstr "Add tracking"
 msgid "Added manga to library!"
 msgstr "Added manga to library!"
 
+#: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/library/screens/LibrarySettings.tsx
 msgid "Advanced"
 msgstr "Advanced"
@@ -699,6 +734,7 @@ msgstr "Bright Pink"
 
 #: src/features/browse/screens/Browse.tsx
 #: src/features/browse/screens/BrowseSettings.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/navigation-bar/NavigationBar.constants.ts
 #: src/features/settings/screens/Settings.tsx
 msgid "Browse"
@@ -769,6 +805,9 @@ msgstr "Can't migrate an entry to itself"
 #: src/features/category/components/CategoriesInclusionSetting.tsx
 #: src/features/category/components/CategorySelect.tsx
 #: src/features/category/components/CreateOrEditCategoryDialog.tsx
+#: src/features/docho/screens/DochoCollections.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
+#: src/features/docho/screens/DochoSeriesGroups.tsx
 #: src/features/downloads/components/DownloadQueueChapterCard.tsx
 #: src/features/manga/components/details/MangaNotes.tsx
 #: src/features/migration/components/MigrationBulkSearchOptionsDialog.tsx
@@ -869,6 +908,10 @@ msgstr "Chapter download limit"
 msgid "Chapter list"
 msgstr "Chapter list"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Chapter names"
+msgstr "Chapter names"
+
 #: src/features/chapter/components/ChapterOptions.tsx
 msgid "Chapter number"
 msgstr "Chapter number"
@@ -900,6 +943,10 @@ msgstr "Check out"
 #: src/features/app-updates/components/VersionInfo.tsx
 msgid "Checking for update"
 msgstr "Checking for update"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Choose a folder"
+msgstr "Choose a folder"
 
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Choose the order in which chapters are displayed."
@@ -955,6 +1002,19 @@ msgstr "Close"
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Cloudflare bypass"
 msgstr "Cloudflare bypass"
+
+#: src/features/docho/screens/DochoCollections.tsx
+#: src/features/navigation-bar/NavigationBar.constants.ts
+msgid "Collections"
+msgstr "Collections"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Collections from metadata"
+msgstr "Collections from metadata"
+
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "Collections hold series that belong together without being read as one, as in Kavita. Scans make them from ComicInfo SeriesGroup, or from a book library's folders; add series to any collection from a series' page."
+msgstr "Collections hold series that belong together without being read as one, as in Kavita. Scans make them from ComicInfo SeriesGroup, or from a book library's folders; add series to any collection from a series' page."
 
 #: src/features/reader/filters/settings/components/ReaderSettingRGBA.tsx
 msgid "Color filter blend mode"
@@ -1122,6 +1182,10 @@ msgstr "Could not install the extension"
 msgid "Could not load categories"
 msgstr "Could not load categories"
 
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "Could not load collections"
+msgstr "Could not load collections"
+
 #: src/features/settings/components/DebugInformation.tsx
 msgid "Could not load data"
 msgstr "Could not load data"
@@ -1134,10 +1198,18 @@ msgstr "Could not load language"
 msgid "Could not load latest track info from tracker"
 msgstr "Could not load latest track info from tracker"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Could not load libraries"
+msgstr "Could not load libraries"
+
 #: src/features/library/screens/Library.tsx
 #: src/features/manga/screens/Manga.tsx
 msgid "Could not load manga"
 msgstr "Could not load manga"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Could not load series groups"
+msgstr "Could not load series groups"
 
 #: src/features/theme/components/ThemePreview.tsx
 msgid "Could not load theme fonts"
@@ -1173,6 +1245,10 @@ msgstr "Could not log out from KOReader Sync"
 msgid "Could not migrate manga"
 msgstr "Could not migrate manga"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Could not name the parts"
+msgstr "Could not name the parts"
+
 #: src/features/library/components/LibraryToolbarMenu.tsx
 msgid "Could not open random entry"
 msgstr "Could not open random entry"
@@ -1188,6 +1264,10 @@ msgstr "Could not remove extension store \"{name}\""
 #: src/features/library/screens/LibrarySettings.tsx
 msgid "Could not remove non library manga from categories"
 msgstr "Could not remove non library manga from categories"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Could not remove the library"
+msgstr "Could not remove the library"
 
 #: src/features/library/components/LibraryOptionsPanel.tsx
 msgid "Could not reset filters"
@@ -1217,11 +1297,23 @@ msgstr "Could not save changes"
 msgid "Could not save notes"
 msgstr "Could not save notes"
 
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "Could not save the collection"
+msgstr "Could not save the collection"
+
 #: src/features/category/components/CategorySelect.tsx
 #: src/features/library/components/LibraryOptionsPanel.tsx
 #: src/features/library/screens/LibrarySettings.tsx
 msgid "Could not save the default search settings to the server"
 msgstr "Could not save the default search settings to the server"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Could not save the group"
+msgstr "Could not save the group"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Could not save the library"
+msgstr "Could not save the library"
 
 #: src/features/reader/services/ReaderService.ts
 msgid "Could not save the reader settings to the server"
@@ -1240,14 +1332,26 @@ msgstr "Could not search source"
 msgid "Could not start sync"
 msgstr "Could not start sync"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Could not start the scan"
+msgstr "Could not start the scan"
+
 #: src/features/updates/components/UpdateChecker.tsx
 msgid "Could not stop global update"
 msgstr "Could not stop global update"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Could not suggest names"
+msgstr "Could not suggest names"
 
 #: src/features/manga/Manga.constants.ts
 #: src/features/tracker/components/TrackerSearch.tsx
 msgid "Could not track manga"
 msgstr "Could not track manga"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Could not ungroup"
+msgstr "Could not ungroup"
 
 #: src/features/tracker/components/cards/TrackerActiveCard.tsx
 msgid "Could not untrack manga"
@@ -1444,6 +1548,11 @@ msgstr "Delete search"
 msgid "Delete selected"
 msgstr "Delete selected"
 
+#. placeholder {0}: collection.name
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "Delete the collection {0}? Its series stay."
+msgstr "Delete the collection {0}? Its series stay."
+
 #. placeholder {0}: theme.getName()
 #: src/features/theme/components/ThemeList.tsx
 msgid "Deleted theme \"{0}\""
@@ -1458,6 +1567,10 @@ msgstr "Deleting theme \"{0}\"…"
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Descending"
 msgstr "Descending"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Description"
+msgstr "Description"
 
 #: src/features/chapter/components/cards/ChapterCard.tsx
 #: src/features/manga/components/MangaOptionButton.tsx
@@ -1617,16 +1730,28 @@ msgstr "Duplicated entries"
 msgid "Dynamic theme colors on manga page"
 msgstr "Dynamic theme colors on manga page"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Each subfolder becomes a collection; useful for book libraries."
+msgstr "Each subfolder becomes a collection; useful for book libraries."
+
 #: src/features/reader/settings/layout/components/ReaderSettingTapZoneLayout.tsx
 msgid "Edge"
 msgstr "Edge"
 
 #: src/features/category/components/CategorySelect.tsx
 #: src/features/category/components/CategorySettingsCard.tsx
+#: src/features/docho/screens/DochoCollections.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
+#: src/features/docho/screens/DochoSeriesGroups.tsx
 #: src/features/manga/components/details/MangaNotes.tsx
 #: src/features/theme/components/ThemePreview.tsx
 msgid "Edit"
 msgstr "Edit"
+
+#. placeholder {0}: library.name
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Edit {0}"
+msgstr "Edit {0}"
 
 #: src/features/category/screens/CategorySettings.tsx
 #: src/features/library/screens/LibrarySettings.tsx
@@ -1636,6 +1761,14 @@ msgstr "Edit categories"
 #: src/features/category/components/CreateOrEditCategoryDialog.tsx
 msgid "Edit category"
 msgstr "Edit category"
+
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "Edit collection"
+msgstr "Edit collection"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Edit group"
+msgstr "Edit group"
 
 #: src/features/manga/components/MangaToolbarMenu.tsx
 msgid "Edit manga categories"
@@ -1735,6 +1868,10 @@ msgstr "Example for possible values: 1 (bytes), 1KB (kilobytes), 1MB (megabytes)
 #: src/features/migration/components/migration-entry/MigrationEntrySearchExcludeActions.tsx
 msgid "Exclude"
 msgstr "Exclude"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Exclude patterns"
+msgstr "Exclude patterns"
 
 #: src/features/chapter/components/ChapterExcludeSanlatorsFilter.tsx
 msgid "Exclude scanlators"
@@ -1842,6 +1979,10 @@ msgstr "Feel free to translate the project on Weblate (<0>WebUI</0> and <1>Serve
 msgid "Fifth to last read chapter"
 msgstr "Fifth to last read chapter"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "File types"
+msgstr "File types"
+
 #: src/features/settings/Settings.constants.ts
 msgid "Filename"
 msgstr "Filename"
@@ -1930,6 +2071,22 @@ msgstr "FlareSolverr will automatically rotate expired sessions based on the TTL
 msgid "Flavor"
 msgstr "Flavor"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Folder watching"
+msgstr "Folder watching"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Folders"
+msgstr "Folders"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Folders become collections"
+msgstr "Folders become collections"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Folders on the server to scan. In Docker, these are the paths inside the container (such as /books/manga)."
+msgstr "Folders on the server to scan. In Docker, these are the paths inside the container (such as /books/manga)."
+
 #: src/features/theme/Themes.ts
 msgid "Forest Dew"
 msgstr "Forest Dew"
@@ -1950,6 +2107,7 @@ msgstr "Fullscreen"
 msgid "Fuzzy search"
 msgstr "Fuzzy search"
 
+#: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/library/screens/LibrarySettings.tsx
 #: src/features/reader/settings/ReaderSettings.constants.tsx
 msgid "General"
@@ -1987,6 +2145,10 @@ msgstr "Grayscale"
 #: src/features/reader/filters/settings/components/ReaderSettingRGBA.tsx
 msgid "Green"
 msgstr "Green"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Group saved"
+msgstr "Group saved"
 
 #: src/features/settings/components/globalUpdate/GlobalUpdateSettingsInterval.tsx
 #: src/features/settings/components/webUI/WebUIUpdateIntervalSetting.tsx
@@ -2132,6 +2294,14 @@ msgstr "In Library"
 #: src/features/migration/components/migration-entry/MigrationEntrySearchExcludeActions.tsx
 msgid "Include"
 msgstr "Include"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Include in dashboard"
+msgstr "Include in dashboard"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Include in search"
+msgstr "Include in search"
 
 #: src/features/backup/screens/Backup.tsx
 #: src/features/category/components/CategoriesInclusionSetting.tsx
@@ -2339,6 +2509,10 @@ msgstr "Layout"
 msgid "Left"
 msgstr "Left"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Left empty, the group lists its parts."
+msgstr "Left empty, the group lists its parts."
+
 #: src/features/reader/settings/layout/components/ReaderSettingReadingDirection.tsx
 #: src/features/reader/settings/ReaderSettings.constants.tsx
 msgid "Left to right"
@@ -2352,6 +2526,11 @@ msgstr "Legacy"
 msgid "legacy backups are not supported!"
 msgstr "legacy backups are not supported!"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+#: src/features/navigation-bar/NavigationBar.constants.ts
+msgid "Libraries"
+msgstr "Libraries"
+
 #: src/features/backup/Backup.constants.ts
 #: src/features/library/screens/Library.tsx
 #: src/features/library/screens/LibrarySettings.tsx
@@ -2360,9 +2539,17 @@ msgstr "legacy backups are not supported!"
 msgid "Library"
 msgstr "Library"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Library added; scanning it now"
+msgstr "Library added; scanning it now"
+
 #: src/features/backup/Backup.constants.ts
 msgid "Library entries"
 msgstr "Library entries"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Library saved"
+msgstr "Library saved"
 
 #: src/features/manga/Manga.constants.ts
 msgid "Licensed"
@@ -2452,6 +2639,10 @@ msgstr "Logging in to {trackerName}…"
 #: src/features/manga/Manga.constants.ts
 msgid "entry-type-detection-long-strip"
 msgstr "Long strip"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Make collections from ComicInfo SeriesGroup."
+msgstr "Make collections from ComicInfo SeriesGroup."
 
 #: src/features/device/screens/DeviceSetting.tsx
 msgid "Manage your existing devices.\n"
@@ -2693,10 +2884,21 @@ msgstr "Multi"
 msgid "Multiply"
 msgstr "Multiply"
 
+#: src/features/docho/screens/DochoCollections.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
+#: src/features/docho/screens/DochoSeriesGroups.tsx
 #: src/features/settings/components/images/KeyValueItem.tsx
 #: src/features/theme/components/CreateThemeDialog.tsx
 msgid "Name"
 msgstr "Name"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Name each part from its title, e.g. \"Part 3: Stardust Crusaders\""
+msgstr "Name each part from its title, e.g. \"Part 3: Stardust Crusaders\""
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Name parts"
+msgstr "Name parts"
 
 #: src/features/backup/Backup.utils.ts
 #: src/features/settings/screens/ServerSettings.tsx
@@ -2706,6 +2908,18 @@ msgstr "Never"
 #: src/features/category/components/CreateOrEditCategoryDialog.tsx
 msgid "New category"
 msgstr "New category"
+
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "New collection"
+msgstr "New collection"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "New group"
+msgstr "New group"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "New series group"
+msgstr "New series group"
 
 #: src/features/reader/tap-zones/ReaderTapZone.constants.ts
 msgid "Next"
@@ -2733,9 +2947,25 @@ msgstr "No chapters found"
 msgid "No chapters matching filter"
 msgstr "No chapters matching filter"
 
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "No collections yet."
+msgstr "No collections yet."
+
 #: src/features/downloads/screens/DownloadQueue.tsx
 msgid "No downloads"
 msgstr "No downloads"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "No folders inside"
+msgstr "No folders inside"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "No groups yet."
+msgstr "No groups yet."
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "No libraries yet"
+msgstr "No libraries yet"
 
 #: src/features/global-search/screens/SearchAll.tsx
 #: src/features/manga/components/MangaGrid.tsx
@@ -2777,6 +3007,10 @@ msgstr "No sources installed"
 #: src/features/settings/Settings.constants.ts
 msgid "None"
 msgstr "None"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Not scanned yet"
+msgstr "Not scanned yet"
 
 #: src/features/tracker/Tracker.constants.ts
 msgid "Not yet published"
@@ -2853,6 +3087,10 @@ msgstr "Offset double spreads"
 msgid "Ok"
 msgstr "Ok"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "One glob pattern per line, relative to the library folder, such as **/Scans/** or *.tmp"
+msgstr "One glob pattern per line, relative to the library folder, such as **/Scans/** or *.tmp"
+
 #: src/features/tracker/Tracker.constants.ts
 msgid "Oneshot"
 msgstr "Oneshot"
@@ -2926,6 +3164,10 @@ msgstr "or"
 msgid "Orange Juice"
 msgstr "Orange Juice"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Order"
+msgstr "Order"
+
 #: src/features/reader/settings/ReaderSettings.constants.tsx
 msgid "Original size"
 msgstr "Original size"
@@ -2955,6 +3197,10 @@ msgstr "Page gap"
 #: src/features/browse/screens/BrowseSettings.tsx
 msgid "Parallel source requests"
 msgstr "Parallel source requests"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Parts, in reading order"
+msgstr "Parts, in reading order"
 
 #: src/base/components/inputs/PasswordTextField.tsx
 #: src/features/settings/screens/ServerSettings.tsx
@@ -3071,6 +3317,14 @@ msgstr "Quick settings"
 msgid "Random"
 msgstr "Random"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Read ComicInfo.xml and EPUB metadata for titles, numbers, authors and genres."
+msgstr "Read ComicInfo.xml and EPUB metadata for titles, numbers, authors and genres."
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Read series that share a ComicInfo SeriesGroup as one group."
+msgstr "Read series that share a ComicInfo SeriesGroup as one group."
+
 #: src/features/reader/settings/screens/GlobalReaderSettings.tsx
 #: src/features/settings/screens/Settings.tsx
 msgid "Reader"
@@ -3145,6 +3399,11 @@ msgstr "Remove"
 #: src/features/tracker/components/cards/TrackerActiveCard.tsx
 msgid "Remove {0} tracking?"
 msgstr "Remove {0} tracking?"
+
+#. placeholder {0}: library.name
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Remove {0}? Its series leave the server; the files stay where they are."
+msgstr "Remove {0}? Its series leave the server; the files stay where they are."
 
 #: src/features/chapter/Chapter.constants.ts
 msgid "Remove bookmark"
@@ -3247,6 +3506,9 @@ msgstr "Right to left"
 msgid "Rosegold"
 msgstr "Rosegold"
 
+#: src/features/docho/screens/DochoCollections.tsx
+#: src/features/docho/screens/DochoLibraries.tsx
+#: src/features/docho/screens/DochoSeriesGroups.tsx
 #: src/features/manga/components/details/MangaNotes.tsx
 #: src/features/settings/screens/ImageProcessingSetting.tsx
 #: src/features/theme/components/CreateThemeDialog.tsx
@@ -3283,9 +3545,30 @@ msgstr "Saving theme changes…"
 msgid "Scale type"
 msgstr "Scale type"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scan"
+msgstr "Scan"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scan when files in the folders change."
+msgstr "Scan when files in the folders change."
+
 #: src/features/chapter/components/ChapterExcludeSanlatorsFilter.tsx
 msgid "Scanlator"
 msgstr "Scanlator"
+
+#. placeholder {0}: library.name
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scanning {0}"
+msgstr "Scanning {0}"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scanning…"
+msgstr "Scanning…"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scheduled scan"
+msgstr "Scheduled scan"
 
 #: src/features/tracker/components/cards/TrackerActiveCard.tsx
 #: src/features/tracker/components/cards/TrackerMangaCard.tsx
@@ -3413,6 +3696,15 @@ msgstr "Selected"
 msgid "Sepia"
 msgstr "Sepia"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+#: src/features/navigation-bar/NavigationBar.constants.ts
+msgid "Series groups"
+msgstr "Series groups"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Series groups from metadata"
+msgstr "Series groups from metadata"
+
 #: src/features/reader/settings/layout/ReaderLayoutSettings.tsx
 msgid "Series settings"
 msgstr "Series settings"
@@ -3534,6 +3826,10 @@ msgstr "Show number of items"
 msgid "Show only downloaded chapters"
 msgstr "Show only downloaded chapters"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Show only the group in the library, not each part"
+msgstr "Show only the group in the library, not each part"
+
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Show only unread chapters"
 msgstr "Show only unread chapters"
@@ -3557,6 +3853,10 @@ msgstr "Show the category selection dialog when adding a manga to the library"
 #: src/features/reader/settings/behaviour/ReaderBehaviourSettings.tsx
 msgid "Show transition page"
 msgstr "Show transition page"
+
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Shown as"
+msgstr "Shown as"
 
 #: src/features/settings/screens/ServerSettings.tsx
 #: src/features/settings/screens/WebUISettings.tsx
@@ -3751,6 +4051,14 @@ msgstr "Successfully migrated"
 msgid "Successfully migrated manga"
 msgstr "Successfully migrated manga"
 
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Suggested"
+msgstr "Suggested"
+
+#: src/features/docho/screens/DochoCollections.tsx
+msgid "Summary"
+msgstr "Summary"
+
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Sync"
 msgstr "Sync"
@@ -3851,6 +4159,10 @@ msgstr "The following sources are not installed:"
 #: src/features/backup/component/BackupValidationDialog.tsx
 msgid "The following trackers are not logged in:"
 msgstr "The following trackers are not logged in:"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "The library also becomes a category of the same name."
+msgstr "The library also becomes a category of the same name."
 
 #: src/features/settings/Settings.constants.ts
 msgid "The login will be handled by the client."
@@ -4029,6 +4341,7 @@ msgstr "Tracking"
 msgid "Tree Frog Green"
 msgstr "Tree Frog Green"
 
+#: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/settings/screens/ServerSettings.tsx
 #: src/features/tracker/components/cards/TrackerMangaCard.tsx
 msgid "Type"
@@ -4087,6 +4400,11 @@ msgstr "Unable to load sources"
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Understood"
 msgstr "Understood"
+
+#. placeholder {0}: group.name
+#: src/features/docho/screens/DochoSeriesGroups.tsx
+msgid "Ungroup {0}? Its parts go back to the library as they were."
+msgstr "Ungroup {0}? Its parts go back to the library as they were."
 
 #: src/features/extension/Extensions.constants.ts
 msgid "Uninstall"
@@ -4200,6 +4518,10 @@ msgid "Use a custom WebUI.\n"
 msgstr "Use a custom WebUI.\n"
 "To use a custom WebUI replace the content of the \"webUI\" directory in the root directory on the server with the files of the custom WebUI"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Use metadata"
+msgstr "Use metadata"
+
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Use SOCKS proxy"
 msgstr "Use SOCKS proxy"
@@ -4223,6 +4545,10 @@ msgstr "Use the latest released version."
 #: src/features/settings/Settings.constants.ts
 msgid "Use the version that was delivered with the server release"
 msgstr "Use the version that was delivered with the server release"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Use this folder"
+msgstr "Use this folder"
 
 #: src/base/components/modals/LoginDialog.tsx
 #: src/features/authentication/screens/LoginPage.tsx
