@@ -134,6 +134,13 @@ final class DochoSyncLiveTests: XCTestCase {
         guard case .connected = await a.sync.client.signIn(register: true) else { return XCTFail("register") }
         guard case .done = await a.sync.sync() else { return XCTFail("a first sync") }
         guard case .done = await b.sync.sync() else { return XCTFail("b first sync") }
+        do {
+            _ = try await a.sync.client.sync(since: 0, changes: [SyncRecord(
+                kind: SyncValues.details, key: SyncValues.key(KavitaSource.id, "/probe"), value: nil, updatedAt: 1, device: nil
+            )])
+        } catch let error as DochoSyncError where error.message.hasPrefix("Unknown kind") {
+            throw XCTSkip("This server doesn't take details records (before 0.32)")
+        }
 
         // A edits the title and genres only
         a.edits.put(source: KavitaSource.id, url: "/series/7", .init(title: "Kaiju No. 8 (Mine)", genres: ["Action"]))
@@ -158,5 +165,27 @@ final class DochoSyncLiveTests: XCTestCase {
         _ = await a.sync.sync()
         _ = await b.sync.sync()
         XCTAssertNil(b.edits.get(source: KavitaSource.id, url: "/series/7"))
+    }
+
+    func testEditedDetailsDontStopSyncWithAnOlderServer() async throws {
+        guard let url = ProcessInfo.processInfo.environment["DOCHO_SYNC_TEST_URL"] else { throw XCTSkip("No test server") }
+        let user = "user\(Int.random(in: 0..<1_000_000))"
+        let a = try device("a", url: url, user: user)
+        let b = try device("b", url: url, user: user)
+        let seriesA = try await addSeries(a, chapters: ["/c/1"])
+        guard case .connected = await a.sync.client.signIn(register: true) else { return XCTFail("register") }
+        // An edit and a read chapter go out together; a server without "details" still takes the chapter
+        a.edits.put(source: KavitaSource.id, url: "/series/7", .init(title: "Edited"))
+        let chaptersA = try await a.database.chapterList(seriesId: seriesA.id)
+        let chapter = try XCTUnwrap(chaptersA.first)
+        try await a.database.setChaptersRead([chapter.id], read: true)
+        guard case .done = await a.sync.sync() else { return XCTFail("a sync") }
+        guard case .done = await b.sync.sync() else { return XCTFail("b sync") }
+        let libraryB = try await b.database.librarySeriesRecords()
+        let seriesB = try XCTUnwrap(libraryB.first { $0.url == "/series/7" })
+        _ = try await b.database.saveFromSource(seriesId: seriesB.id, manga: nil, chapters: [SChapter(url: "/c/1", name: "/c/1")])
+        guard case .done = await b.sync.sync() else { return XCTFail("b second sync") }
+        let chaptersB = try await b.database.chapterList(seriesId: seriesB.id)
+        XCTAssertEqual(chaptersB.first?.read, true)
     }
 }

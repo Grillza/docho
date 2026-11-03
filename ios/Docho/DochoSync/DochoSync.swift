@@ -568,14 +568,21 @@ final class DochoSync {
         var remote: [SyncRecord] = []
         var outgoing = changes[...]
         var page: SyncPage
+        // Kinds an older server doesn't take yet ("details" before 0.32), kept for a later sync.
+        var unsent = Set<String>()
         repeat {
             let batch = Array(outgoing.prefix(Self.batch))
             outgoing = outgoing.dropFirst(batch.count)
-            page = try await client.sync(since: since, changes: batch)
+            do {
+                page = try await client.sync(since: since, changes: batch)
+            } catch let error as DochoSyncError where error.message.hasPrefix("Unknown kind: \(SyncValues.details)") {
+                unsent.formUnion(batch.filter { $0.kind == SyncValues.details }.map(\.id))
+                page = try await client.sync(since: since, changes: batch.filter { $0.kind != SyncValues.details })
+            }
             remote += page.changes
             since = page.seq
         } while page.more || !outgoing.isEmpty
-        for change in changes {
+        for change in changes where !unsent.contains(change.id) {
             if change.isDeleted { state.synced[change.id] = nil } else { state.synced[change.id] = change.value?.canonical }
         }
 

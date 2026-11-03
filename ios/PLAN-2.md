@@ -655,7 +655,7 @@ Tick them off here as they land.
   the old `~/claude/mihonka` path, so its macOS config was deleted and rebuilt. Check progress with
   `tail build/runtime-logs/all.log`; a failed step's log is `build/runtime-logs/<step>.log`. Re-run
   only the missing steps. Output: `ios/Embedded/` (jre, host jar, link flags, licences).
-- [ ] **G2. Protocol types.** `Docho/Extensions/ExtensionProtocol.swift`: Codable types for the
+- [x] **G2. Protocol types.** `Docho/Extensions/ExtensionProtocol.swift`: Codable types for the
   host's JSON-RPC (`extension-host/host-core/.../rpc/Protocol.kt`), checked against every file in
   `Vendor/docho-runtime/contract/fixtures` by `ExtensionContractTests`.
 - [ ] **G3. Host client.** `ExtensionTransport` (call + events) with an HTTP/SSE transport for the
