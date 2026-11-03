@@ -59,12 +59,10 @@ Bizarre Adventure's parts:
 **Collections** (sidebar → Collections), as in Kavita: made by hand, from ComicInfo
 SeriesGroup, or from a book library's folders.
 
-**Dōchō Sync** is built in at `/api/docho/sync/v1`, with the same behaviour as the standalone
-`sync-server/`. In the app, set Dōchō Sync's address to this server (`http://<host>:4567`);
-the app finds the built-in sync by itself. Sync accounts are separate from the server's own
-login. The first account can be made by anyone who reaches the server; set
-`DOCHO_SYNC_REGISTRATION=open` to allow more. Devices moving from the standalone server merge
-again on their first sync, so nothing needs copying over.
+**Dōchō Sync** is built in at `/api/docho/sync/v1`. The apps sync through the server's own
+login (or none, if it has none): in the app, set up **Dōchō Server / Suwayomi** with this
+server's address, and its username and password if the login is on, and leave **Sync with Dōchō
+Server** on. There are no separate sync accounts.
 
 **The server reads along.** One sync account is linked to the server: the first one made, or
 the one `DOCHO_SYNC_SERVER_ACCOUNT` names (`none` turns this off). What that account reads in the

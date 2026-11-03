@@ -243,9 +243,10 @@ object JavalinSetup {
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
             val isApi = ctx.path().startsWith(ServerSubpath.maybeAddAsPrefix("/api/"))
 
-            // Dōchō Sync signs devices in with its own accounts and tokens.
-            val isDochoSync = ctx.path().startsWith(ServerSubpath.maybeAddAsPrefix("/api/docho/sync/"))
-            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest && !isDochoSync
+            // Dōchō Sync goes through the server's own authentication; only its health check is
+            // open, so the apps can tell a Dōchō Server from a plain Suwayomi before signing in.
+            val isDochoSyncHealth = ctx.path() == ServerSubpath.maybeAddAsPrefix("/api/docho/sync/v1/health")
+            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest && !isDochoSyncHealth
             if (!requiresAuthentication) {
                 return@beforeMatched
             }

@@ -26,10 +26,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-/**
- * Talks to Dōchō Sync: built into Dōchō Server (`server/`, at /api/docho/sync/v1), or the
- * standalone sync server (`sync-server/`, at /api/v1). Which one is found on first contact.
- */
+/** Talks to the Dōchō Sync built into Dōchō Server, through the server's own login (if it has one). */
 @Inject
 @SingleIn(AppScope::class)
 class DochoSyncApi(
@@ -40,42 +37,42 @@ class DochoSyncApi(
 
     private val mutableConnection = MutableStateFlow<DochoSyncConnection>(DochoSyncConnection.Unknown)
 
-    /** Outcome of the latest sign-in, shown as the status light in settings. */
+    /** Outcome of the latest check, shown in settings. */
     val connection: StateFlow<DochoSyncConnection> = mutableConnection.asStateFlow()
 
-    /** Signs in with the saved settings, or creates the account first if [register]. */
-    suspend fun signIn(register: Boolean = false): DochoSyncConnection {
-        if (!preferences.isConfigured()) return DochoSyncConnection.Unknown.also { mutableConnection.value = it }
-        mutableConnection.value = DochoSyncConnection.Checking
+    /** Whether the server at an address has Dōchō Sync (a Dōchō Server, not a plain Suwayomi). */
+    private val probed = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    private fun base(): String? = KoreaderApi.normalizeBaseUrl(preferences.serverUrl())?.let { "$it/api/docho/sync/v1" }
+
+    /** Whether the configured server is a Dōchō Server; asked once per address (and again on a check). */
+    suspend fun isDochoServer(): Boolean {
+        val base = base() ?: return false
+        probed[base]?.let { return it }
         val result = try {
-            val body = buildJsonObject {
-                put("username", preferences.username.get())
-                put("password", preferences.password.get())
-                put("device", preferences.deviceId())
+            val request = Request.Builder().url("$base/health").header("User-Agent", USER_AGENT).build()
+            network.client.newCall(request).await().use { response ->
+                response.isSuccessful &&
+                    runCatching { json.parseToJsonElement(response.body.string()).jsonObject["name"] }.getOrNull() != null
             }
-            val response = post(if (register) "register" else "login", body, authorized = false)
-            preferences.token.set(response["token"]!!.jsonPrimitive.content)
-            DochoSyncConnection.Connected(
-                response["username"]?.jsonPrimitive?.contentOrNull ?: preferences.username.get(),
-            )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            DochoSyncConnection.Failed(e.message ?: e.javaClass.simpleName)
+            // Unreachable: don't remember a guess; the request after this reports the error.
+            return false
         }
-        mutableConnection.value = result
+        probed[base] = result
         return result
     }
 
-    /** Checks the saved sign-in still works, signing in again with the password if it doesn't. */
+    /** Checks the server has Dōchō Sync and lets this device in. */
     suspend fun checkConnection(): DochoSyncConnection {
         if (!preferences.isConfigured()) return DochoSyncConnection.Unknown.also { mutableConnection.value = it }
-        if (preferences.token.get().isBlank()) return signIn()
         mutableConnection.value = DochoSyncConnection.Checking
+        base()?.let { probed.remove(it) }
         val result = try {
+            if (!isDochoServer()) throw IOException(NOT_DOCHO_SERVER)
             val me = call(request("me").build())
-            DochoSyncConnection.Connected(me["username"]?.jsonPrimitive?.contentOrNull ?: preferences.username.get())
-        } catch (e: DochoSyncAuthException) {
-            return signIn()
+            DochoSyncConnection.Connected(me["username"]?.jsonPrimitive?.contentOrNull.orEmpty())
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             DochoSyncConnection.Failed(e.message ?: e.javaClass.simpleName)
@@ -86,54 +83,27 @@ class DochoSyncApi(
 
     /** Sends [changes] and returns what changed on the server after [since], one page of it. */
     suspend fun sync(since: Long, changes: List<SyncRecord>): SyncPage {
+        if (!isDochoServer()) throw IOException(NOT_DOCHO_SERVER)
         val body = buildJsonObject {
             put("since", since)
             put("device", preferences.deviceId())
             put("changes", kotlinx.serialization.json.JsonArray(changes.map { it.toJson() }))
         }
-        val response = try {
-            post("sync", body, authorized = true)
-        } catch (e: DochoSyncAuthException) {
-            // The token was revoked or the server was reset: sign in again once
-            if (signIn() !is DochoSyncConnection.Connected) throw e
-            post("sync", body, authorized = true)
-        }
+        val response = call(request("sync").post(body.toString().toRequestBody(jsonMime)).build())
         return json.decodeFromJsonElement(SyncPage.serializer(), response)
     }
 
-    private suspend fun post(path: String, body: JsonObject, authorized: Boolean): JsonObject {
-        val request = request(path, authorized).post(body.toString().toRequestBody(jsonMime)).build()
-        return call(request)
-    }
-
-    /** API root per server address: Dōchō Server's built-in sync, or the standalone sync server. */
-    private val apiRoots = java.util.concurrent.ConcurrentHashMap<String, String>()
-
-    private suspend fun apiRoot(base: String): String {
-        apiRoots[base]?.let { return it }
-        val builtIn = "$base/api/docho/sync/v1"
-        val root = try {
-            val request = Request.Builder().url("$builtIn/health").header("User-Agent", USER_AGENT).build()
-            network.client.newCall(request).await().use { response ->
-                val isSync = response.isSuccessful &&
-                    runCatching { json.parseToJsonElement(response.body.string()).jsonObject["name"] }.getOrNull() != null
-                if (isSync) builtIn else "$base/api/v1"
-            }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            // Unreachable: don't remember a guess; the request after this reports the error.
-            return "$base/api/v1"
-        }
-        apiRoots[base] = root
-        return root
-    }
-
-    private suspend fun request(path: String, authorized: Boolean = true): Request.Builder {
-        val base = KoreaderApi.normalizeBaseUrl(preferences.serverUrl.get()) ?: throw IOException("No server address")
+    private fun request(path: String): Request.Builder {
+        val base = base() ?: throw IOException("No server address")
         return Request.Builder()
-            .url("${apiRoot(base)}/$path")
+            .url("$base/$path")
             .header("User-Agent", USER_AGENT)
-            .apply { if (authorized) header("Authorization", "Bearer ${preferences.token.get()}") }
+            .apply {
+                // The server's own login, as for its sources (basic authentication).
+                if (preferences.username().isNotBlank()) {
+                    header("Authorization", okhttp3.Credentials.basic(preferences.username(), preferences.password()))
+                }
+            }
     }
 
     private suspend fun call(request: Request): JsonObject {
@@ -141,14 +111,16 @@ class DochoSyncApi(
             val text = response.body.string()
             val body = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
             if (response.isSuccessful && body != null) return body
+            if (response.code == 401) throw DochoSyncAuthException(WRONG_LOGIN)
             val message = body?.get("error")?.jsonPrimitive?.contentOrNull ?: "HTTP ${response.code}"
-            if (response.code == 401) throw DochoSyncAuthException(message)
             throw IOException(message)
         }
     }
 
     companion object {
         private val USER_AGENT = "Docho v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})"
+        private const val NOT_DOCHO_SERVER = "This server has no Dōchō Sync. Update it to Dōchō Server to sync."
+        private const val WRONG_LOGIN = "The server's username or password is wrong (Dōchō Server / Suwayomi)"
     }
 }
 

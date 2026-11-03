@@ -27,6 +27,8 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.greaterEq
 import suwayomi.tachidesk.docho.DochoLibraryTable
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
@@ -83,6 +85,12 @@ object Libraries {
 
     /** Library sources use ids from here up; the series groups source is this id itself. */
     const val SOURCE_ID_BASE = 0x0D0C_0000_0000_0000L
+
+    /**
+     * The language Dōchō's own sources report: "other", like built-in sources (Local, Kavita), not
+     * "all", which the apps show as "Multi" for extensions in many languages.
+     */
+    const val SOURCE_LANG = "other"
     const val EXTENSION_NAME = "Dōchō Libraries"
     private const val EXTENSION_PKG = "docho.libraries"
 
@@ -121,7 +129,7 @@ object Libraries {
                         it[pkgName] = EXTENSION_PKG
                         it[versionName] = "1.0"
                         it[versionCode] = 0
-                        it[lang] = "all"
+                        it[lang] = SOURCE_LANG
                         it[extensionLib] = "1.5"
                         it[contentWarning] = 0
                         it[isInstalled] = true
@@ -136,7 +144,7 @@ object Libraries {
                 SourceTable.insert {
                     it[id] = library.sourceId
                     it[name] = library.name.take(128)
-                    it[lang] = "all"
+                    it[lang] = SOURCE_LANG
                     it[SourceTable.extension] = extension
                 }
             } else if (row[SourceTable.name] != library.name) {
@@ -150,6 +158,11 @@ object Libraries {
 
     /** At startup: offer every library as a source, and start the schedule and folder watching. */
     fun start() {
+        // Sources and the extension registered before 0.32.1 said "all".
+        transaction {
+            SourceTable.update({ (SourceTable.id greaterEq SOURCE_ID_BASE) and (SourceTable.lang eq "all") }) { it[lang] = SOURCE_LANG }
+            ExtensionTable.update({ (ExtensionTable.pkgName eq EXTENSION_PKG) and (ExtensionTable.lang eq "all") }) { it[lang] = SOURCE_LANG }
+        }
         list().forEach { library ->
             runCatching { register(library) }.onFailure { logger.error(it) { "Couldn't set up library ${library.name}" } }
         }

@@ -48,20 +48,23 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 /**
- * Dōchō Sync, built into the server: keeps each account's library and categories, chapter
- * renames and Volume/Chapter types, read progress and history the same on every device signed in
- * to it. The same API as the standalone sync server, under /api/docho/sync/v1.
+ * Dōchō Sync, built into the server: keeps the library and categories, edited details, chapter
+ * renames and Volume/Chapter types, read progress and history the same on every device and in the
+ * server's own reader, under /api/docho/sync/v1.
  *
  * Every record is a kind, a key and a JSON value (null once deleted). Devices send what changed
  * and get back what other devices changed since they last asked. The newest write wins, so a
  * device that was offline can't undo newer changes from another.
  *
- * Accounts are separate from the server's own login: the apps sign in with a username and
- * password and get a token. Set DOCHO_SYNC_REGISTRATION=open to let more than the first account
- * be made.
+ * The apps sync through the server's own authentication and send no token: they sync as the
+ * server's account ([serverAccount]). Tokens from apps before 0.32.1, which made accounts with
+ * register/login, still work; DOCHO_SYNC_REGISTRATION=open still lets more be made that way.
  */
 object DochoSync {
     const val VERSION = "1"
+
+    /** The account made for syncing through the server's own authentication. */
+    private const val SERVER_ACCOUNT = "docho-server"
     private val KINDS = setOf("manga", "category", "rename", "kind", "chapter", "history", SyncBridge.DETAILS)
     private const val MAX_BODY = 32 * 1024 * 1024
     private const val MAX_CHANGES = 50_000
@@ -248,8 +251,13 @@ object DochoSync {
         }
     }
 
+    /**
+     * The account a request syncs as. The apps send no token: the server's own authentication
+     * (none, or its login) has let them in, and they sync as the server's account. A token (apps
+     * before 0.33, which made accounts of their own) still picks its account.
+     */
     fun userFor(token: String?): Pair<Int, String> {
-        if (token.isNullOrEmpty()) throw ApiError(HttpStatus.UNAUTHORIZED, "Sign in first")
+        if (token.isNullOrEmpty()) return serverAccount()
         val hash = hashToken(token)
         return transaction {
             val row =
@@ -260,6 +268,31 @@ object DochoSync {
                     .firstOrNull() ?: throw ApiError(HttpStatus.UNAUTHORIZED, "Signed out, sign in again")
             DochoSyncTokenTable.update({ DochoSyncTokenTable.tokenHash eq hash }) { it[lastUsedAt] = now() }
             row[DochoSyncUserTable.id].value to row[DochoSyncUserTable.username]
+        }
+    }
+
+    /** The account the server's own reading follows (SyncBridge), made the first time it's needed. */
+    @Synchronized
+    fun serverAccount(): Pair<Int, String> {
+        SyncBridge.linkedUserId()?.let { id ->
+            val name = transaction { DochoSyncUserTable.selectAll().where { DochoSyncUserTable.id eq id }.first()[DochoSyncUserTable.username] }
+            return id to name
+        }
+        return transaction {
+            DochoSyncUserTable.selectAll().where { DochoSyncUserTable.username eq SERVER_ACCOUNT }.firstOrNull()?.let {
+                return@transaction it[DochoSyncUserTable.id].value to SERVER_ACCOUNT
+            }
+            // No password signs in to it: the server's authentication stands in for one.
+            val salt = ByteArray(16).also(random::nextBytes)
+            val id =
+                DochoSyncUserTable
+                    .insertAndGetId {
+                        it[username] = SERVER_ACCOUNT
+                        it[DochoSyncUserTable.salt] = hex(salt)
+                        it[passwordHash] = hashPassword(Base64.getEncoder().encodeToString(ByteArray(32).also(random::nextBytes)), salt)
+                        it[createdAt] = now()
+                    }.value
+            id to SERVER_ACCOUNT
         }
     }
 

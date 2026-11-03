@@ -95,10 +95,6 @@ class DochoSync(
         mutex.withLock {
             mutableStatus.value = Status.Syncing
             val result = try {
-                if (preferences.token.get().isBlank()) {
-                    val signedIn = api.signIn()
-                    if (signedIn is DochoSyncConnection.Failed) throw java.io.IOException(signedIn.reason)
-                }
                 runSync()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
