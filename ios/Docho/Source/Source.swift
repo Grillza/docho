@@ -82,18 +82,31 @@ enum SourceError: LocalizedError {
 /// Suwayomi server offers, which come and go as extensions are installed.
 final class SourceManager: Sendable {
     private let builtIn: [any MangaSource]
-    private let dynamic = Mutex<[any MangaSource]>([])
+    /// Sources that come and go, by who provides them. Extensions on this device come before a
+    /// server's, so a source on both is read from the device, as on Android.
+    private let dynamic = Mutex<[Provider: [any MangaSource]]>([:])
+
+    enum Provider: Int, Comparable {
+        case device, suwayomi
+
+        static func < (a: Provider, b: Provider) -> Bool { a.rawValue < b.rawValue }
+    }
 
     init(sources: [any MangaSource]) {
         builtIn = sources
     }
 
     var sources: [any MangaSource] {
-        builtIn + dynamic.withLock { $0 }
+        var seen = Set(builtIn.map(\.id))
+        var all = builtIn
+        for (_, sources) in dynamic.withLock({ $0 }).sorted(by: { $0.key < $1.key }) {
+            for source in sources where seen.insert(source.id).inserted { all.append(source) }
+        }
+        return all
     }
 
-    func setDynamic(_ sources: [any MangaSource]) {
-        dynamic.withLock { $0 = sources.filter { source in !builtIn.contains { $0.id == source.id } } }
+    func setDynamic(_ sources: [any MangaSource], from provider: Provider = .suwayomi) {
+        dynamic.withLock { $0[provider] = sources }
     }
 
     func source(_ id: Int64) -> any MangaSource {

@@ -22,8 +22,12 @@ actor ExtensionHost {
     /// Android WebView ones with it).
     static let userAgent = "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
 
-    init(transport: any ExtensionTransport) {
+    /// Runs once before the first call: starts the embedded JVM (blocking, off the actor).
+    private let prepare: @Sendable () throws -> Void
+
+    init(transport: any ExtensionTransport, prepare: @escaping @Sendable () throws -> Void = {}) {
         self.transport = transport
+        self.prepare = prepare
     }
 
     // MARK: Start-up
@@ -39,7 +43,9 @@ actor ExtensionHost {
                 for await event in events { await self?.handle(event) }
             }
         }
+        let prepare = prepare
         let task = Task<RPC.Hello, Error> {
+            try await Task.detached(priority: .userInitiated) { try prepare() }.value
             let hello: RPC.Hello = try await self.rawCall("host.hello", SyncJSON.object([:]))
             guard hello.protocolVersion >= RPC.protocolVersion else {
                 throw RPC.RPCError(code: "INTERNAL", message: "The extension host speaks protocol \(hello.protocolVersion), the app \(RPC.protocolVersion)")

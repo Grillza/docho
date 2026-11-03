@@ -354,6 +354,15 @@ private struct BrowseSettings: View {
         PreferenceHeader(title: String(localized: "Sources"))
         SwitchPreference(title: String(localized: "Hide entries already in library"), isOn: $preferences.hideInLibraryItems)
         InfoPreference(text: String(localized: "Kavita, Komga and BookOrbit are built in. Set them up under Settings → Sync / Self-hosted sources."))
+        let extensions = app.deviceExtensions
+        if extensions.isSupported {
+            PreferenceHeader(title: String(localized: "Extensions"))
+            SwitchPreference(
+                title: String(localized: "Extensions on this device"),
+                subtitle: String(localized: "Install Mihon extensions from repos you add and read from them without a server. Extensions run code on your device."),
+                isOn: Binding(get: { extensions.isEnabled }, set: { extensions.isEnabled = $0 })
+            )
+        }
     }
 }
 

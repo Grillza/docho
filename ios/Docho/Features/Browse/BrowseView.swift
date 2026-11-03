@@ -19,6 +19,12 @@ struct BrowseView: View {
     @State private var query = ""
     @State private var tab = BrowseTab.sources
     @State private var choosingLanguages = false
+    /// With extensions both on this device and on a Suwayomi server: which the Extensions tab lists.
+    @State private var extensionsOnDevice = true
+
+    /// Whether Browse has an Extensions tab: extensions on this device are on, or a server is set up.
+    private var hasExtensions: Bool { app.suwayomi.isConfigured || app.deviceExtensions.isEnabled }
+    private var showsDeviceExtensions: Bool { app.deviceExtensions.isEnabled && (extensionsOnDevice || !app.suwayomi.isConfigured) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,24 +50,38 @@ struct BrowseView: View {
                 TopAppBar(title: String(localized: "Browse")) {
                     if tab == .extensions {
                         AppBarIcon("refresh", label: String(localized: "Check for updates")) {
-                            Task { await app.suwayomi.loadExtensions(refresh: true) }
+                            if showsDeviceExtensions {
+                                Task { await app.deviceExtensions.refresh(refreshRepos: true) }
+                            } else {
+                                Task { await app.suwayomi.loadExtensions(refresh: true) }
+                            }
                         }
                     } else {
                         AppBarIcon("travel_explore", label: String(localized: "Global search")) { searching = true }
                     }
-                    if app.suwayomi.isConfigured {
+                    if hasExtensions {
                         AppBarIcon("filter_list", label: String(localized: "Languages")) { choosingLanguages = true }
                     }
                 }
             }
-            if app.suwayomi.isConfigured {
+            if hasExtensions {
                 M3Tabs(tabs: BrowseTab.allCases, selection: $tab, title: \.title, badge: { tab in
                     let updates = app.suwayomi.extensions.filter { $0.isInstalled && $0.hasUpdate }.count
+                        + app.deviceExtensions.installed.filter(\.hasUpdate).count
                     return tab == .extensions && updates > 0 ? String(updates) : nil
                 })
             }
-            if tab == .extensions, app.suwayomi.isConfigured {
-                ExtensionsView(query: "")
+            if tab == .extensions, hasExtensions {
+                if app.deviceExtensions.isEnabled, app.suwayomi.isConfigured {
+                    Picker(String(localized: "Extensions"), selection: $extensionsOnDevice) {
+                        Text("On this device").tag(true)
+                        Text("On the server").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                if showsDeviceExtensions { DeviceExtensionsView() } else { ExtensionsView(query: "") }
             } else {
                 sourceList
             }
@@ -148,14 +168,17 @@ struct BrowseView: View {
     /// The built-in sources under "Other", then the server's by language, as Mihon groups them.
     private var sourceGroups: [(title: String, sources: [any MangaSource])] {
         _ = app.suwayomi.sourceInfos
+        _ = app.deviceExtensions.sourceInfos
         let showNSFW = app.suwayomiSettings.showNSFW
         let languages = Set(app.preferences.sourceLanguages)
+        func isExtension(_ source: any MangaSource) -> Bool { source is SuwayomiSource || source is ExtensionSource }
         let sources = app.sources.available.filter { source in
-            guard let remote = source as? SuwayomiSource else { return true }
-            return (showNSFW || !remote.info.isNSFW) && languages.contains(remote.lang)
+            if let remote = source as? SuwayomiSource { return (showNSFW || !remote.info.isNSFW) && languages.contains(remote.lang) }
+            if let local = source as? ExtensionSource { return (showNSFW || local.info.contentWarning != .nsfw) && languages.contains(local.lang) }
+            return true
         }
-        let builtIn = sources.filter { !($0 is SuwayomiSource) }
-        let remote = Dictionary(grouping: sources.filter { $0 is SuwayomiSource }, by: \.lang)
+        let builtIn = sources.filter { !isExtension($0) }
+        let remote = Dictionary(grouping: sources.filter(isExtension), by: \.lang)
         var groups: [(title: String, sources: [any MangaSource])] = []
         if !builtIn.isEmpty { groups.append((String(localized: "Other"), builtIn)) }
         for lang in remote.keys.sorted(by: { ExtensionsView.languageName($0) < ExtensionsView.languageName($1) }) {

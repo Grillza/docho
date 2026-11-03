@@ -30,17 +30,36 @@ targets:
     platform: iOS
     sources:
       - path: Docho
+        excludes:
+          - "Native/DochoJVM/include/module.modulemap"
+      # The extension runtime, when built (scripts/build-runtime.sh): java.home, the host jar and
+      # the licences, as folders at the top of the bundle.
+      - path: Embedded/jre
+        type: folder
+        optional: true
+        buildPhase: resources
+      - path: Embedded/host
+        type: folder
+        optional: true
+        buildPhase: resources
+      - path: Embedded/licenses
+        type: folder
+        optional: true
+        buildPhase: resources
     dependencies:
       - package: GRDB
       - package: Nuke
       - package: Nuke
         product: NukeUI
+    configFiles:
+      Debug: Config/Docho.xcconfig
+      Release: Config/Docho.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho
         PRODUCT_NAME: Docho
         # The system libarchive, for RAR and 7-Zip comics (Vendor/CLibArchive).
-        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Vendor/CLibArchive
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Vendor/CLibArchive $(SRCROOT)/Docho/Native/DochoJVM/include
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -164,7 +183,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.grillza.docho.tests
-        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Vendor/CLibArchive
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Vendor/CLibArchive $(SRCROOT)/Docho/Native/DochoJVM/include
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
 

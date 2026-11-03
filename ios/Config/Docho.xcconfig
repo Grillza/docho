@@ -1,0 +1,8 @@
+// Build settings that depend on what's been built locally.
+//
+// The extension runtime (PLAN-2 G1/G5): `scripts/build-runtime.sh` writes ios/Embedded/, whose
+// jvm.xcconfig sets JVM_LDFLAGS to link Eclipse OpenJ9 statically. Without it the app builds
+// without the JVM, and on-device extensions say they aren't available.
+#include? "../Embedded/jvm.xcconfig"
+
+OTHER_LDFLAGS = $(inherited) $(JVM_LDFLAGS)

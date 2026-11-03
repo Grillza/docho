@@ -16,3 +16,6 @@ Docho/Resources/Info.plist
 build/
 DerivedData/
 *.ipa
+
+# The extension runtime package (scripts/build-runtime.sh): JVM, class library, host jar
+Embedded/

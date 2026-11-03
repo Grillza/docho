@@ -39,6 +39,8 @@ final class AppModel {
     let trackers: TrackerManager
     let suwayomiSettings: SuwayomiSettings
     let suwayomi: SuwayomiModel
+    /// Extensions on this device (off until turned on).
+    let deviceExtensions: DeviceExtensions
     let notifier = DownloadNotifier()
     let dochoSyncSettings: DochoSyncSettings
     let dochoSyncClient: DochoSyncClient
@@ -130,6 +132,7 @@ final class AppModel {
         }
         self.suwayomiSettings = suwayomiSettings
         suwayomi = SuwayomiModel(client: SuwayomiClient(settings: suwayomiSettings, session: session), sources: sources, defaults: downloadDefaults)
+        deviceExtensions = DeviceExtensions(sources: sources, defaults: downloadDefaults)
 
         Task { [weak self, changes = kavita.connectionChanges] in
             for await connection in changes {
