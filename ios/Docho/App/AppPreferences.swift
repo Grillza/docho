@@ -182,6 +182,19 @@ final class AppPreferences {
     // MARK: Browse
 
     var hideInLibraryItems: Bool { didSet { save(hideInLibraryItems, "browse_hide_in_library_items") } }
+
+    /// Extensions' content warnings Browse lists (Android's `enabled_content_warnings`): SAFE,
+    /// MIXED, NSFW. All three to start with, as on Android.
+    var allowedContentWarnings: Set<String> { didSet { save(Array(allowedContentWarnings).sorted(), "enabled_content_warnings") } }
+    /// Whether the content warnings also hide extensions already installed and their sources.
+    var applyContentWarningsToInstalled: Bool {
+        didSet { save(applyContentWarningsToInstalled, "apply_content_warnings_to_installed") }
+    }
+
+    /// Whether an extension, or its sources, with `warning` ("SAFE", "MIXED" or "NSFW") is listed.
+    func allows(contentWarning warning: String, installed: Bool) -> Bool {
+        (installed && !applyContentWarningsToInstalled) || allowedContentWarnings.contains(warning)
+    }
     var browseDisplayMode: DisplayMode { didSet { save(browseDisplayMode.rawValue, "pref_display_mode_catalogue") } }
 
     // MARK: More
@@ -280,6 +293,8 @@ final class AppPreferences {
         downloadsPaused = bool("download_queue_paused", false)
 
         hideInLibraryItems = bool("browse_hide_in_library_items", false)
+        allowedContentWarnings = Set(defaults.stringArray(forKey: "enabled_content_warnings") ?? ["SAFE", "MIXED", "NSFW"])
+        applyContentWarningsToInstalled = bool("apply_content_warnings_to_installed", true)
         browseDisplayMode = string("pref_display_mode_catalogue").flatMap(DisplayMode.init) ?? .compactGrid
 
         downloadedOnly = bool("pref_downloaded_only", false)

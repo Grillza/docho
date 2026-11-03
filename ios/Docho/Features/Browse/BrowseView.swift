@@ -169,7 +169,7 @@ struct BrowseView: View {
     private var sourceGroups: [(title: String, sources: [any MangaSource])] {
         _ = app.suwayomi.sourceInfos
         _ = app.deviceExtensions.sourceInfos
-        let showNSFW = app.suwayomiSettings.showNSFW
+        let preferences = app.preferences
         let languages = Set(app.preferences.sourceLanguages)
         func isExtension(_ source: any MangaSource) -> Bool {
             if let remote = source as? SuwayomiSource { return !remote.isDochoLibrary }
@@ -177,9 +177,12 @@ struct BrowseView: View {
         }
         let sources = app.sources.available.filter { source in
             if let remote = source as? SuwayomiSource {
-                return remote.isDochoLibrary || ((showNSFW || !remote.info.isNSFW) && languages.contains(remote.lang))
+                return remote.isDochoLibrary
+                    || (preferences.allows(contentWarning: remote.info.isNSFW ? "NSFW" : "SAFE", installed: true) && languages.contains(remote.lang))
             }
-            if let local = source as? ExtensionSource { return (showNSFW || local.info.contentWarning != .nsfw) && languages.contains(local.lang) }
+            if let local = source as? ExtensionSource {
+                return preferences.allows(contentWarning: local.info.contentWarning.rawValue, installed: true) && languages.contains(local.lang)
+            }
             return true
         }
         let builtIn = sources.filter { !isExtension($0) }
@@ -227,12 +230,19 @@ private struct SourceRow: View {
 
 /// A source's logo, or its initial.
 struct SourceIcon: View {
+    @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
     let source: any MangaSource
 
     var body: some View {
         if let remote = source as? SuwayomiSource, !remote.isDochoLibrary, let request = remote.client.request(remote.info.iconPath) {
             LazyImage(request: ImageRequest(urlRequest: request)) { state in
+                if let image = state.image { image.resizable().scaledToFit() } else { m3.surfaceContainerHighest }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .accessibilityHidden(true)
+        } else if let local = source as? ExtensionSource, let url = app.deviceExtensions.iconURL(local.info.pkgName) {
+            LazyImage(url: url) { state in
                 if let image = state.image { image.resizable().scaledToFit() } else { m3.surfaceContainerHighest }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8))

@@ -348,21 +348,63 @@ private struct DownloadSettings: View {
 
 private struct BrowseSettings: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.m3) private var m3
+    @State private var choosingWarnings = false
 
     var body: some View {
         @Bindable var preferences = app.preferences
+        let extensions = app.deviceExtensions
         PreferenceHeader(title: String(localized: "Sources"))
         SwitchPreference(title: String(localized: "Hide entries already in library"), isOn: $preferences.hideInLibraryItems)
-        InfoPreference(text: String(localized: "Kavita, Komga and BookOrbit are built in. Set them up under Settings → Sync / Self-hosted sources."))
-        let extensions = app.deviceExtensions
+        NavigationLink(value: Route.extensionStores) {
+            PreferenceRow(title: String(localized: "Extension stores"), subtitle: storesSummary)
+        }
+        .buttonStyle(.plain)
+        PreferenceHeader(title: String(localized: "Extensions"))
         if extensions.isSupported {
-            PreferenceHeader(title: String(localized: "Extensions"))
             SwitchPreference(
                 title: String(localized: "Extensions on this device"),
-                subtitle: String(localized: "Install Mihon extensions from repos you add and read from them without a server. Extensions run code on your device."),
+                subtitle: String(localized: "Install Mihon extensions from stores you add and read from them without a server. Extensions run code on your device."),
                 isOn: Binding(get: { extensions.isEnabled }, set: { extensions.isEnabled = $0 })
             )
         }
+        PreferenceRow(title: String(localized: "Allowed content warnings"), subtitle: warningsSummary, action: { choosingWarnings = true })
+        SwitchPreference(
+            title: String(localized: "Also apply to installed extensions"),
+            subtitle: String(localized: "When off, extensions you already installed keep their sources listed regardless of their warning"),
+            isOn: $preferences.applyContentWarningsToInstalled
+        )
+        InfoPreference(text: String(localized: "Extensions you haven't installed are hidden when their warning isn't allowed. This does not prevent unofficial or wrongly flagged extensions from showing 18+ content within the app."))
+        InfoPreference(text: String(localized: "Kavita, Komga, BookOrbit and Dōchō Server's libraries are built in. Set them up under Settings → Sync / Self-hosted sources."))
+            .m3Dialog(isPresented: $choosingWarnings, title: String(localized: "Allowed content warnings")) {
+                VStack(spacing: 0) {
+                    ForEach(Self.warnings, id: \.key) { warning in
+                        CheckboxRow(title: warning.title, isOn: Binding(
+                            get: { preferences.allowedContentWarnings.contains(warning.key) },
+                            set: { on in
+                                if on { preferences.allowedContentWarnings.insert(warning.key) } else { preferences.allowedContentWarnings.remove(warning.key) }
+                            }
+                        ))
+                    }
+                }
+            } buttons: {
+                M3TextButton(title: String(localized: "OK")) { choosingWarnings = false }
+            }
+    }
+
+    private static let warnings: [(key: String, title: String)] = [
+        ("SAFE", String(localized: "Safe")), ("MIXED", String(localized: "Mixed")), ("NSFW", String(localized: "18+")),
+    ]
+
+    private var warningsSummary: String {
+        let names = Self.warnings.filter { app.preferences.allowedContentWarnings.contains($0.key) }.map(\.title)
+        return names.isEmpty ? String(localized: "None") : names.joined(separator: ", ")
+    }
+
+    private var storesSummary: String {
+        let count = (app.suwayomi.isConfigured ? app.suwayomi.stores.count : 0)
+            + (app.deviceExtensions.isEnabled ? app.deviceExtensions.repos.count : 0)
+        return count == 1 ? String(localized: "1 store") : String(localized: "\(count) stores")
     }
 }
 

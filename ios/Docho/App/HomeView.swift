@@ -53,6 +53,7 @@ enum Route: Hashable {
     case about
     case acknowledgements
     case customThemes
+    case extensionStores
 }
 
 /// The app's root: the current tab's screen with a navigation bar below it (iPhone) or a
@@ -265,6 +266,7 @@ struct HomeView: View {
         case .about: AboutView()
         case .acknowledgements: AcknowledgementsView()
         case .customThemes: CustomThemesView()
+        case .extensionStores: ExtensionStoresView()
         }
     }
 }

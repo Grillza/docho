@@ -81,6 +81,8 @@ struct SuwayomiExtension: Sendable, Equatable, Identifiable, Hashable {
     var hasUpdate: Bool
     var isObsolete: Bool
     var isNSFW: Bool
+    /// SAFE, MIXED or NSFW.
+    var contentWarning: String = "SAFE"
     var storeName: String?
 }
 
@@ -162,7 +164,7 @@ final class SuwayomiClient: Sendable {
             return SuwayomiSourceInfo(
                 id: id, name: node.string("name") ?? "", lang: node.string("lang") ?? "other",
                 supportsLatest: node["supportsLatest"] as? Bool ?? false, iconPath: node.string("iconUrl") ?? "",
-                isNSFW: node.string("isNsfw") == "NSFW"
+                isNSFW: (node["isNsfw"] as? Bool) ?? (node.string("isNsfw") == "NSFW")
             )
         }
     }
@@ -188,7 +190,7 @@ final class SuwayomiClient: Sendable {
                 versionName: node.string("versionName") ?? "", iconPath: node.string("iconUrl") ?? "",
                 isInstalled: node["isInstalled"] as? Bool ?? false, hasUpdate: node["hasUpdate"] as? Bool ?? false,
                 isObsolete: node["isObsolete"] as? Bool ?? false,
-                isNSFW: node.string("contentWarning") == "NSFW",
+                isNSFW: node.string("contentWarning") == "NSFW", contentWarning: node.string("contentWarning") ?? "SAFE",
                 storeName: node.dict("extensionStore")?.string("name")
             )
         }

@@ -1,3 +1,4 @@
+import NukeUI
 import SwiftUI
 
 /// Browse → Extensions for extensions on this device (Mihon's Extensions tab): updates, those
@@ -6,7 +7,6 @@ import SwiftUI
 struct DeviceExtensionsView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
-    @State private var managingRepos = false
 
     typealias RPC = ExtensionRPC
 
@@ -29,7 +29,9 @@ struct DeviceExtensionsView: View {
             default:
                 if model.repos.isEmpty, model.installed.isEmpty, !model.isLoading {
                     EmptyScreen(message: String(localized: "Extensions come from repos. Add a repo's index address (from the repo's site) to see its extensions here.")) {
-                        M3TextButton(title: String(localized: "Add repo")) { managingRepos = true }
+                        NavigationLink(value: Route.extensionStores) {
+                            Text("Add extension store").font(M3Type.labelLarge).foregroundStyle(m3.primary)
+                        }
                     }
                 } else {
                     list
@@ -37,7 +39,6 @@ struct DeviceExtensionsView: View {
             }
         }
         .task { await model.refresh() }
-        .sheet(isPresented: $managingRepos) { ExtensionReposSheet() }
     }
 
     private var list: some View {
@@ -46,7 +47,10 @@ struct DeviceExtensionsView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Spacer()
-                    M3TextButton(title: String(localized: "Repos")) { managingRepos = true }
+                    NavigationLink(value: Route.extensionStores) {
+                        Text("Extension stores").font(M3Type.labelLarge).foregroundStyle(m3.primary).padding(.horizontal, 12).frame(minHeight: 40)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 8)
                 if let error = model.error {
@@ -85,10 +89,12 @@ struct DeviceExtensionsView: View {
     private var groups: [(title: String, items: [Item])] {
         let model = app.deviceExtensions
         let languages = Set(app.preferences.sourceLanguages)
-        let showNSFW = app.suwayomiSettings.showNSFW
+        let preferences = app.preferences
         let installedIds = Set(model.installed.map(\.pkgName))
         let byName: (Item, Item) -> Bool = { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        let installed = model.installed.map { ext in Item(installed: ext, available: model.available.first { $0.pkgName == ext.pkgName }) }
+        let installed = model.installed
+            .filter { preferences.allows(contentWarning: $0.contentWarning.rawValue, installed: true) }
+            .map { ext in Item(installed: ext, available: model.available.first { $0.pkgName == ext.pkgName }) }
         var groups: [(String, [Item])] = []
         let untrusted = installed.filter { $0.installed?.isTrusted == false }.sorted(by: byName)
         if !untrusted.isEmpty { groups.append((String(localized: "Waiting to be trusted"), untrusted)) }
@@ -97,7 +103,7 @@ struct DeviceExtensionsView: View {
         let current = installed.filter { $0.installed?.isTrusted == true && $0.installed?.hasUpdate == false }.sorted(by: byName)
         if !current.isEmpty { groups.append((String(localized: "Installed"), current)) }
         let rest = model.available
-            .filter { !installedIds.contains($0.pkgName) && (showNSFW || $0.contentWarning != .nsfw) && languages.contains($0.lang) }
+            .filter { !installedIds.contains($0.pkgName) && preferences.allows(contentWarning: $0.contentWarning.rawValue, installed: false) && languages.contains($0.lang) }
             .map { Item(available: $0) }
         let byLang = Dictionary(grouping: rest, by: \.lang)
         for lang in byLang.keys.sorted(by: { ExtensionsView.languageName($0) < ExtensionsView.languageName($1) }) {
@@ -112,7 +118,6 @@ private struct DeviceExtensionRow: View {
     @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
     let item: DeviceExtensionsView.Item
-    @State private var icon: UIImage?
     @State private var confirmingUninstall = false
     @State private var confirmingTrust = false
 
@@ -120,8 +125,8 @@ private struct DeviceExtensionRow: View {
         let model = app.deviceExtensions
         let working = model.progress[item.id]
         HStack(spacing: 16) {
-            Group {
-                if let icon { Image(uiImage: icon).resizable().scaledToFit() } else { m3.surfaceContainerHighest }
+            LazyImage(url: model.iconURL(item.id)) { state in
+                if let image = state.image { image.resizable().scaledToFit() } else { m3.surfaceContainerHighest }
             }
             .frame(width: 40, height: 40)
             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -160,10 +165,6 @@ private struct DeviceExtensionRow: View {
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("deviceExtension.\(item.id)")
-        .task(id: item.installed?.versionCode) {
-            guard item.installed != nil, let host = model.host, let data = try? await host.icon(item.id) else { return }
-            icon = UIImage(data: data)
-        }
         .m3Dialog(isPresented: $confirmingUninstall, title: String(localized: "Uninstall \(item.name)?")) {
             Text("Series from it stay in your library, but can't be updated until it's installed again.")
                 .padding(.horizontal, 24)
@@ -184,59 +185,5 @@ private struct DeviceExtensionRow: View {
                 if let installed = item.installed { Task { await model.trust(installed) } }
             }
         }
-    }
-}
-
-/// The extension repos: added by their index address, removed with the bin.
-private struct ExtensionReposSheet: View {
-    @Environment(AppModel.self) private var app
-    @Environment(\.m3) private var m3
-    @Environment(\.dismiss) private var dismiss
-    @State private var url = ""
-    @State private var error: String?
-    @State private var adding = false
-
-    var body: some View {
-        let model = app.deviceExtensions
-        VStack(alignment: .leading, spacing: 0) {
-            TopAppBar(title: String(localized: "Extension repos"), showsBack: true)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(model.repos) { repo in
-                        PreferenceRow(title: repo.name, subtitle: repo.indexUrl, widget: {
-                            AppBarIcon("delete", label: String(localized: "Remove \(repo.name)")) {
-                                Task { await model.removeRepo(repo) }
-                            }
-                            .foregroundStyle(m3.onSurfaceVariant)
-                        })
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        M3TextField(label: String(localized: "Repo index address"), text: $url, keyboard: .URL,
-                                    supporting: String(localized: "Ends in index.min.json"))
-                        if let error { Text(error).font(M3Type.bodySmall).foregroundStyle(m3.error) }
-                        HStack {
-                            Spacer()
-                            if adding { ProgressView().tint(m3.primary) }
-                            M3TextButton(title: String(localized: "Add repo")) {
-                                adding = true
-                                Task {
-                                    do {
-                                        try await model.addRepo(url)
-                                        url = ""
-                                        error = nil
-                                    } catch {
-                                        self.error = error.localizedDescription
-                                    }
-                                    adding = false
-                                }
-                            }
-                            .disabled(url.isBlank || adding)
-                        }
-                    }
-                    .padding(16)
-                }
-            }
-        }
-        .background(m3.surface)
     }
 }

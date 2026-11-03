@@ -9,12 +9,8 @@ struct SuwayomiSection: View {
     @State private var server = ""
     @State private var username = ""
     @State private var password = ""
-    @State private var showNSFW = false
     @State private var loaded = false
     @State private var status: ServerConnection = .unknown
-    @State private var addingRepo = false
-    @State private var repoURL = ""
-    @State private var repoError: String?
     @State private var confirmingDelete = false
 
     var body: some View {
@@ -37,60 +33,17 @@ struct SuwayomiSection: View {
             })
             if settings.isConfigured { DochoSyncRows() }
             PreferenceHeader(title: String(localized: "Extensions"))
-            SwitchPreference(
-                title: String(localized: "Show NSFW extensions and sources"), isOn: $showNSFW
-            )
-            if settings.isConfigured {
-                PreferenceHeader(title: String(localized: "Extension repos"))
-                if app.suwayomi.stores.isEmpty {
-                    Text("Extensions come from repos. Add a repo's index address (from the repo's site) to see its extensions under Browse → Extensions.")
-                        .font(M3Type.bodySmall)
-                        .foregroundStyle(m3.onSurfaceVariant)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                ForEach(app.suwayomi.stores) { store in
-                    PreferenceRow(title: store.name, subtitle: store.indexURL, widget: {
-                        AppBarIcon("delete", label: String(localized: "Remove \(store.name)")) {
-                            Task { await app.suwayomi.removeStore(store) }
-                        }
-                        .foregroundStyle(m3.onSurfaceVariant)
-                    })
-                }
-                PreferenceRow(title: String(localized: "Add repo"), icon: "add", action: {
-                    repoURL = ""
-                    addingRepo = true
-                })
+            NavigationLink(value: Route.extensionStores) {
+                PreferenceRow(
+                    title: String(localized: "Extension stores"),
+                    subtitle: String(localized: "Where the server gets its extensions; content warnings are under Settings → Browse")
+                )
             }
+            .buttonStyle(.plain)
             PreferenceRow(
                 title: String(localized: "Delete"), subtitle: String(localized: "Erase the Dōchō Server / Suwayomi settings on this device"),
                 icon: "delete", iconTint: m3.error, action: { confirmingDelete = true }
             )
-        }
-        .m3Dialog(isPresented: $addingRepo, title: String(localized: "Add repo")) {
-            VStack(alignment: .leading, spacing: 8) {
-                M3TextField(label: String(localized: "Repo index address"), text: $repoURL, keyboard: .URL,
-                            supporting: String(localized: "Ends in index.min.json"))
-                if let repoError {
-                    Text(repoError).font(M3Type.bodySmall).foregroundStyle(m3.error)
-                }
-            }
-            .padding(.horizontal, 24)
-        } buttons: {
-            M3TextButton(title: String(localized: "Cancel")) { addingRepo = false }
-            M3TextButton(title: String(localized: "Add")) {
-                let url = repoURL
-                Task {
-                    do {
-                        try await app.suwayomi.addStore(url)
-                        addingRepo = false
-                        repoError = nil
-                    } catch {
-                        repoError = error.localizedDescription
-                    }
-                }
-            }
         }
         .m3Dialog(isPresented: $confirmingDelete, title: String(localized: "Delete Dōchō Server / Suwayomi settings?")) {
             Text("This erases the server address and sign-in on this device. Extensions stay installed on the server.")
@@ -112,7 +65,6 @@ struct SuwayomiSection: View {
             server = settings.serverURL
             username = settings.username
             password = settings.password
-            showNSFW = settings.showNSFW
             loaded = true
         }
         .onChange(of: server) { old, value in
@@ -122,7 +74,6 @@ struct SuwayomiSection: View {
         }
         .onChange(of: username) { _, value in settings.username = value }
         .onChange(of: password) { _, value in settings.password = value }
-        .onChange(of: showNSFW) { _, value in settings.showNSFW = value }
         .modifier(DebouncedCheck(key: server + username + password) { await check() })
     }
 
@@ -158,9 +109,15 @@ struct ExtensionsView: View {
                 LoadingScreen()
             } else if model.extensions.isEmpty {
                 EmptyScreen(message: model.error ?? (model.stores.isEmpty
-                    ? String(localized: "No extension repos on the server. Add one in Settings → Sync / Self-hosted sources → Dōchō Server / Suwayomi.")
+                    ? String(localized: "The server has no extension stores yet. Add one under Extension stores.")
                     : String(localized: "No extensions found"))) {
-                    M3TextButton(title: String(localized: "Retry")) { Task { await model.loadExtensions(refresh: true) } }
+                    HStack(spacing: 8) {
+                        M3TextButton(title: String(localized: "Retry")) { Task { await model.loadExtensions(refresh: true) } }
+                        NavigationLink(value: Route.extensionStores) {
+                            Text("Extension stores").font(M3Type.labelLarge).foregroundStyle(m3.primary).padding(.horizontal, 12).frame(minHeight: 40)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             } else {
                 ScrollView {
@@ -189,11 +146,11 @@ struct ExtensionsView: View {
     }
 
     private var groups: [(title: String, items: [SuwayomiExtension])] {
-        let showNSFW = app.suwayomiSettings.showNSFW
+        let preferences = app.preferences
         let languages = Set(app.preferences.sourceLanguages)
         let visible = app.suwayomi.extensions.filter { ext in
             // Installed ones always show, so they can be updated or removed.
-            (showNSFW || !ext.isNSFW) && (ext.isInstalled || languages.contains(ext.lang))
+            preferences.allows(contentWarning: ext.contentWarning, installed: ext.isInstalled) && (ext.isInstalled || languages.contains(ext.lang))
                 && (query.isEmpty || ext.name.localizedCaseInsensitiveContains(query))
         }
         let byName: (SuwayomiExtension, SuwayomiExtension) -> Bool = {

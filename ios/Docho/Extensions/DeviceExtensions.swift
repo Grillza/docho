@@ -134,6 +134,7 @@ final class DeviceExtensions {
             repos = try await host.repos()
             installed = try await host.installedExtensions()
             available = try await host.availableExtensions(includeNsfw: true)
+            rememberIcons()
             try await refreshSources(host)
             error = nil
         } catch {
@@ -223,4 +224,26 @@ final class DeviceExtensions {
     }
 
     func clearToast() { lastToast = nil }
+
+    /// An extension's icon, from its repo.
+    func iconURL(_ pkgName: String) -> URL? {
+        available.first { $0.pkgName == pkgName }.flatMap { URL(string: $0.iconUrl) } ?? iconURLs[pkgName]
+    }
+
+    /// Icons of installed extensions, remembered for when the repo lists aren't loaded.
+    private var iconURLs: [String: URL] {
+        get { (defaults.dictionary(forKey: Self.iconsKey) as? [String: String] ?? [:]).compactMapValues(URL.init(string:)) }
+        set { defaults.set(newValue.mapValues(\.absoluteString), forKey: Self.iconsKey) }
+    }
+
+    private static let iconsKey = "device_extensions_icons"
+
+    /// Remembers the icons of installed extensions while the repo list is at hand.
+    private func rememberIcons() {
+        var known = iconURLs
+        for ext in installed {
+            if let url = available.first(where: { $0.pkgName == ext.pkgName }).flatMap({ URL(string: $0.iconUrl) }) { known[ext.pkgName] = url }
+        }
+        iconURLs = known
+    }
 }
