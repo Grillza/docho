@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.2",
+          "buildVersion": "61",
+          "date": "2026-11-03T19:27:21Z",
+          "localizedDescription": "Version 0.32.2. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.2.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Extension stores (Settings → Browse → Extension stores), as on Android: every store your Dōchō Server and this device get extensions from, as cards to open the store's website, copy its address or remove it. + adds a store, to the server or this device.\n• Allowed content warnings (Settings → Browse): choose whether Safe, Mixed and 18+ extensions and their sources are listed, and whether that also applies to extensions you've installed. All are allowed to start with, as on Android.\n\nFixed\n\n• All of an extension's sources show. 18+ sources from Dōchō Server were hidden unless \"Show NSFW\" was turned on in the server's settings; the content warnings above replace that switch.\n• Extension icons show for extensions on the device, in Browse → Extensions and beside their sources.\n• Browse → Extensions links to Extension stores when the server has none, or can't be reached, instead of only offering to try again.\n• Settings → Browse is laid out as on Android.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.2/docho-0.32.2.ipa",
+          "size": 88210189,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.1",
           "buildVersion": "60",
           "date": "2026-11-03T19:01:51Z",
