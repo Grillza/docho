@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.0",
+          "buildVersion": "59",
+          "date": "2026-11-03T18:19:40Z",
+          "localizedDescription": "Version 0.32.0. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.0.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Extensions on the iPhone and iPad, no server needed (early). Turn on Settings → Browse → Extensions on this device, add a repo under Browse → Extensions, then install, trust and update extensions as on Android. Their sources show under Browse → Sources, and their series read, download and update like any other. They run on a Java runtime built into the app (Eclipse OpenJ9), which is why the download is larger (about 88 MB). This is the first release with it: extensions that need JavaScript, image unscrambling or a web view may not work yet.\n• Dōchō Server. Dōchō's own version of Suwayomi, with Dōchō Sync, libraries and series groups built in (see Optional: Dōchō Server in the README). Enter its address in Settings → Sync / Self-hosted sources under both Dōchō Server / Suwayomi and Dōchō Sync.\n• Everything syncs both ways with Dōchō Server. Your library and categories, edited series details, chapter renames and Volume/Chapter types, and read progress are the same in the app and in the server's web reader.\n• Edit details. A series' menu has Edit details for its title, author, artist, description, genres and status. Edited fields stay when the series refreshes from its source, and reach your other devices and Dōchō Server through Dōchō Sync.\n• Progress syncs while you read. With Dōchō Sync, the page you're on reaches your other devices and Dōchō Server within about 15 seconds. Leaving the reader syncs right away, and opening a series fetches what you read elsewhere.\n\nChanged\n\n• Dōchō Sync uses the sync built into Dōchō Server when you enter its address; the standalone sync server still works. Edited details wait to sync until the server is updated to 0.32, and everything else keeps syncing meanwhile.\n• The Suwayomi settings are now Dōchō Server / Suwayomi, with Dōchō Server's icon.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.0/docho-0.32.0.ipa",
+          "size": 88179860,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.30.3",
           "buildVersion": "57",
           "date": "2026-11-02T19:18:28Z",
