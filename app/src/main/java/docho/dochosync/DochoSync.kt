@@ -169,15 +169,24 @@ class DochoSync(
         val changes = syncChanges(current, synced, pending.keys, System.currentTimeMillis())
         val remote = mutableListOf<SyncRecord>()
         var outgoing: List<SyncRecord> = changes
+        // Kinds an older server doesn't take yet ("details" before 0.32), kept for a later sync
+        val unsent = HashSet<String>()
         do {
             // Large first syncs go in parts, so no request gets too big
             val batch = outgoing.take(BATCH)
             outgoing = outgoing.drop(BATCH)
-            val page = api.sync(since, batch)
+            val page = try {
+                api.sync(since, batch)
+            } catch (e: java.io.IOException) {
+                if (e.message?.startsWith("Unknown kind: ${SyncValues.DETAILS}") != true) throw e
+                batch.filter { it.kind == SyncValues.DETAILS }.mapTo(unsent) { SyncValues.id(it.kind, it.key) }
+                api.sync(since, batch.filter { it.kind != SyncValues.DETAILS })
+            }
             remote += page.changes
             since = page.seq
         } while (page.more || outgoing.isNotEmpty())
         for (change in changes) {
+            if (SyncValues.id(change.kind, change.key) in unsent) continue
             val id = SyncValues.id(change.kind, change.key)
             if (change.isDeleted) synced.remove(id) else synced[id] = SyncValues.canonical(change.value)
         }
