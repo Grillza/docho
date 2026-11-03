@@ -25,14 +25,17 @@ class ReleaseServiceImpl(
 ) : ReleaseService {
 
     override suspend fun latest(arguments: GetApplicationRelease.Arguments): Release? {
-        val release = withContext(Dispatchers.IO) {
+        // Releases can carry only the iOS app (an .ipa and no APKs): the newest release with an APK
+        // is Android's, even when an iOS-only release came after it.
+        val releases = withContext(Dispatchers.IO) {
             with(json) {
                 networkService.client
-                    .newCall(GET("https://api.github.com/repos/${arguments.repository}/releases/latest"))
+                    .newCall(GET("https://api.github.com/repos/${arguments.repository}/releases?per_page=20"))
                     .awaitSuccess()
-                    .parseAs<GithubRelease>()
+                    .parseAs<List<GithubRelease>>()
             }
         }
+        val release = releases.firstOrNull { release -> release.assets.any { it.name.endsWith(".apk") } } ?: return null
 
         val downloadLink = getDownloadLink(release = release, isFoss = arguments.isFoss) ?: return null
 
@@ -62,7 +65,8 @@ class ReleaseServiceImpl(
     }
 
     private fun getDownloadLink(release: GithubRelease, isFoss: Boolean): String? {
-        val map = release.assets.associate { asset ->
+        // Only APKs: the iOS app's .ipa is in the same releases.
+        val map = release.assets.filter { it.name.endsWith(".apk") }.associate { asset ->
             BUILD_TYPES.find { "-$it" in asset.name } to asset.downloadLink
         }
 

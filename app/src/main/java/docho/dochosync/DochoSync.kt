@@ -95,6 +95,11 @@ class DochoSync(
         mutex.withLock {
             mutableStatus.value = Status.Syncing
             val result = try {
+                // State from the standalone sync server: start over here with a first sync
+                if (preferences.epoch.get() < DochoSyncPreferences.SERVER_EPOCH) {
+                    resetState()
+                    preferences.epoch.set(DochoSyncPreferences.SERVER_EPOCH)
+                }
                 runSync()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
