@@ -24,6 +24,9 @@ object SyncValues {
     const val RENAME = "rename"
     const val KIND = "kind"
 
+    /** A series' details edited on Dōchō Server; only the server writes these. */
+    const val DETAILS = "details"
+
     fun key(sourceId: Long, url: String) = "$sourceId|$url"
 
     /** The source id and url in a [key], or null if it isn't one. */

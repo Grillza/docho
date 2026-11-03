@@ -1257,7 +1257,7 @@
     <!-- Docho: Dōchō Sync -->
     <string name="pref_category_docho_sync">Dōchō Sync</string>
     <string name="pref_docho_sync_info">Keeps your library and categories, chapter renames and types, read progress and history the same on every phone and tablet signed in to the same Dōchō Sync server. Series are matched by their source, so set up the same sources on each device.</string>
-    <string name="pref_docho_sync_server_url_hint">e.g. http://arch.lan:8090</string>
+    <string name="pref_docho_sync_server_url_hint">Your Dōchō Server, e.g. http://arch.lan:4567 (or a standalone sync server)</string>
     <string name="pref_docho_sync_credentials_summary">Your Dōchō Sync account</string>
     <string name="pref_docho_sync_register">Create account</string>
     <string name="pref_docho_sync_register_summary">Creates the account above on the server. A new server takes one account unless it\'s set up for more.</string>
@@ -1335,17 +1335,17 @@
     <string name="pref_koreader_komga_downloads_summary">Downloads each Komga book once to work out the fingerprint KOReader matches it by. Large books can use a lot of data.</string>
 
     <!-- Docho: Suwayomi -->
-    <string name="pref_category_suwayomi" translatable="false">Suwayomi</string>
-    <string name="pref_suwayomi_server_url_hint">The address you open Suwayomi at, e.g. http://192.168.1.20:4567</string>
+    <string name="pref_category_suwayomi" translatable="false">Dōchō Server / Suwayomi</string>
+    <string name="pref_suwayomi_server_url_hint">The address you open Dōchō Server or Suwayomi at, e.g. http://192.168.1.20:4567</string>
     <string name="pref_suwayomi_credentials_summary">Only needed if your server has basic authentication turned on</string>
     <string name="suwayomi_not_configured">Enter the server address first</string>
     <string name="suwayomi_test_success">Connected to %1$s</string>
     <string name="suwayomi_sources_failed">Couldn\'t load the server\'s sources</string>
-    <string name="pref_suwayomi_sources_info">The extensions installed on your Suwayomi server appear under Browse → Sources beside the ones on this device, so you can read from them without installing them here. If an extension is on both, this device\'s copy is used.</string>
+    <string name="pref_suwayomi_sources_info">The extensions installed on the server appear under Browse → Sources beside the ones on this device, so you can read from them without installing them here. If an extension is on both, this device\'s copy is used. On Dōchō Server, each library and the Series Groups appear there too.</string>
     <string name="pref_suwayomi_show_nsfw">Show NSFW sources</string>
     <string name="pref_suwayomi_show_nsfw_summary">Lists the server\'s sources that are marked NSFW</string>
-    <string name="pref_suwayomi_open">Manage extensions</string>
-    <string name="pref_suwayomi_open_summary">Opens Suwayomi in your browser to install, update or remove extensions on the server</string>
+    <string name="pref_suwayomi_open">Open the server</string>
+    <string name="pref_suwayomi_open_summary">Opens the server in your browser, to manage libraries, series groups and extensions</string>
 
     <!-- Docho: KOReader sync -->
     <string name="pref_category_koreader">KOReader sync</string>

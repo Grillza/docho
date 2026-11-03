@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.30.3",
+          "buildVersion": "57",
+          "date": "2026-11-02T19:18:28Z",
+          "localizedDescription": "Version 0.30.3. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.30.3.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Dōchō Sync. Keep your library and categories, chapter renames and Volume/Chapter types, read progress and history the same on every iPhone, iPad and Android device signed in to your own Dōchō Sync server. Set it up in Settings → Sync / Self-hosted sources → Dōchō Sync. Dōchō syncs when it opens, when you come back to it and as it goes to the background, and whenever you tap Sync now. A device's first sync merges with the server, so reading on either side is kept.\n\nChanged\n\n• Downloads keep going after you leave the app. On iOS and iPadOS 26, the download progress on the Lock Screen now waits for the system to start it instead of giving up, and leaving the app mid-download asks iOS for extra time until it does.\n• Smarter series titles in renames. When renaming like another chapter, or with Volume or Chapter, the series title is matched loosely, so the 8 in \"Kaiju No.8\" isn't taken for volume 8.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.30.3/docho-0.30.3.ipa",
+          "size": 6574995,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.30.2",
           "buildVersion": "56",
           "date": "2026-11-02T09:36:42Z",

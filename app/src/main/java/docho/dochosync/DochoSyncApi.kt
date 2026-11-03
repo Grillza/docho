@@ -26,7 +26,10 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-/** Talks to a Dōchō Sync server (`sync-server/` in this repository). */
+/**
+ * Talks to Dōchō Sync: built into Dōchō Server (`server/`, at /api/docho/sync/v1), or the
+ * standalone sync server (`sync-server/`, at /api/v1). Which one is found on first contact.
+ */
 @Inject
 @SingleIn(AppScope::class)
 class DochoSyncApi(
@@ -103,10 +106,32 @@ class DochoSyncApi(
         return call(request)
     }
 
-    private fun request(path: String, authorized: Boolean = true): Request.Builder {
+    /** API root per server address: Dōchō Server's built-in sync, or the standalone sync server. */
+    private val apiRoots = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private suspend fun apiRoot(base: String): String {
+        apiRoots[base]?.let { return it }
+        val builtIn = "$base/api/docho/sync/v1"
+        val root = try {
+            val request = Request.Builder().url("$builtIn/health").header("User-Agent", USER_AGENT).build()
+            network.client.newCall(request).await().use { response ->
+                val isSync = response.isSuccessful &&
+                    runCatching { json.parseToJsonElement(response.body.string()).jsonObject["name"] }.getOrNull() != null
+                if (isSync) builtIn else "$base/api/v1"
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            // Unreachable: don't remember a guess; the request after this reports the error.
+            return "$base/api/v1"
+        }
+        apiRoots[base] = root
+        return root
+    }
+
+    private suspend fun request(path: String, authorized: Boolean = true): Request.Builder {
         val base = KoreaderApi.normalizeBaseUrl(preferences.serverUrl.get()) ?: throw IOException("No server address")
         return Request.Builder()
-            .url("$base/api/v1/$path")
+            .url("${apiRoot(base)}/$path")
             .header("User-Agent", USER_AGENT)
             .apply { if (authorized) header("Authorization", "Bearer ${preferences.token.get()}") }
     }
