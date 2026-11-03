@@ -106,6 +106,10 @@ the App Store, so you need a sideloader such as [AltStore](https://altstore.io),
 [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io) to install it. With a free
 Apple ID, sideloaded apps have to be refreshed every 7 days.
 
+Extensions can run on the iPhone or iPad itself, with no server: turn on **Settings → Browse →
+Extensions on this device**, then add a repo under **Browse → Extensions**. They run on a Java
+runtime built into the app (Eclipse OpenJ9), which is why the iOS download is larger.
+
 In AltStore or SideStore you can add Dōchō's source instead, so the app updates from there:
 
 ```
