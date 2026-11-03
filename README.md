@@ -106,6 +106,61 @@ In AltStore or SideStore you can add Dōchō's source instead, so the app update
 https://raw.githubusercontent.com/Grillza/docho/main/altstore/source.json
 ```
 
+### Optional: Dōchō Server
+
+If you want to run Dōchō's version of [Suwayomi](https://github.com/Suwayomi/Suwayomi-Server), with
+Dōchō Sync, Kavita-style libraries, series groups and collections built in, here is the Docker
+Compose file. It syncs your library, chapter renames, read progress and history between the Android
+and iOS apps and its own web reader, and its extensions, libraries and series groups show in the
+apps under **Browse → Sources**.
+
+Clone the repository and build it (the first build takes a while):
+
+```sh
+git clone https://github.com/Grillza/docho.git
+cd docho/server-docker
+docker compose up -d --build
+```
+
+The compose file (`server-docker/docker-compose.yml` is the same; set the library folder to yours):
+
+```yaml
+services:
+  docho-server:
+    build:
+      context: ..
+      dockerfile: server-docker/Dockerfile
+    container_name: docho-server
+    restart: unless-stopped
+    # Match the owner of your library files, so covers and progress can be read and saved.
+    user: "1000:1000"
+    ports:
+      - "4567:4567"
+    environment:
+      TZ: Australia/Sydney
+      # Heap for the server; raise it for very large libraries or big PDFs.
+      JAVA_OPTS: "-Xmx1g"
+      # "open" lets more than one person make a Dōchō Sync account.
+      DOCHO_SYNC_REGISTRATION: ""
+      # The sync account whose reading the server follows; empty = the first account, "none" = off.
+      DOCHO_SYNC_SERVER_ACCOUNT: ""
+      # Where the folder picker opens: the library mount below, as the server sees it.
+      DOCHO_LIBRARY_ROOT: /books
+    volumes:
+      # Database, covers, extensions, downloads and settings.
+      - data:/data
+      # Your library, read-only: the server never changes your files. Change the left side.
+      - /path/to/your/books:/books:ro
+
+volumes:
+  data:
+```
+
+Then open `http://<host>:4567`, go to **Libraries** and add your folders. In the app, enter the same
+address under **More → Settings → Sync / Self-hosted sources**, in both **Dōchō Server / Suwayomi**
+(for its sources) and **Dōchō Sync** (for syncing; create the account there). See
+[`server-docker/README.md`](./server-docker/README.md) for more.
+
 ## Building
 
 ```sh
