@@ -3,28 +3,26 @@ package docho.dochosync
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import docho.suwayomi.SuwayomiPreferences
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import java.util.UUID
 
-/** The Dōchō Sync server this install signs in to, and where its syncing is up to. */
+/**
+ * Dōchō Sync, built into Dōchō Server: whether to sync with it, and where syncing is up to. The
+ * server's address and login are Dōchō Server's ([SuwayomiPreferences]).
+ */
 @Inject
 @SingleIn(AppScope::class)
 class DochoSyncPreferences(
     private val preferenceStore: PreferenceStore,
+    private val server: SuwayomiPreferences,
 ) {
 
-    val serverUrl: Preference<String> = preferenceStore.getString("docho_sync_server_url", "")
+    /** Whether to sync with the Dōchō Server set up under Dōchō Server / Suwayomi. */
+    val enabled: Preference<Boolean> = preferenceStore.getBoolean("docho_sync_enabled", true)
 
-    val username: Preference<String> = preferenceStore.getString("docho_sync_username", "")
-
-    /** Kept out of backups, since it is the account's password. */
-    val password: Preference<String> = preferenceStore.getString(Preference.privateKey("docho_sync_password"), "")
-
-    /** The server's sign-in for this device. */
-    val token: Preference<String> = preferenceStore.getString(Preference.privateKey("docho_sync_token"), "")
-
-    /** Whether to sync when the app opens and closes, and every so often in between. */
+    /** Whether to sync while reading, when the app opens and closes, and every so often in between. */
     val automatic: Preference<Boolean> = preferenceStore.getBoolean("docho_sync_automatic", true)
 
     /** The server's change number this device has caught up to; 0 until the first sync. */
@@ -39,15 +37,41 @@ class DochoSyncPreferences(
         "",
     )
 
-    fun isConfigured(): Boolean =
-        serverUrl.get().isNotBlank() && username.get().isNotBlank() && password.get().isNotBlank()
+    init {
+        migrate()
+    }
+
+    fun serverUrl(): String = server.serverUrl.get()
+
+    /** The server's basic-auth login; blank when it has none. */
+    fun username(): String = server.username.get()
+
+    fun password(): String = server.password.get()
+
+    fun isConfigured(): Boolean = enabled.get() && server.isConfigured()
 
     fun deviceId(): String = deviceId.get().ifBlank {
         UUID.randomUUID().toString().also { deviceId.set(it) }
     }
 
-    /** Forgets the server and the sync state, so a new server starts with a first sync. */
+    /** Forgets where syncing is up to, so the next sync is a first sync, which merges. */
     fun reset() {
-        listOf(serverUrl, username, password, token, since, lastSyncAt, lastError).forEach { it.delete() }
+        listOf(since, lastSyncAt, lastError).forEach { it.delete() }
+    }
+
+    /**
+     * Before 0.32.1 Dōchō Sync had its own server address and account. The address moves to Dōchō
+     * Server's settings if those are empty; the account isn't needed any more.
+     */
+    private fun migrate() {
+        val oldUrl = preferenceStore.getString("docho_sync_server_url", "")
+        if (oldUrl.get().isBlank()) return
+        if (server.serverUrl.get().isBlank()) server.serverUrl.set(oldUrl.get())
+        listOf(
+            oldUrl,
+            preferenceStore.getString("docho_sync_username", ""),
+            preferenceStore.getString(Preference.privateKey("docho_sync_password"), ""),
+            preferenceStore.getString(Preference.privateKey("docho_sync_token"), ""),
+        ).forEach { it.delete() }
     }
 }

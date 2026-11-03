@@ -22,8 +22,6 @@ services:
       TZ: Australia/Sydney
       # Heap for the server; raise it for very large libraries or big PDFs.
       JAVA_OPTS: "-Xmx1g"
-      # "open" lets more than one person make a Dōchō Sync account.
-      DOCHO_SYNC_REGISTRATION: ""
       # The sync account whose reading the server follows; empty = the first account, "none" = off.
       DOCHO_SYNC_SERVER_ACCOUNT: ""
       # Where the folder picker opens: the library mount below, as the server sees it.

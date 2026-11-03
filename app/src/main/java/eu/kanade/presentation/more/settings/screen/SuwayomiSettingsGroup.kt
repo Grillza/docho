@@ -45,10 +45,12 @@ object SuwayomiSettingsGroup {
         return serverGroup(
             title = stringResource(MR.strings.pref_category_suwayomi),
             logo = R.drawable.brand_docho_server,
-            items = getItems(),
+            items = getItems() + if (graph.suwayomiPreferences.isConfigured()) DochoSyncSettingsGroup.getItems() else emptyList(),
             onDelete = {
                 graph.suwayomiPreferences.reset()
                 graph.suwayomiSources.clear()
+                graph.dochoSyncPreferences.reset()
+                graph.dochoSync.resetState()
             },
         )
     }
@@ -94,8 +96,11 @@ object SuwayomiSettingsGroup {
                 subtitle = serverUrl.ifBlank { stringResource(MR.strings.pref_suwayomi_server_url_hint) },
                 onValueChanged = { value ->
                     val valid = value.isBlank() || SuwayomiApi.normalizeBaseUrl(value) != null
-                    // Another server has other sources.
-                    if (valid && value != serverUrl) sources.clear()
+                    // Another server has other sources, and its sync starts over with a merge.
+                    if (valid && value != serverUrl) {
+                        sources.clear()
+                        graph.dochoSync.resetState()
+                    }
                     valid
                 },
             ),

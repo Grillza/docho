@@ -48,17 +48,17 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 /**
- * Dōchō Sync, built into the server: keeps each account's library and categories, chapter
- * renames and Volume/Chapter types, read progress and history the same on every device signed in
- * to it. The same API as the standalone sync server, under /api/docho/sync/v1.
+ * Dōchō Sync, built into the server: keeps the library and categories, edited details, chapter
+ * renames and Volume/Chapter types, read progress and history the same on every device and in the
+ * server's own reader, under /api/docho/sync/v1.
  *
  * Every record is a kind, a key and a JSON value (null once deleted). Devices send what changed
  * and get back what other devices changed since they last asked. The newest write wins, so a
  * device that was offline can't undo newer changes from another.
  *
- * Accounts are separate from the server's own login: the apps sign in with a username and
- * password and get a token. Set DOCHO_SYNC_REGISTRATION=open to let more than the first account
- * be made.
+ * The apps sync through the server's own authentication and send no token: they sync as the
+ * server's account ([serverAccount]). Tokens from apps before 0.32.1, which made accounts with
+ * register/login, still work; DOCHO_SYNC_REGISTRATION=open still lets more be made that way.
  */
 object DochoSync {
     const val VERSION = "1"

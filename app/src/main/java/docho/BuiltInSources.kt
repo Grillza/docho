@@ -15,7 +15,13 @@ object BuiltInSources {
      * Built-in sources serve the user's own files, so they skip the language filter, and their
      * chapter numbers are exact rather than recognised from chapter names.
      */
-    fun isBuiltIn(sourceId: Long): Boolean = sourceId in ids
+    fun isBuiltIn(sourceId: Long): Boolean = sourceId in ids || isDochoServerLibrary(sourceId)
+
+    /**
+     * One of Dōchō Server's libraries or its Series Groups (ids 0x0D0C000000000000 + library id):
+     * the user's own books, served through the Suwayomi sources, but listed like a built-in server.
+     */
+    fun isDochoServerLibrary(sourceId: Long): Boolean = sourceId in 0x0D0C_0000_0000_0000L..0x0D0C_0000_7FFF_FFFFL
 
     /** The server's logo, shown where an extension would show its icon. */
     @DrawableRes
@@ -23,6 +29,6 @@ object BuiltInSources {
         KavitaSource.ID -> R.drawable.brand_kavita
         BookOrbitSource.ID -> R.drawable.brand_bookorbit
         KomgaSource.ID -> R.drawable.brand_komga
-        else -> null
+        else -> if (isDochoServerLibrary(sourceId)) R.drawable.brand_docho_server else null
     }
 }

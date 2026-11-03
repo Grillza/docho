@@ -151,8 +151,6 @@ services:
       TZ: Australia/Sydney
       # Heap for the server; raise it for very large libraries or big PDFs.
       JAVA_OPTS: "-Xmx1g"
-      # "open" lets more than one person make a Dōchō Sync account.
-      DOCHO_SYNC_REGISTRATION: ""
       # The sync account whose reading the server follows; empty = the first account, "none" = off.
       DOCHO_SYNC_SERVER_ACCOUNT: ""
       # Where the folder picker opens: the library mount below, as the server sees it.
@@ -168,8 +166,9 @@ volumes:
 ```
 
 Then open `http://<host>:4567`, go to **Libraries** and add your folders. In the app, enter the same
-address under **More → Settings → Sync / Self-hosted sources**, in both **Dōchō Server / Suwayomi**
-(for its sources) and **Dōchō Sync** (for syncing; create the account there). See
+address (and the server's login, if you turned one on) under **More → Settings → Sync /
+Self-hosted sources → Dōchō Server / Suwayomi**. That gives you its sources and syncs everything
+with it; **Sync with Dōchō Server** is on by default. See
 [`server-docker/README.md`](./server-docker/README.md) for more.
 
 ## Building

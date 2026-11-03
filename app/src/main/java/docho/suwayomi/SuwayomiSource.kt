@@ -32,7 +32,8 @@ class SuwayomiSource(
 
     override val name: String = info.name
 
-    override val lang: String = info.lang
+    // Dōchō Server's libraries are the user's own books, not a language (servers before 0.32.1 said "all").
+    override val lang: String = if (docho.BuiltInSources.isDochoServerLibrary(info.id)) "other" else info.lang
 
     override val supportsLatest: Boolean = info.supportsLatest
 

@@ -1271,15 +1271,12 @@
 
     <!-- Docho: Dōchō Sync -->
     <string name="pref_category_docho_sync">Dōchō Sync</string>
-    <string name="pref_docho_sync_info">Keeps your library and categories, chapter renames and types, read progress and history the same on every phone and tablet signed in to the same Dōchō Sync server. Series are matched by their source, so set up the same sources on each device.</string>
-    <string name="pref_docho_sync_server_url_hint">Your Dōchō Server, e.g. http://arch.lan:4567 (or a standalone sync server)</string>
-    <string name="pref_docho_sync_credentials_summary">Your Dōchō Sync account</string>
-    <string name="pref_docho_sync_register">Create account</string>
-    <string name="pref_docho_sync_register_summary">Creates the account above on the server. A new server takes one account unless it\'s set up for more.</string>
-    <string name="docho_sync_not_configured">Enter the server address, username and password first</string>
+    <string name="pref_docho_sync_info">Keeps your library and categories, edited series details, chapter renames and types, read progress and history the same on every phone and tablet using this Dōchō Server, and in its web reader. Series are matched by their source.</string>
+    <string name="docho_sync_not_configured">Enter the server address first</string>
+    <string name="pref_docho_sync_enabled">Sync with Dōchō Server</string>
     <string name="pref_docho_sync_now">Sync now</string>
     <string name="pref_docho_sync_automatic">Sync automatically</string>
-    <string name="pref_docho_sync_automatic_summary">When Dōchō opens and closes, and every hour</string>
+    <string name="pref_docho_sync_automatic_summary">While you read, when Dōchō opens and closes, when a series opens, and every hour</string>
     <string name="docho_sync_running">Syncing…</string>
     <string name="docho_sync_done">Synced: sent %1$d, received %2$d changes</string>
     <string name="docho_sync_failed">Last sync failed: %1$s</string>
