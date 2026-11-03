@@ -3,39 +3,33 @@ import GRDB
 import Observation
 import os
 
-// Dōchō Sync (Android's `docho.dochosync`): keeps the library and categories, chapter renames and
-// types, read state and history the same on every device signed in to a Dōchō Sync server
-// (`sync-server/` in the repository). Records and their keys match the Android app's, so phones
-// and iPads on either platform share one account.
+// Dōchō Sync (Android's `docho.dochosync`): keeps the library and categories, edited series
+// details, chapter renames and types, read state and history the same on every device and Dōchō
+// Server's web reader. It's built into Dōchō Server (`server/`, at /api/docho/sync/v1) and set up
+// with it: the same address, and the server's own login if it has one. Records and their keys
+// match the Android app's.
 
 // MARK: - Settings
 
 final class DochoSyncSettings: Sendable {
     let store: ServerSettings
+    /// Dōchō Server's address and login (Settings → Dōchō Server / Suwayomi).
+    let server: SuwayomiSettings
 
-    init(store: ServerSettings = ServerSettings(prefix: "docho_sync")) {
+    init(store: ServerSettings = ServerSettings(prefix: "docho_sync"), server: SuwayomiSettings = SuwayomiSettings()) {
         self.store = store
+        self.server = server
     }
 
-    var serverURL: String {
-        get { store.string("server_url") }
-        set { store.setString("server_url", newValue) }
-    }
+    var serverURL: String { server.serverURL }
+    /// The server's basic-auth login; empty when it has none.
+    var username: String { server.username }
+    var password: String { server.password }
 
-    var username: String {
-        get { store.string("username") }
-        set { store.setString("username", newValue) }
-    }
-
-    var password: String {
-        get { store.secret("password") }
-        set { store.setSecret("password", newValue) }
-    }
-
-    /// The server's sign-in for this device.
-    var token: String {
-        get { store.secret("token") }
-        set { store.setSecret("token", newValue) }
+    /// Whether to sync with the Dōchō Server set up under Dōchō Server / Suwayomi.
+    var enabled: Bool {
+        get { store.bool("enabled", default: true) }
+        set { store.setBool("enabled", newValue) }
     }
 
     var automatic: Bool {
@@ -67,10 +61,19 @@ final class DochoSyncSettings: Sendable {
         return id
     }
 
-    var isConfigured: Bool { !serverURL.isBlank && !username.isBlank && !password.isBlank }
+    var isConfigured: Bool { enabled && server.isConfigured }
+
+    /// Before 0.32.1 Dōchō Sync had its own server address and account. The address moves to
+    /// Dōchō Server's settings if those are empty; the account isn't needed any more.
+    func migrate() {
+        let old = store.string("server_url")
+        guard !old.isBlank else { return }
+        if server.serverURL.isBlank { server.serverURL = old }
+        store.reset(plain: ["server_url", "username"], secret: ["password", "token"])
+    }
 
     func reset() {
-        store.reset(plain: ["server_url", "username", "since", "last_at", "last_error"], secret: ["password", "token"])
+        store.reset(plain: ["since", "last_at", "last_error"], secret: [])
     }
 }
 
@@ -298,8 +301,7 @@ struct SyncPage: Sendable {
     var changes: [SyncRecord]
 }
 
-/// Talks to Dōchō Sync: built into Dōchō Server (`server/`, at /api/docho/sync/v1), or the
-/// standalone sync server (`sync-server/`, at /api/v1). Which one is found on first contact.
+/// Talks to the Dōchō Sync built into Dōchō Server, through the server's own authentication.
 @MainActor
 final class DochoSyncClient {
     private let settings: DochoSyncSettings
@@ -309,6 +311,8 @@ final class DochoSyncClient {
     }
     let changes: AsyncStream<DochoSyncConnection>
     private let continuation: AsyncStream<DochoSyncConnection>.Continuation
+    /// Whether the server at an address has Dōchō Sync (a Dōchō Server, not a plain Suwayomi).
+    private var probed: [String: Bool] = [:]
 
     init(settings: DochoSyncSettings, session: URLSession) {
         self.settings = settings
@@ -316,33 +320,34 @@ final class DochoSyncClient {
         (changes, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
-    /// Signs in with the saved settings, or creates the account first if `register`.
-    @discardableResult
-    func signIn(register: Bool = false) async -> DochoSyncConnection {
-        guard settings.isConfigured else { connection = .unknown; return connection }
-        connection = .checking
-        do {
-            let body: [String: Any] = ["username": settings.username, "password": settings.password, "device": settings.deviceId]
-            let response = try await post(register ? "register" : "login", body, authorized: false)
-            settings.token = response["token"] as? String ?? ""
-            connection = .connected(response["username"] as? String ?? settings.username)
-        } catch {
-            connection = .failed(error.localizedDescription)
-        }
-        return connection
+    /// Whether the configured server is a Dōchō Server; asked once per address (and again after a failure).
+    func isDochoServer() async -> Bool {
+        guard let base = base else { return false }
+        if let known = probed[base] { return known }
+        guard let url = URL(string: "\(base)/health") else { return false }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        request.setValue(ServerAddress.userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await session.data(for: request) else { return false }
+        let ok = (response as? HTTPURLResponse)?.statusCode == 200
+            && ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["name"] != nil
+        probed[base] = ok
+        return ok
     }
 
-    /// Checks the saved sign-in still works, signing in again with the password if it doesn't.
+    /// Checks the server has Dōchō Sync and lets this device in.
     @discardableResult
     func checkConnection() async -> DochoSyncConnection {
         guard settings.isConfigured else { connection = .unknown; return connection }
-        guard !settings.token.isEmpty else { return await signIn() }
         connection = .checking
+        probed[base ?? ""] = nil
+        guard await isDochoServer() else {
+            connection = .failed(String(localized: "This server has no Dōchō Sync. Update it to Dōchō Server to sync."))
+            return connection
+        }
         do {
-            let me = try await send(await request("me"))
-            connection = .connected(me["username"] as? String ?? settings.username)
-        } catch let error as DochoSyncError where error.signedOut {
-            return await signIn()
+            let me = try await send(try request("me"))
+            connection = .connected(me["username"] as? String ?? "")
         } catch {
             connection = .failed(error.localizedDescription)
         }
@@ -354,13 +359,10 @@ final class DochoSyncClient {
             "since": since, "device": settings.deviceId,
             "changes": changes.map { ["kind": $0.kind, "key": $0.key, "value": $0.value?.any ?? NSNull(), "updatedAt": $0.updatedAt] },
         ]
-        let response: [String: Any]
-        do {
-            response = try await post("sync", body, authorized: true)
-        } catch let error as DochoSyncError where error.signedOut {
-            guard case .connected = await signIn() else { throw error }
-            response = try await post("sync", body, authorized: true)
+        guard await isDochoServer() else {
+            throw DochoSyncError(message: String(localized: "This server has no Dōchō Sync. Update it to Dōchō Server to sync."))
         }
+        let response = try await post("sync", body)
         let records = (response["changes"] as? [[String: Any]] ?? []).compactMap { change -> SyncRecord? in
             guard let kind = change["kind"] as? String, let key = change["key"] as? String else { return nil }
             let value = SyncJSON(any: change["value"])
@@ -372,44 +374,28 @@ final class DochoSyncClient {
         return SyncPage(seq: (response["seq"] as? NSNumber)?.int64Value ?? since, more: response["more"] as? Bool ?? false, changes: records)
     }
 
-    private func post(_ path: String, _ body: [String: Any], authorized: Bool) async throws -> [String: Any] {
-        var request = try await request(path, authorized: authorized)
+    private var base: String? { ServerAddress.normalize(settings.serverURL, apiPath: "/api/docho/sync/v1") }
+
+    private func post(_ path: String, _ body: [String: Any]) async throws -> [String: Any] {
+        var request = try request(path)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return try await send(request)
     }
 
-    /// API root per server address: Dōchō Server's built-in sync, or the standalone sync server.
-    private var apiRoots: [String: String] = [:]
-
-    private func apiRoot(_ base: String) async -> String {
-        if let root = apiRoots[base] { return root }
-        let builtIn = "\(base)/api/docho/sync/v1"
-        guard let url = URL(string: "\(builtIn)/health") else { return "\(base)/api/v1" }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 20
-        request.setValue(ServerAddress.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await session.data(for: request) else {
-            // Unreachable: don't remember a guess; the request after this reports the error.
-            return "\(base)/api/v1"
-        }
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-        let root = (200..<300).contains(status) && body?["name"] != nil ? builtIn : "\(base)/api/v1"
-        apiRoots[base] = root
-        return root
-    }
-
-    private func request(_ path: String, authorized: Bool = true) async throws -> URLRequest {
-        guard let base = ServerAddress.normalize(settings.serverURL, apiPath: ""),
-              let url = URL(string: "\(await apiRoot(base))/\(path)") else {
+    private func request(_ path: String) throws -> URLRequest {
+        guard let base, let url = URL(string: "\(base)/\(path)") else {
             throw DochoSyncError(message: String(localized: "No server address"))
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 60
         request.setValue(ServerAddress.userAgent, forHTTPHeaderField: "User-Agent")
-        if authorized { request.setValue("Bearer \(settings.token)", forHTTPHeaderField: "Authorization") }
+        // The server's own login, as for its sources (basic authentication).
+        if !settings.username.isEmpty {
+            let credentials = Data("\(settings.username):\(settings.password)".utf8).base64EncodedString()
+            request.setValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
+        }
         return request
     }
 
@@ -418,8 +404,10 @@ final class DochoSyncClient {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         if (200..<300).contains(status), let body { return body }
-        let message = body?["error"] as? String ?? "HTTP \(status)"
-        throw DochoSyncError(message: message, signedOut: status == 401)
+        if status == 401 {
+            throw DochoSyncError(message: String(localized: "The server's username or password is wrong (Dōchō Server / Suwayomi)"), signedOut: true)
+        }
+        throw DochoSyncError(message: body?["error"] as? String ?? "HTTP \(status)")
     }
 }
 
@@ -514,7 +502,6 @@ final class DochoSync {
         status = .syncing
         let result: Status
         do {
-            if settings.token.isEmpty, case .failed(let reason) = await client.signIn() { throw DochoSyncError(message: reason) }
             result = try await run()
             settings.lastSyncAt = Date().timeIntervalSince1970
             settings.lastError = ""

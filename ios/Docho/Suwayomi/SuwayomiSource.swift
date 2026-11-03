@@ -8,7 +8,12 @@ struct SuwayomiSource: MangaSource {
 
     var id: Int64 { info.id }
     var name: String { info.name }
-    var lang: String { info.lang }
+    var lang: String { isDochoLibrary ? "other" : info.lang }
+
+    /// One of Dōchō Server's libraries or its Series Groups: the user's own books, listed with
+    /// the built-in servers rather than by language. Their ids are 0x0D0C000000000000 + library id.
+    var isDochoLibrary: Bool { (0x0D0C_0000_0000_0000...0x0D0C_0000_7FFF_FFFF).contains(info.id) }
+    var iconAsset: String? { isDochoLibrary ? "brand.dochoserver" : nil }
     var supportsLatest: Bool { info.supportsLatest }
     var isConfigured: Bool { client.settings.isConfigured }
     var iconURL: URL? { client.url(info.iconPath) }

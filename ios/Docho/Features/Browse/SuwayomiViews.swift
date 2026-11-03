@@ -1,8 +1,8 @@
 import NukeUI
 import SwiftUI
 
-/// Settings → Sync / Self-hosted sources → Suwayomi: the server that runs extensions, and the
-/// extension repos it fetches them from.
+/// Settings → Sync / Self-hosted sources → Dōchō Server / Suwayomi: the server that runs
+/// extensions and the repos it fetches them from, and Dōchō Server's sync.
 struct SuwayomiSection: View {
     @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
@@ -35,6 +35,8 @@ struct SuwayomiSection: View {
             PreferenceRow(title: String(localized: "Connection"), subtitle: connectionText(status, configured: settings.isConfigured), action: {
                 Task { await check() }
             })
+            if settings.isConfigured { DochoSyncRows() }
+            PreferenceHeader(title: String(localized: "Extensions"))
             SwitchPreference(
                 title: String(localized: "Show NSFW extensions and sources"), isOn: $showNSFW
             )
@@ -113,7 +115,11 @@ struct SuwayomiSection: View {
             showNSFW = settings.showNSFW
             loaded = true
         }
-        .onChange(of: server) { _, value in settings.serverURL = value }
+        .onChange(of: server) { old, value in
+            settings.serverURL = value
+            // Another server: the next sync starts over as a first sync, which merges.
+            if loaded, old != value { app.dochoSync.resetState() }
+        }
         .onChange(of: username) { _, value in settings.username = value }
         .onChange(of: password) { _, value in settings.password = value }
         .onChange(of: showNSFW) { _, value in settings.showNSFW = value }
@@ -318,5 +324,65 @@ struct LanguagesSheet: View {
         if code == "all" { return "0" }
         if code == Locale.current.language.languageCode?.identifier { return "1" }
         return "2" + ExtensionsView.languageName(code)
+    }
+}
+
+/// Dōchō Sync, inside the Dōchō Server section: keeps the library and categories, edited details,
+/// chapter renames and types, read progress and history the same on every device and in the
+/// server's web reader. It uses the server's address and login above.
+private struct DochoSyncRows: View {
+    @Environment(AppModel.self) private var app
+    @State private var enabled = true
+    @State private var automatic = true
+    @State private var loaded = false
+    @State private var connection: DochoSyncConnection = .unknown
+
+    var body: some View {
+        let settings = app.dochoSyncSettings
+        PreferenceHeader(title: String(localized: "Dōchō Sync"))
+        InfoPreference(text: String(localized: "Keeps your library and categories, edited series details, chapter renames and types, read progress and history the same on every iPhone, iPad and Android device using this Dōchō Server, and in its web reader. Series are matched by their source."))
+        SwitchPreference(title: String(localized: "Sync with Dōchō Server"), isOn: $enabled)
+        if enabled {
+            PreferenceRow(title: String(localized: "Sync now"), subtitle: summary, action: {
+                Task {
+                    if case .connected = await app.dochoSyncClient.checkConnection() { await app.dochoSync.sync() }
+                }
+            })
+            SwitchPreference(
+                title: String(localized: "Sync automatically"),
+                subtitle: String(localized: "While you read, when Dōchō opens and goes to the background, and when a series opens"),
+                isOn: $automatic
+            )
+        }
+        Color.clear.frame(height: 0)
+            .onAppear {
+                guard !loaded else { return }
+                enabled = settings.enabled
+                automatic = settings.automatic
+                loaded = true
+                Task { await app.dochoSyncClient.checkConnection() }
+            }
+            .onChange(of: enabled) { _, value in
+                settings.enabled = value
+                if value { Task { if case .connected = await app.dochoSyncClient.checkConnection() { await app.dochoSync.sync() } } }
+            }
+            .onChange(of: automatic) { _, value in settings.automatic = value }
+            .task { for await state in app.dochoSyncClient.changes { connection = state } }
+    }
+
+    private var summary: String {
+        if case .failed(let reason) = connection { return reason }
+        switch app.dochoSync.status {
+        case .syncing: return String(localized: "Syncing…")
+        case .done(let sent, let received): return String(localized: "Synced: sent \(sent), received \(received) changes")
+        default:
+            let settings = app.dochoSyncSettings
+            if !settings.lastError.isEmpty { return String(localized: "Last sync failed: \(settings.lastError)") }
+            if settings.lastSyncAt > 0 {
+                let date = Date(timeIntervalSince1970: settings.lastSyncAt)
+                return String(localized: "Last synced \(date.formatted(.relative(presentation: .named)))")
+            }
+            return String(localized: "Not synced yet")
+        }
     }
 }

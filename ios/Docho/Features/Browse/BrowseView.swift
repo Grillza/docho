@@ -171,9 +171,14 @@ struct BrowseView: View {
         _ = app.deviceExtensions.sourceInfos
         let showNSFW = app.suwayomiSettings.showNSFW
         let languages = Set(app.preferences.sourceLanguages)
-        func isExtension(_ source: any MangaSource) -> Bool { source is SuwayomiSource || source is ExtensionSource }
+        func isExtension(_ source: any MangaSource) -> Bool {
+            if let remote = source as? SuwayomiSource { return !remote.isDochoLibrary }
+            return source is ExtensionSource
+        }
         let sources = app.sources.available.filter { source in
-            if let remote = source as? SuwayomiSource { return (showNSFW || !remote.info.isNSFW) && languages.contains(remote.lang) }
+            if let remote = source as? SuwayomiSource {
+                return remote.isDochoLibrary || ((showNSFW || !remote.info.isNSFW) && languages.contains(remote.lang))
+            }
             if let local = source as? ExtensionSource { return (showNSFW || local.info.contentWarning != .nsfw) && languages.contains(local.lang) }
             return true
         }
@@ -226,7 +231,7 @@ struct SourceIcon: View {
     let source: any MangaSource
 
     var body: some View {
-        if let remote = source as? SuwayomiSource, let request = remote.client.request(remote.info.iconPath) {
+        if let remote = source as? SuwayomiSource, !remote.isDochoLibrary, let request = remote.client.request(remote.info.iconPath) {
             LazyImage(request: ImageRequest(urlRequest: request)) { state in
                 if let image = state.image { image.resizable().scaledToFit() } else { m3.surfaceContainerHighest }
             }

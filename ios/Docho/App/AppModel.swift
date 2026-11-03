@@ -122,7 +122,8 @@ final class AppModel {
             seriesEdits: seriesEdits
         )
         trackers = TrackerManager(database: database, session: session, defaults: downloadDefaults)
-        let dochoSyncSettings = DochoSyncSettings()
+        let dochoSyncSettings = DochoSyncSettings(server: suwayomiSettings)
+        dochoSyncSettings.migrate()
         self.dochoSyncSettings = dochoSyncSettings
         dochoSyncClient = DochoSyncClient(settings: dochoSyncSettings, session: session)
         dochoSync = DochoSync(
@@ -152,7 +153,7 @@ final class AppModel {
         Task { _ = try? await checkForAppUpdate() }
         Task { await suwayomi.refreshSources() }
         await downloads.resume()
-        if dochoSyncSettings.automatic { await dochoSync.sync() }
+        if dochoSyncSettings.isConfigured, dochoSyncSettings.automatic { await dochoSync.sync() }
         await sync.syncLibrary()
         if preferences.updateOnLaunch { await library.update() }
     }
