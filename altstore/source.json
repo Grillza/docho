@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.1",
+          "buildVersion": "60",
+          "date": "2026-11-03T19:01:51Z",
+          "localizedDescription": "Version 0.32.1. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.1.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nChanged\n\n• Dōchō Sync is part of Dōchō Server. The separate Dōchō Sync section is gone: Settings → Sync / Self-hosted sources → Dōchō Server / Suwayomi now has Sync with Dōchō Server (on by default), Sync now and Sync automatically. It uses the server's address and its login if it has one, so there's no separate account. If you had Dōchō Sync set up, its address moves over and syncing carries on where it was.\n• Dōchō Server's libraries and Series Groups aren't \"Multi\" any more. They're listed under Other with Dōchō Server's icon, like Kavita and Komga.\n• The standalone Dōchō Sync server is retired: Dōchō Server has sync built in. Update Dōchō Server to 0.32.1 for syncing through its login.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.1/docho-0.32.1.ipa",
+          "size": 88175820,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.0",
           "buildVersion": "59",
           "date": "2026-11-03T18:19:40Z",
