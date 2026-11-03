@@ -42,6 +42,7 @@ COPY server-docker/entrypoint.sh /opt/docho/entrypoint.sh
 RUN chmod 755 /opt/docho/entrypoint.sh && mkdir -p /data && chmod 777 /data
 
 ENV DOCHO_DATA=/data \
+    DOCHO_LIBRARY_ROOT=/books \
     JAVA_OPTS="-Xmx1g"
 VOLUME /data
 EXPOSE 4567

@@ -24,6 +24,8 @@ services:
       JAVA_OPTS: "-Xmx1g"
       # "open" lets more than one person make a Dōchō Sync account.
       DOCHO_SYNC_REGISTRATION: ""
+      # Where the folder picker opens: the library mount below, as the server sees it.
+      DOCHO_LIBRARY_ROOT: /books
     volumes:
       # Database, covers, extensions, downloads and settings.
       - data:/data

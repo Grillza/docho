@@ -180,6 +180,14 @@ export const GET_DOCHO_LIBRARIES = gql`
     }
 `;
 
+export const GET_DOCHO_LIBRARY_ROOT = gql`
+    query DochoLibraryRoot {
+        dochoServerInfo {
+            libraryRoot
+        }
+    }
+`;
+
 export const GET_DOCHO_FOLDERS = gql`
     query DochoFolders($path: String) {
         dochoFolders(path: $path) {

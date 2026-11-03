@@ -51,6 +51,7 @@ import {
     dochoMutate,
     dochoQuery,
     GET_DOCHO_FOLDERS,
+    GET_DOCHO_LIBRARY_ROOT,
     GET_DOCHO_LIBRARIES,
     SCAN_DOCHO_LIBRARY,
     UPDATE_DOCHO_LIBRARY,
@@ -91,11 +92,19 @@ const SCAN_INTERVALS = [
 
 function FolderPicker({ onPick, onClose }: { onPick: (path: string) => void; onClose: () => void }) {
     const { t } = useLingui();
-    const [path, setPath] = useState('/');
+    // Opens where the library is mounted (/books in Docker), which the server reports.
+    const [path, setPath] = useState<string | null>(null);
     const [folders, setFolders] = useState<{ name: string; path: string }[]>([]);
     const [error, setError] = useState<string>();
 
     useEffect(() => {
+        dochoQuery<{ dochoServerInfo: { libraryRoot: string } }, Record<string, never>>(GET_DOCHO_LIBRARY_ROOT, {})
+            .then((data) => setPath((current) => current ?? data.dochoServerInfo.libraryRoot))
+            .catch(() => setPath((current) => current ?? '/'));
+    }, []);
+
+    useEffect(() => {
+        if (path === null) return;
         dochoQuery<{ dochoFolders: { name: string; path: string }[] }, { path: string }>(GET_DOCHO_FOLDERS, { path })
             .then((data) => {
                 setFolders(data.dochoFolders);
@@ -104,7 +113,7 @@ function FolderPicker({ onPick, onClose }: { onPick: (path: string) => void; onC
             .catch((e) => setError(getErrorMessage(e)));
     }, [path]);
 
-    const parent = path === '/' ? null : path.replace(/\/[^/]+\/?$/, '') || '/';
+    const parent = path === null || path === '/' ? null : path.replace(/\/[^/]+\/?$/, '') || '/';
 
     return (
         <Dialog open onClose={onClose} fullWidth maxWidth="sm">
@@ -117,7 +126,7 @@ function FolderPicker({ onPick, onClose }: { onPick: (path: string) => void; onC
                     <TextField
                         size="small"
                         fullWidth
-                        value={path}
+                        value={path ?? ''}
                         onChange={(e) => setPath(e.target.value || '/')}
                         error={!!error}
                         helperText={error}
@@ -137,7 +146,7 @@ function FolderPicker({ onPick, onClose }: { onPick: (path: string) => void; onC
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>{t`Cancel`}</Button>
-                <Button variant="contained" onClick={() => onPick(path)}>{t`Use this folder`}</Button>
+                <Button variant="contained" disabled={!path} onClick={() => path && onPick(path)}>{t`Use this folder`}</Button>
             </DialogActions>
         </Dialog>
     );

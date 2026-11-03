@@ -176,9 +176,14 @@ data class DochoServerInfo(
     val syncVersion: String,
     val librarySourceIdBase: Long,
     val groupSourceId: Long,
+    /** Where the folder picker opens: DOCHO_LIBRARY_ROOT (the Docker image's /books), else "/". */
+    val libraryRoot: String,
 )
 
 // ---- Queries ----
+
+private fun libraryRoot(): String =
+    System.getenv("DOCHO_LIBRARY_ROOT")?.ifBlank { null }?.takeIf { File(it).isDirectory } ?: "/"
 
 class DochoQuery {
     @RequireAuth
@@ -188,6 +193,7 @@ class DochoQuery {
             syncVersion = suwayomi.tachidesk.docho.sync.DochoSync.VERSION,
             librarySourceIdBase = Libraries.SOURCE_ID_BASE,
             groupSourceId = SeriesGroups.SOURCE_ID,
+            libraryRoot = libraryRoot(),
         )
 
     @RequireAuth
@@ -224,8 +230,15 @@ class DochoQuery {
     /** Folders on the server, for picking a library's folders. */
     @RequireAuth
     fun dochoFolders(path: String? = null): List<DochoFolder> {
-        val dir = File(path?.ifBlank { null } ?: "/")
-        require(dir.isDirectory) { "${dir.path} isn't a folder" }
+        val dir = File(path?.ifBlank { null } ?: libraryRoot())
+        require(dir.isDirectory) {
+            val root = libraryRoot()
+            if (root != "/" && !dir.path.startsWith(root)) {
+                "${dir.path} isn't a folder on the server. Your library is mounted at $root"
+            } else {
+                "${dir.path} isn't a folder on the server"
+            }
+        }
         return dir
             .listFiles()
             .orEmpty()
