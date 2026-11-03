@@ -15,6 +15,8 @@ RUNTIME="$IOS/Vendor/docho-runtime"
 JVM="$RUNTIME/jvm-ios"
 LOGS="$IOS/build/runtime-logs"
 export JOBS="${JOBS:-4}"
+# The app's deployment target (project.yml); the runtime's own default is iOS 26.
+export IOS_MIN="${IOS_MIN:-18.0}"
 export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}"
 mkdir -p "$LOGS"
 
@@ -43,9 +45,10 @@ for step in "${steps[@]}"; do
     simulator) run simulator "$JVM/build-openj9-ios.sh" iphonesimulator ;;
     device) run device "$JVM/build-openj9-ios.sh" iphoneos ;;
     package)
-      # Size: store the class library compressed (about half the size; classes load a little
-      # slower), and keep only English message catalogues.
-      export JLINK_EXTRA="${JLINK_EXTRA:---compress zip-6}"
+      # Size: keep only English message catalogues. The class library is NOT compressed: in the
+      # static VM, jimage's zip decompressor has no inflate function and the VM crashes loading
+      # its first class (found 2026-11-03).
+      export JLINK_EXTRA="${JLINK_EXTRA:-}"
       run package env EMBEDDED_DIR="$IOS/Embedded" "$JVM/package.sh"
       find "$IOS/Embedded/jre/lib" -name '*.properties' -path '*nls*' ! -name '*_en*' ! -name '*[a-z].properties' -delete 2>/dev/null || true
       du -sh "$IOS/Embedded/jre" "$IOS/Embedded/host" "$IOS/Embedded" | sed 's/^/  /'

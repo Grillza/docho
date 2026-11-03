@@ -6,3 +6,7 @@
 #include? "../Embedded/jvm.xcconfig"
 
 OTHER_LDFLAGS = $(inherited) $(JVM_LDFLAGS)
+
+// OpenJ9's iOS patch finds the VM in the main executable (an MH_EXECUTE image). Debug builds
+// otherwise put the app's code in Docho.debug.dylib, where the VM looks for dylibs instead.
+ENABLE_DEBUG_DYLIB = NO

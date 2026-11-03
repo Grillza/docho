@@ -285,7 +285,8 @@ struct LanguagesSheet: View {
     @Environment(\.m3) private var m3
 
     var body: some View {
-        let languages = Set(app.suwayomi.sourceInfos.map(\.lang) + app.suwayomi.extensions.map(\.lang) + app.preferences.sourceLanguages)
+        let languages = Set(app.suwayomi.sourceInfos.map(\.lang) + app.suwayomi.extensions.map(\.lang) + app.preferences.sourceLanguages
+            + app.deviceExtensions.available.map(\.lang) + app.deviceExtensions.sourceInfos.map(\.lang))
             .sorted { Self.order($0) < Self.order($1) }
         VStack(spacing: 0) {
             Text("Languages")

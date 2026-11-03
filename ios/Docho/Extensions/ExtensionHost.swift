@@ -3,8 +3,8 @@ import os
 
 /// The app's side of the extension host (PLAN-2, Part G): typed JSON-RPC calls over a transport,
 /// and the services the host asks the app for. Extension HTTP is performed with URLSession
-/// (`ExtensionNetwork`). Cloudflare challenges and extension WebViews come in part G6; until then a
-/// challenge is answered as unsolved, so the source reports Cloudflare's error.
+/// (`ExtensionNetwork`), and Cloudflare challenges are solved in a WKWebView (`CloudflareSolver`).
+/// Extension WebViews (`webview.command`) aren't supported yet.
 actor ExtensionHost {
     typealias RPC = ExtensionRPC
 
@@ -210,10 +210,10 @@ actor ExtensionHost {
             case "host.toast":
                 if let toast = try? event.data.decoded(RPC.Toast.self) { toastHandler?(toast.text) }
             case "net.challengeRequired":
-                // Part G6 shows Cloudflare's challenge in a WKWebView; until then it isn't solved.
+                // Cloudflare's challenge, solved in a WKWebView; its cookies go back to the host.
                 if let challenge = try? event.data.decoded(RPC.ChallengeRequired.self) {
                     Task {
-                        let resolved = RPC.ChallengeResolved(challengeId: challenge.challengeId, solved: false, reason: "Not supported yet")
+                        let resolved = await CloudflareSolver().solve(challenge)
                         let _: SyncJSON? = try? await self.rawCall("net.challengeResolved", resolved)
                     }
                 }
