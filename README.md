@@ -60,6 +60,12 @@ built-in support for self-hosted libraries and progress sync. It follows Mihon's
 
 See the **[self-hosted sync guide](./docs/self-hosted-sync.md)** for setup steps.
 
+### Edit series details
+
+* **Edit details** (in a series' menu) changes its title, author, artist, description, genres and
+  status. Edited fields stay when the series refreshes from its source, and with Dōchō Sync they
+  reach your other devices and Dōchō Server, where they can be edited too.
+
 ### Library and look
 
 * **Custom themes**: keep up to five of your own. Pick six colours with a colour wheel, swatches
@@ -110,9 +116,10 @@ https://raw.githubusercontent.com/Grillza/docho/main/altstore/source.json
 
 If you want to run Dōchō's version of [Suwayomi](https://github.com/Suwayomi/Suwayomi-Server), with
 Dōchō Sync, Kavita-style libraries, series groups and collections built in, here is the Docker
-Compose file. It syncs your library, chapter renames, read progress and history between the Android
-and iOS apps and its own web reader, and its extensions, libraries and series groups show in the
-apps under **Browse → Sources**.
+Compose file. Everything syncs both ways between the Android and iOS apps and its own web reader:
+your library and categories, edited series details, chapter renames and Volume/Chapter types, and
+read progress page by page. Its extensions, libraries and series groups show in the apps under
+**Browse → Sources**.
 
 Clone the repository and build it (the first build takes a while):
 

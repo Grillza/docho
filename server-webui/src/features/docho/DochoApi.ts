@@ -134,6 +134,7 @@ export type DochoSeriesDetails = {
     format: string | null;
     pageCount: number | null;
     editedFields: DochoSeriesField[];
+    editableFields: DochoSeriesField[];
     collections: { id: number; name: string }[];
     group: { id: number; name: string; mangaId: number } | null;
 };
@@ -450,6 +451,7 @@ const SERIES_DETAILS_FIELDS = `
     format
     pageCount
     editedFields
+    editableFields
     collections {
         id
         name
@@ -557,3 +559,27 @@ export const dochoQuery = async <TData, TVars extends Record<string, unknown>>(
 
 export const thumbnailOf = (manga?: Pick<DochoManga, 'thumbnailUrl'> | null): string | undefined =>
     manga?.thumbnailUrl ? requestManager.getValidImgUrlFor(manga.thumbnailUrl) : undefined;
+
+/** A chapter renamed or given a Volume/Chapter type, here or in the apps. */
+export type DochoChapterEdit = {
+    chapterId: number;
+    /** The name before it was renamed, or null if it wasn't. */
+    original: string | null;
+    kind: 'volume' | 'chapter' | null;
+};
+
+export const GET_DOCHO_CHAPTER_EDITS = gql`
+    query DochoChapterEdits($mangaId: Int!) {
+        dochoChapterEdits(mangaId: $mangaId) {
+            chapterId
+            original
+            kind
+        }
+    }
+`;
+
+export const RENAME_DOCHO_CHAPTER = gql`
+    mutation RenameDochoChapter($chapterId: Int!, $name: String, $number: Float, $kind: String) {
+        renameDochoChapter(chapterId: $chapterId, name: $name, number: $number, kind: $kind)
+    }
+`;

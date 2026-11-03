@@ -39,17 +39,23 @@ import type {
     ChapterDownloadInfo,
     ChapterIdInfo,
     ChapterMangaInfo,
+    ChapterNameInfo,
+    ChapterNumberInfo,
     ChapterReadInfo,
     ChapterRealUrlInfo,
 } from '@/features/chapter/Chapter.types.ts';
 import { IconWebView } from '@/assets/icons/IconWebView.tsx';
 import { IconBrowser } from '@/assets/icons/IconBrowser.tsx';
 import CancelIcon from '@mui/icons-material/Cancel';
+import DriveFileRenameOutline from '@mui/icons-material/DriveFileRenameOutline';
+import { AwaitableComponent } from 'awaitable-component';
+import { DochoRenameChapterDialog } from '@/features/docho/components/DochoRenameChapterDialog.tsx';
 
 type BaseProps = { onClose: () => void; selectable?: boolean };
 
 type TChapter = ChapterIdInfo &
     ChapterMangaInfo &
+    Partial<ChapterNameInfo & ChapterNumberInfo> &
     ChapterDownloadInfo &
     ChapterBookmarkInfo &
     ChapterReadInfo &
@@ -191,6 +197,24 @@ export const ChapterActionMenuItems = ({
                         }}
                         title={t`Open in browser`}
                     />
+                    {chapter!.name != null && (
+                        <MenuItem
+                            Icon={DriveFileRenameOutline}
+                            onClick={() => {
+                                onClose();
+                                // Dōchō: renames and Volume/Chapter types, shared with the apps.
+                                AwaitableComponent.show(DochoRenameChapterDialog, {
+                                    chapter: {
+                                        id: chapter!.id,
+                                        mangaId: chapter!.mangaId,
+                                        name: chapter!.name!,
+                                        chapterNumber: chapter!.chapterNumber ?? -1,
+                                    },
+                                }).catch(() => {});
+                            }}
+                            title={t`Rename`}
+                        />
+                    )}
                     <MenuItem
                         Icon={IconWebView}
                         disabled={!chapter!.realUrl}

@@ -34,7 +34,6 @@ import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.model.HistoryUpdate
 import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.manga.model.Manga
-import tachiyomi.domain.manga.model.MangaRemoteUpdate
 import tachiyomi.domain.manga.model.MangaUpdate
 import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.source.service.SourceManager
@@ -65,6 +64,7 @@ class DochoSync(
     private val chapterRenames: ChapterRenames,
     private val sourceManager: SourceManager,
     private val updateMangaFromRemote: UpdateMangaFromRemote,
+    private val seriesEdits: docho.edit.SeriesEdits,
 ) {
 
     sealed interface Status {
@@ -263,6 +263,9 @@ class DochoSync(
         for ((key, kind) in chapterRenames.kinds.get()) {
             put(SyncValues.KIND, key, SyncValues.kind(kind, mangaUrlByChapter[key]))
         }
+        for ((key, details) in seriesEdits.edits.get()) {
+            if (!details.isEmpty) put(SyncValues.DETAILS, key, docho.edit.SeriesEdits.toJson(details))
+        }
         return records
     }
 
@@ -376,25 +379,12 @@ class DochoSync(
             }
             SyncValues.DETAILS -> {
                 val (sourceId, url) = SyncValues.parseKey(record.key) ?: return true
-                // Series not here yet get the edited details from the server when they're added.
+                // Kept even for series not here yet: they take the edits when they're added.
+                val details = value?.let(docho.edit.SeriesEdits::fromJson)
+                seriesEdits.put(sourceId, url, details)
                 val manga = mangaRepository.getMangaByUrlAndSourceId(url, sourceId) ?: return true
-                if (value == null) return true
-                mangaRepository.updateRemote(
-                    MangaRemoteUpdate(
-                        id = manga.id,
-                        title = value.string("title")?.takeIf { it.isNotBlank() },
-                        author = value.string("author"),
-                        artist = value.string("artist"),
-                        description = value.string("description"),
-                        genre = value.strings("genres"),
-                        status = value.long("status") ?: manga.status,
-                        thumbnailUrl = manga.thumbnailUrl,
-                        updateStrategy = manga.updateStrategy,
-                        memo = manga.memo,
-                        initialized = manga.initialized,
-                        coverLastModified = null,
-                    ),
-                )
+                // Unlocked fields come back from the source on its next refresh.
+                if (details != null) seriesEdits.write(manga, details)
                 true
             }
             else -> true

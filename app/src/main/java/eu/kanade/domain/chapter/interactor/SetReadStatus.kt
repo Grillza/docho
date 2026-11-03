@@ -19,6 +19,7 @@ class SetReadStatus(
     private val mangaRepository: MangaRepository,
     private val chapterRepository: ChapterRepository,
     private val progressSync: ProgressSync,
+    private val context: android.content.Context,
 ) {
 
     private val mapper = { chapter: Chapter, read: Boolean ->
@@ -47,6 +48,8 @@ class SetReadStatus(
             logcat(LogPriority.ERROR, e)
             return Result.InternalError(e)
         }
+
+        docho.dochosync.DochoSyncWorker.syncSoon(context)
 
         if (progressSync.isEnabled()) {
             chaptersToUpdate

@@ -601,6 +601,14 @@ msgstr "Auto-download"
 msgid "Automated backup"
 msgstr "Automated backup"
 
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Automatic"
+msgstr "Automatic"
+
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Automatic goes by the name"
+msgstr "Automatic goes by the name"
+
 #: src/features/reader/overlay/progress-bar/settings/components/ReaderSettingProgressBarPosition.tsx
 msgid "Automatic progress bar vertical position"
 msgstr "Automatic progress bar vertical position"
@@ -829,6 +837,7 @@ msgstr "Can't migrate an entry to itself"
 #: src/features/category/components/CategorySelect.tsx
 #: src/features/category/components/CreateOrEditCategoryDialog.tsx
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 #: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -912,6 +921,7 @@ msgid "Channel"
 msgstr "Channel"
 
 #: src/features/chapter/components/cards/ChapterCard.tsx
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
 #: src/features/downloads/components/DownloadAheadSetting.tsx
 #: src/features/downloads/screens/DownloadSettings.tsx
 #: src/features/migration/components/MigrationOptionsDialog.tsx
@@ -1295,6 +1305,10 @@ msgstr "Could not remove non library manga from categories"
 #: src/features/docho/screens/DochoLibraries.tsx
 msgid "Could not remove the library"
 msgstr "Could not remove the library"
+
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Could not rename the chapter"
+msgstr "Could not rename the chapter"
 
 #: src/features/library/components/LibraryOptionsPanel.tsx
 msgid "Could not reset filters"
@@ -1825,6 +1839,10 @@ msgstr "Edit notes"
 #: src/features/theme/components/CreateThemeDialog.tsx
 msgid "Edit theme"
 msgstr "Edit theme"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Edited fields are locked, so refreshing from the source keeps them. The apps get the changes when they next sync, and edits made in the apps show here."
+msgstr "Edited fields are locked, so refreshing from the source keeps them. The apps get the changes when they next sync, and edits made in the apps show here."
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
 msgid "Edited fields are locked, so scans keep them. The apps get the changes when they next sync."
@@ -2958,6 +2976,7 @@ msgstr "Multi"
 msgid "Multiply"
 msgstr "Multiply"
 
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 #: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -3110,6 +3129,10 @@ msgstr "Novel"
 msgid "NSFW (18+) sources"
 msgstr "NSFW (18+) sources"
 
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Number"
+msgstr "Number"
+
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Number of items per page in OPDS feeds (e.g., Library History, Manga Chapters).\n"
 "Higher values may affect client performance."
@@ -3250,6 +3273,11 @@ msgstr "Order"
 #: src/features/reader/settings/ReaderSettings.constants.tsx
 msgid "Original size"
 msgstr "Original size"
+
+#. placeholder {0}: edit.original
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Originally \"{0}\""
+msgstr "Originally \"{0}\""
 
 #: src/base/utils/Languages.ts
 #: src/features/extension/Extensions.constants.ts
@@ -3527,6 +3555,14 @@ msgstr "Remove selected from the library"
 msgid "Removed non library manga from categories"
 msgstr "Removed non library manga from categories"
 
+#: src/features/chapter/components/actions/ChapterActionMenuItems.tsx
+msgid "Rename"
+msgstr "Rename"
+
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Rename chapter"
+msgstr "Rename chapter"
+
 #: src/base/components/buttons/ResetButton.tsx
 #: src/base/components/settings/CheckboxListSetting.tsx
 #: src/features/reader/hotkeys/settings/components/RecordHotkey.tsx
@@ -3600,6 +3636,7 @@ msgid "Rosegold"
 msgstr "Rosegold"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 #: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -3629,6 +3666,10 @@ msgstr "Save search"
 #: src/features/theme/components/CreateThemeDialog.tsx
 msgid "Saved theme changes"
 msgstr "Saved theme changes"
+
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Saved; the apps get it when they next sync"
+msgstr "Saved; the apps get it when they next sync"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
 msgid "Saved; unlocked fields come back from the files after a scan"
@@ -4461,6 +4502,7 @@ msgstr "Tracking"
 msgid "Tree Frog Green"
 msgstr "Tree Frog Green"
 
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
 #: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/settings/screens/ServerSettings.tsx
 #: src/features/tracker/components/cards/TrackerMangaCard.tsx
@@ -4520,6 +4562,10 @@ msgstr "Unable to load sources"
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Understood"
 msgstr "Understood"
+
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Undo rename"
+msgstr "Undo rename"
 
 #. placeholder {0}: group.name
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -4692,6 +4738,10 @@ msgstr "Version"
 #: src/features/reader/settings/layout/components/ReaderSettingTapZoneInvertMode.tsx
 msgid "Vertical"
 msgstr "Vertical"
+
+#: src/features/docho/components/DochoRenameChapterDialog.tsx
+msgid "Volume"
+msgstr "Volume"
 
 #: src/features/settings/Settings.constants.ts
 msgid "VUI"

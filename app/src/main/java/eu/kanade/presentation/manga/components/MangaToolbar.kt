@@ -37,6 +37,7 @@ fun MangaToolbar(
     onClickRefresh: () -> Unit,
     onClickMigrate: (() -> Unit)?,
     onClickEditNotes: () -> Unit,
+    onClickEditDetails: () -> Unit,
     onClickShowReleasePrediction: (() -> Unit)?,
     onClickDeleteFromDevice: (() -> Unit)?,
     hideMissingChapters: Boolean,
@@ -148,6 +149,12 @@ fun MangaToolbar(
                         AppBar.OverflowAction(
                             title = stringResource(MR.strings.action_notes),
                             onClick = onClickEditNotes,
+                        ),
+                    )
+                    add(
+                        AppBar.OverflowAction(
+                            title = stringResource(MR.strings.action_edit_details),
+                            onClick = onClickEditDetails,
                         ),
                     )
                     if (onClickDeleteFromDevice != null) {

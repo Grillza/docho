@@ -107,7 +107,24 @@ object SeriesMetadata {
     ) {
         val info =
             transaction { DochoSeriesInfoTable.selectAll().where { DochoSeriesInfoTable.manga eq mangaId }.firstOrNull() }
-                ?: throw IllegalArgumentException("Only series from a library can be edited")
+        if (info == null) {
+            // A series from an extension: the fields the apps share, kept with Dōchō Sync.
+            val keys = syncedFields.entries.associate { (key, field) -> field to key }
+            val set =
+                edit.set
+                    .filterKeys { it in keys }
+                    .map { (field, value) ->
+                        val element = clean(field, value)
+                        keys.getValue(field) to
+                            when (field) {
+                                Field.WRITERS, Field.ARTISTS ->
+                                    JsonPrimitive((element as JsonArray).mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.joinToString(", "))
+                                else -> element
+                            }
+                    }.toMap()
+            SyncBridge.editDetails(mangaId, set, edit.reset.mapNotNull { keys[it] }.toSet())
+            return
+        }
         val libraryId = info[DochoSeriesInfoTable.library].value
         val current = Overrides.parse(info[DochoSeriesInfoTable.overrides])
         val values = current.values.toMutableMap()
@@ -129,6 +146,67 @@ object SeriesMetadata {
             }
         }
         SyncBridge.publishDetails(mangaId)
+    }
+
+    /** The fields a "details" record carries, by its key there. */
+    val syncedFields =
+        mapOf(
+            "title" to Field.TITLE,
+            "author" to Field.WRITERS,
+            "artist" to Field.ARTISTS,
+            "description" to Field.SUMMARY,
+            "genres" to Field.GENRES,
+            "status" to Field.STATUS,
+        )
+
+    /**
+     * Takes a "details" record from the apps on a library series: each field in it is locked to
+     * its value, as if edited in the WebUI; a deleted record ([value] null) unlocks them all, and
+     * the files' details come back with a scan. Doesn't send anything back to the apps.
+     */
+    fun fromSync(
+        mangaId: Int,
+        value: JsonObject?,
+    ) {
+        val info = DochoSeriesInfoTable.selectAll().where { DochoSeriesInfoTable.manga eq mangaId }.firstOrNull() ?: return
+        val values = Overrides.parse(info[DochoSeriesInfoTable.overrides]).values.toMutableMap()
+        val before = values.toMap()
+        for ((key, field) in syncedFields) {
+            val element = value?.get(key)
+            if (element == null || element is kotlinx.serialization.json.JsonNull) {
+                values.remove(field)
+                continue
+            }
+            values[field] =
+                when (field) {
+                    Field.WRITERS, Field.ARTISTS ->
+                        JsonArray(
+                            (element as? JsonPrimitive)
+                                ?.contentOrNull
+                                ?.split(",")
+                                ?.map { it.trim() }
+                                ?.filter { it.isNotEmpty() }
+                                ?.distinct()
+                                ?.map(::JsonPrimitive)
+                                .orEmpty(),
+                        )
+                    else -> runCatching { clean(field, element) }.getOrNull() ?: continue
+                }
+        }
+        if (values == before) return
+        val overrides = Overrides(values)
+        DochoSeriesInfoTable.update({ DochoSeriesInfoTable.manga eq mangaId }) {
+            it[DochoSeriesInfoTable.overrides] = overrides.toJson()
+            it[editedAt] = System.currentTimeMillis()
+        }
+        apply(mangaId, overrides)
+        val unlocked = before.keys - values.keys
+        if (unlocked.isNotEmpty()) {
+            val libraryId = info[DochoSeriesInfoTable.library].value
+            scope.launch {
+                runCatching { Libraries.scanNow(libraryId) }.onFailure { logger.warn(it) { "Rescan after unlocking details failed" } }
+            }
+        }
     }
 
     private fun clean(

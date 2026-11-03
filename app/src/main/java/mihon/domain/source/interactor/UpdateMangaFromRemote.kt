@@ -34,6 +34,7 @@ class UpdateMangaFromRemote(
     private val coverCache: CoverCache,
     private val libraryPreferences: LibraryPreferences,
     private val downloadManager: DownloadManager,
+    private val seriesEdits: docho.edit.SeriesEdits,
 ) {
     suspend operator fun invoke(
         manga: Manga,
@@ -69,7 +70,10 @@ class UpdateMangaFromRemote(
                 fetchDetails = fetchDetails,
                 fetchChapters = fetchChapters,
             )
-            awaitUpdateFromSource(manga, update.manga, manualFetch)
+            // Docho: details the user edited stay over what the source sends.
+            seriesEdits.applyTo(manga.source, manga.url, update.manga)
+            val titleEdited = seriesEdits.get(manga.source, manga.url)?.title?.isNotBlank() == true
+            awaitUpdateFromSource(manga, update.manga, manualFetch, titleEdited)
             val newChapters = syncChaptersWithSource.await(
                 rawSourceChapters = update.chapters,
                 manga = manga,
@@ -90,6 +94,7 @@ class UpdateMangaFromRemote(
         localManga: Manga,
         remoteManga: SManga,
         manualFetch: Boolean,
+        titleEdited: Boolean = false,
     ): Boolean {
         val remoteTitle = try {
             remoteManga.title
@@ -99,7 +104,7 @@ class UpdateMangaFromRemote(
 
         // if the manga isn't a favorite (or 'update titles' preference is enabled), set its title from source and update in db
         val title =
-            if (remoteTitle.isNotEmpty() && (!localManga.favorite || libraryPreferences.updateMangaTitles.get())) {
+            if (remoteTitle.isNotEmpty() && (titleEdited || !localManga.favorite || libraryPreferences.updateMangaTitles.get())) {
                 remoteTitle
             } else {
                 null
