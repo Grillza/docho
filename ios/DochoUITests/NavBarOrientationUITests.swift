@@ -7,8 +7,8 @@ final class NavBarOrientationUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    override func tearDown() {
-        XCUIDevice.shared.orientation = .portrait
+    override func tearDown() async throws {
+        await MainActor.run { XCUIDevice.shared.orientation = .portrait }
     }
 
     @MainActor
@@ -43,6 +43,7 @@ final class NavBarOrientationUITests: XCTestCase {
         save(app, "landscape")
     }
 
+    @MainActor
     private func save(_ app: XCUIApplication, _ name: String) {
         guard let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] else { return }
         try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir).appending(path: "navbar-\(name).png"))
