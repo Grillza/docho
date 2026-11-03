@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import { DochoContinueReading } from '@/features/docho/components/DochoContinueReading.tsx';
 import type { ChipProps } from '@mui/material/Chip';
 import Chip from '@mui/material/Chip';
 import Tab from '@mui/material/Tab';
@@ -281,6 +282,7 @@ export function Library() {
     if (tabs.length === 1) {
         return (
             <>
+                {!query && <DochoContinueReading />}
                 {triggerGlobalSearchButton}
                 <LibraryMangaGrid
                     // the key needs to include filters and query to force a re-render of the virtuoso grid to prevent https://github.com/petyosi/react-virtuoso/issues/1242
@@ -319,6 +321,7 @@ export function Library() {
                     ))}
                 </TabsMenu>
             </OffsetComponent>
+            {!query && <DochoContinueReading />}
             {triggerGlobalSearchButton}
             {tabs.map((tab) => (
                 <TabPanel key={tab.id} index={tab.order} currentIndex={activeTab.order}>

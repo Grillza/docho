@@ -199,6 +199,25 @@ object BookFiles {
         return ByteArrayInputStream(bytes) to mimeOf(bytes)
     }
 
+    /** [bytes] as a JPEG at most [width] pixels wide; small images are left as they are. */
+    fun shrinkImage(
+        bytes: ByteArray,
+        width: Int,
+    ): ByteArray =
+        runCatching {
+            val image = javax.imageio.ImageIO.read(ByteArrayInputStream(bytes)) ?: return bytes
+            if (image.width <= width && bytes.size < 400_000) return bytes
+            val w = minOf(width, image.width)
+            val h = (image.height.toLong() * w / image.width).toInt().coerceAtLeast(1)
+            val scaled = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB)
+            val g = scaled.createGraphics()
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY)
+            g.drawImage(image, 0, 0, w, h, null)
+            g.dispose()
+            encodeJpeg(scaled, 0.85f)
+        }.getOrDefault(bytes)
+
     /** The first page, or a cover image beside it, as an image. */
     fun cover(
         file: File,

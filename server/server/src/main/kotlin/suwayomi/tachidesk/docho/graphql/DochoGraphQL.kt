@@ -29,6 +29,7 @@ import suwayomi.tachidesk.docho.library.LibraryInput
 import suwayomi.tachidesk.docho.library.LibrarySettings
 import suwayomi.tachidesk.docho.library.LibraryType
 import suwayomi.tachidesk.docho.library.SeriesMetadata
+import suwayomi.tachidesk.docho.library.Shelf
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -193,6 +194,13 @@ class DochoSeriesInfo(
     fun group(): DochoSeriesGroup? = (SeriesGroups.groupOfMember(mangaId) ?: SeriesGroups.byMangaId(mangaId))?.let(::DochoSeriesGroup)
 }
 
+data class DochoStack(
+    val mangaId: Int,
+    val books: Int,
+    /** Image URLs of the covers behind the series' own, nearest first. */
+    val behind: List<String>,
+)
+
 data class DochoFolder(
     val name: String,
     val path: String,
@@ -253,6 +261,14 @@ class DochoQuery {
 
     @RequireAuth
     fun dochoSeriesInfo(mangaId: Int): DochoSeriesInfo = DochoSeriesInfo(mangaId)
+
+    /** Series as stacks of their books' covers, as BookOrbit shows them. */
+    @RequireAuth
+    fun dochoStack(mangaId: Int): DochoStack = Shelf.stack(mangaId).let { DochoStack(it.mangaId, it.books, it.behind) }
+
+    /** The series read most recently and not finished, to resume from the top of the library. */
+    @RequireAuth
+    fun dochoContinueReading(limit: Int? = 3): List<Shelf.Reading> = Shelf.reading(limit ?: 3)
 
     /** Folders on the server, for picking a library's folders. */
     @RequireAuth

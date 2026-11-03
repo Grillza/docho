@@ -240,7 +240,17 @@ export const MangaGrid: React.FC<IMangaGridProps> = ({
         gridWrapperRef.current?.offsetWidth ?? Math.max(0, document.documentElement.offsetWidth - navBarWidth),
     );
     const GridItemContainer = useMemo(
-        () => GridItemContainerWithDimension(dimensions, mangaGridItemWidth, gridLayout),
+        () =>
+            GridItemContainerWithDimension(
+                dimensions,
+                // Dōchō: small stacks are smaller than Suwayomi's cards; fanned covers need more room.
+                gridLayout === GridLayout.Fanned
+                    ? mangaGridItemWidth * 1.15
+                    : gridLayout === GridLayout.StackSmall
+                      ? mangaGridItemWidth * 0.7
+                      : mangaGridItemWidth,
+                gridLayout,
+            ),
         [dimensions, mangaGridItemWidth, gridLayout],
     );
 

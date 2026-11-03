@@ -477,12 +477,54 @@ export const EDIT_DOCHO_SERIES = gql`
     }
 `;
 
+export const GET_DOCHO_STACK = gql`
+    query DochoStack($mangaId: Int!) {
+        dochoStack(mangaId: $mangaId) {
+            mangaId
+            books
+            behind
+        }
+    }
+`;
+
+export type DochoReading = {
+    mangaId: number;
+    title: string;
+    thumbnailUrl: string;
+    readChapters: number;
+    totalChapters: number;
+    chapterId: number;
+    chapterName: string;
+    chapterSourceOrder: number;
+    page: number;
+    pageCount: number;
+    lastReadAt: string;
+};
+
+export const GET_DOCHO_CONTINUE_READING = gql`
+    query DochoContinueReading($limit: Int) {
+        dochoContinueReading(limit: $limit) {
+            mangaId
+            title
+            thumbnailUrl
+            readChapters
+            totalChapters
+            chapterId
+            chapterName
+            chapterSourceOrder
+            page
+            pageCount
+            lastReadAt
+        }
+    }
+`;
+
 export const dochoClient = () => requestManager.graphQLClient.client;
 
 export const useDochoQuery = <TData, TVars extends Record<string, unknown> = Record<string, never>>(
     document: ReturnType<typeof gql>,
     variables?: TVars,
-    options: { skip?: boolean; pollInterval?: number } = {},
+    options: { skip?: boolean; pollInterval?: number; fetchPolicy?: 'cache-first' | 'cache-and-network' | 'network-only' } = {},
 ) => {
     const result = useQuery<TData, TVars>(document, {
         client: dochoClient(),

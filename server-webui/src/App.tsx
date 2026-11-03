@@ -20,8 +20,6 @@ import { AwaitableComponent } from 'awaitable-component';
 import { AppContext } from '@/base/contexts/AppContext.tsx';
 import { DefaultNavBar } from '@/features/navigation-bar/components/DefaultNavBar.tsx';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
-import { WebUIUpdateChecker } from '@/features/app-updates/components/WebUIUpdateChecker.tsx';
-import { ServerUpdateChecker } from '@/features/app-updates/components/ServerUpdateChecker.tsx';
 import { lazyLoadFallback } from '@/base/utils/LazyLoad.tsx';
 import { ErrorBoundary } from '@/base/components/feedback/ErrorBoundary.tsx';
 import { useNavBarContext } from '@/features/navigation-bar/NavbarContext.tsx';
@@ -420,8 +418,8 @@ export const App: React.FC = () => (
 
         <AuthGuard>
             <InitializeGuard>
-                <ServerUpdateChecker />
-                <WebUIUpdateChecker />
+                {/* Dōchō: the server and WebUI update together with the Docker image, so Suwayomi's
+                    update prompts (which would replace Dōchō Server with Suwayomi) are left out. */}
                 <InitialBackgroundRequests />
                 <BackgroundSubscriptions />
                 <ResumeMigration />

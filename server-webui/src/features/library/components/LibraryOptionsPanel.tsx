@@ -44,6 +44,8 @@ import { ResetButton } from '@/base/components/buttons/ResetButton.tsx';
 import Replay from '@mui/icons-material/Replay';
 import { Sources } from '@/features/source/services/Sources';
 import Stack from '@mui/material/Stack';
+import { useLocalStorage } from '@/base/hooks/useStorage.tsx';
+import { CONTINUE_READING_KEY } from '@/features/docho/components/DochoContinueReading.tsx';
 import { ValueRotationButton } from '@/base/components/buttons/ValueRotationButton.tsx';
 
 const TITLES: { [key in 'filter' | 'sort' | 'display']: MessageDescriptor } = {
@@ -180,6 +182,7 @@ export const LibraryOptionsPanel = ({
     const {
         settings: { showTabSize, showContinueReadingButton, showDownloadBadge, showUnreadBadge, gridLayout },
     } = useMetadataServerSettings();
+    const [showContinueReading, setShowContinueReading] = useLocalStorage(CONTINUE_READING_KEY, true);
     const setSettingValue = createUpdateMetadataServerSettings((e) =>
         makeToast(t`Could not save the default search settings to the server`, 'error', getErrorMessage(e)),
     );
@@ -356,7 +359,27 @@ export const LibraryOptionsPanel = ({
                                     value={GridLayout.List}
                                     checked={gridLayout === GridLayout.List}
                                 />
+                                <RadioInput
+                                    label={t`Stacked covers, small icons`}
+                                    value={GridLayout.StackSmall}
+                                    checked={gridLayout === GridLayout.StackSmall}
+                                />
+                                <RadioInput
+                                    label={t`Stacked covers, BookOrbit style`}
+                                    value={GridLayout.Stack}
+                                    checked={gridLayout === GridLayout.Stack}
+                                />
+                                <RadioInput
+                                    label={t`Fanned covers`}
+                                    value={GridLayout.Fanned}
+                                    checked={gridLayout === GridLayout.Fanned}
+                                />
                             </RadioGroup>
+                            <CheckboxInput
+                                label={t`Show Currently reading`}
+                                checked={showContinueReading}
+                                onChange={() => setShowContinueReading(!showContinueReading)}
+                            />
                             <FormLabel sx={{ mt: 2 }}>{t`Badges`}</FormLabel>
                             <CheckboxInput
                                 label={t`Unread badges`}

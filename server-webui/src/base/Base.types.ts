@@ -13,6 +13,10 @@ export enum GridLayout {
     Compact = 0,
     Comfortable = 1,
     List = 2,
+    // Dōchō: series as stacks of their books' covers (BookOrbit's shelf)
+    StackSmall = 3,
+    Stack = 4,
+    Fanned = 5,
 }
 
 export enum DirectionOffset {

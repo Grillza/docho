@@ -121,6 +121,13 @@ msgstr "{0, plural, one {Could not reorder download} other {Could not reorder do
 msgid "{0, plural, one {Second} other {Seconds}}"
 msgstr "{0, plural, one {Second} other {Seconds}}"
 
+#. placeholder {0}: it.chapterName
+#. placeholder {1}: it.page + 1
+#. placeholder {2}: it.pageCount
+#: src/features/docho/components/DochoContinueReading.tsx
+msgid "{0} · page {1} of {2}"
+msgstr "{0} · page {1} of {2}"
+
 #. placeholder {0}: suggestion.name
 #. placeholder {1}: suggestion.series.length
 #: src/features/docho/screens/DochoSeriesGroups.tsx
@@ -706,6 +713,13 @@ msgstr "Black"
 #: src/features/reader/filters/settings/components/ReaderSettingRGBA.tsx
 msgid "Blue"
 msgstr "Blue"
+
+#. placeholder {0}: it.chapterSourceOrder
+#. placeholder {1}: it.totalChapters
+#. placeholder {2}: it.readChapters
+#: src/features/docho/components/DochoContinueReading.tsx
+msgid "Book {0} of {1} · {2} read"
+msgstr "Book {0} of {1} · {2} read"
 
 #: src/features/chapter/Chapter.constants.ts
 msgid "Bookmark selected"
@@ -1429,6 +1443,10 @@ msgstr "Current:"
 msgid "Currently publishing"
 msgstr "Currently publishing"
 
+#: src/features/docho/components/DochoContinueReading.tsx
+msgid "Currently reading"
+msgstr "Currently reading"
+
 #: src/features/settings/Settings.constants.ts
 msgid "Custom"
 msgstr "Custom"
@@ -1994,6 +2012,10 @@ msgstr "Failed to disconnect from KOReader Sync server."
 #: src/features/tracker/screens/TrackingSettings.tsx
 msgid "Failed to save changes"
 msgstr "Failed to save changes"
+
+#: src/features/library/components/LibraryOptionsPanel.tsx
+msgid "Fanned covers"
+msgstr "Fanned covers"
 
 #: src/features/settings/Settings.constants.ts
 msgid "Features and changes in this version might not be completely ready yet and can cause bugs.\n"
@@ -3538,6 +3560,7 @@ msgstr "Restoring"
 msgid "Restoring backup…"
 msgstr "Restoring backup…"
 
+#: src/features/docho/components/DochoContinueReading.tsx
 #: src/features/manga/components/ResumeFAB.tsx
 msgid "Resume"
 msgstr "Resume"
@@ -3866,6 +3889,10 @@ msgstr "Show all duplicated entries in your library"
 msgid "Show continue reading button"
 msgstr "Show continue reading button"
 
+#: src/features/library/components/LibraryOptionsPanel.tsx
+msgid "Show Currently reading"
+msgstr "Show Currently reading"
+
 #: src/features/manga/components/cards/MangaCard.tsx
 #: src/features/manga/hooks/useManageMangaLibraryState.tsx
 #: src/features/migration/components/MigrationOptionsDialog.tsx
@@ -4048,6 +4075,14 @@ msgstr "Sources"
 #: src/features/settings/Settings.constants.ts
 msgid "Stable"
 msgstr "Stable"
+
+#: src/features/library/components/LibraryOptionsPanel.tsx
+msgid "Stacked covers, BookOrbit style"
+msgstr "Stacked covers, BookOrbit style"
+
+#: src/features/library/components/LibraryOptionsPanel.tsx
+msgid "Stacked covers, small icons"
+msgstr "Stacked covers, small icons"
 
 #: src/features/reader/overlay/progress-bar/settings/components/ReaderSettingProgressBarType.tsx
 msgid "Standard"

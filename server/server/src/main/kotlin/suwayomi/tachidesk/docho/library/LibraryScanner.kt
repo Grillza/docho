@@ -507,20 +507,7 @@ class LibraryScanner(
     }
 
     /** Covers at most 600 pixels wide, as JPEG, so library pages load quickly. */
-    private fun shrinkCover(bytes: ByteArray): ByteArray =
-        runCatching {
-            val image = javax.imageio.ImageIO.read(java.io.ByteArrayInputStream(bytes)) ?: return bytes
-            if (image.width <= COVER_WIDTH && bytes.size < 400_000) return bytes
-            val width = minOf(COVER_WIDTH, image.width)
-            val height = (image.height.toLong() * width / image.width).toInt().coerceAtLeast(1)
-            val scaled = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB)
-            val g = scaled.createGraphics()
-            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-            g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY)
-            g.drawImage(image, 0, 0, width, height, null)
-            g.dispose()
-            BookFiles.encodeJpeg(scaled, 0.85f)
-        }.getOrDefault(bytes)
+    private fun shrinkCover(bytes: ByteArray): ByteArray = BookFiles.shrinkImage(bytes, COVER_WIDTH)
 
     companion object {
         private const val MAX_DEPTH = 6

@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import { DochoStackCard, isStackLayout } from '@/features/docho/components/DochoStackCard.tsx';
 import PopupState, { bindMenu } from 'material-ui-popup-state';
 import { memo, useCallback, useMemo } from 'react';
 import type { SingleModeProps } from '@/features/manga/components/MangaActionMenuItems.tsx';
@@ -179,7 +180,7 @@ export const MangaCard = memo((props: MangaCardProps) => {
     });
 
     const MangaCardComponent = useMemo(
-        () => (gridLayout === GridLayout.List ? MangaListCard : MangaGridCard),
+        () => (gridLayout === GridLayout.List ? MangaListCard : isStackLayout(gridLayout) ? DochoStackCard : MangaGridCard),
         [gridLayout],
     );
 

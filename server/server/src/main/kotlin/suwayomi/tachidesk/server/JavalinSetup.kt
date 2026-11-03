@@ -126,6 +126,7 @@ object JavalinSetup {
                         OpdsAPI.defineEndpoints()
                         GraphQL.defineEndpoints()
                         DochoSync.defineEndpoints()
+                        suwayomi.tachidesk.docho.library.Shelf.defineEndpoints()
 
                         after { ctx ->
                             // If not matched, the request was for an invalid endpoint
