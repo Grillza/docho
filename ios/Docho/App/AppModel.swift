@@ -271,7 +271,12 @@ final class AppModel {
 
     /// Covers and pages are cached on disk as well as in memory.
     static func configureImagePipeline() {
-        ImagePipeline.shared = ImagePipeline(configuration: .withDataCache)
+        var configuration = ImagePipeline.Configuration.withDataCache
+        // Extension pages and covers (docho-ext://) come from the extension host.
+        let session = DataLoader.defaultConfiguration
+        session.protocolClasses = [ExtensionImageProtocol.self] + (session.protocolClasses ?? [])
+        configuration.dataLoader = DataLoader(configuration: session)
+        ImagePipeline.shared = ImagePipeline(configuration: configuration)
     }
 
     private static func openDatabase() -> AppDatabase {

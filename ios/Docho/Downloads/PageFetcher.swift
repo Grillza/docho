@@ -33,7 +33,15 @@ struct SessionPageFetcher: PageFetcher {
 /// `BackgroundPageFetcher.shared`, created on first use so tests never make a background session.
 struct BackgroundFetch: PageFetcher {
     func fetch(_ request: URLRequest) async throws -> (file: URL, mimeType: String?) {
-        try await BackgroundPageFetcher.shared.fetch(request)
+        // Extension pages come from the extension host, not a background session.
+        if let url = request.url, url.scheme == ExtensionImageURL.scheme {
+            guard let host = ExtensionImageProtocol.host else { throw URLError(.cannotConnectToHost) }
+            let (data, mimeType) = try await ExtensionImageURL.fetch(url, host: host)
+            let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+            try data.write(to: file)
+            return (file, mimeType)
+        }
+        return try await BackgroundPageFetcher.shared.fetch(request)
     }
 }
 
