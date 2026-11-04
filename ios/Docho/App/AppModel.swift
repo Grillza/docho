@@ -26,6 +26,9 @@ final class AppModel {
     let renames: ChapterRenames
     /// Series details the user edited, kept over the source's.
     let seriesEdits: SeriesEdits
+    let trackerFillMemory: TrackerFillMemory
+    /// Scans the library against trackers for a list to review.
+    let trackerFillScan: TrackerFillScan
     let kavitaSource: KavitaSource
     let komgaSource: KomgaSource
     let bookOrbitSource: BookOrbitSource
@@ -126,10 +129,16 @@ final class AppModel {
         dochoSyncSettings.migrate()
         self.dochoSyncSettings = dochoSyncSettings
         dochoSyncClient = DochoSyncClient(settings: dochoSyncSettings, session: session)
+        let trackerFillMemory = TrackerFillMemory(defaults: downloadDefaults)
+        self.trackerFillMemory = trackerFillMemory
         dochoSync = DochoSync(
-            settings: dochoSyncSettings, client: dochoSyncClient, database: database, renames: renames, seriesEdits: seriesEdits
+            settings: dochoSyncSettings, client: dochoSyncClient, database: database, renames: renames, seriesEdits: seriesEdits,
+            trackerFillMemory: trackerFillMemory
         ) { [library] series in
             _ = try? await library.refresh(series)
+        }
+        trackerFillScan = TrackerFillScan(database: database, trackers: trackers, memory: trackerFillMemory, seriesEdits: seriesEdits) { [dochoSync] in
+            dochoSync.syncSoon(after: 3)
         }
         self.suwayomiSettings = suwayomiSettings
         suwayomi = SuwayomiModel(client: SuwayomiClient(settings: suwayomiSettings, session: session), sources: sources, defaults: downloadDefaults)
@@ -196,6 +205,8 @@ final class AppModel {
         triggers?.sceneChanged(to: phase)
         if phase == .background { notifier.appWentToBackground() }
         syncDochoOnSceneChange(phase)
+        // iOS doesn't let a long scan run in the background: it goes on when the app is back.
+        if phase == .background { trackerFillScan.pause() } else if triggers != nil { trackerFillScan.resume() }
         // The app can stay open for days, so returning to it checks again, at most every 6 hours (as on Android).
         if phase == .active, triggers != nil, let last = lastUpdateCheck, Date.now.timeIntervalSince(last) > 6 * 3600 {
             Task { _ = try? await checkForAppUpdate() }

@@ -17,6 +17,9 @@ struct EditDetailsSheet: View {
     @State private var genres = ""
     @State private var status = 0
     @State private var loaded = false
+    @State private var filling = false
+    @State private var fillMessage: String?
+    @State private var picking: [TrackerFill.Match] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -55,6 +58,13 @@ struct EditDetailsSheet: View {
                     if let note = edited(saved.status) {
                         Text(note).font(M3Type.bodySmall).foregroundStyle(m3.onSurfaceVariant)
                     }
+                    M3TextButton(title: String(localized: "Fill from tracker"), color: m3.primary) {
+                        Task { await fill() }
+                    }
+                    .disabled(filling)
+                    if let fillMessage {
+                        Text(fillMessage).font(M3Type.bodySmall).foregroundStyle(m3.onSurfaceVariant)
+                    }
                     if !saved.isEmpty {
                         M3TextButton(title: String(localized: "Use the source's details"), color: m3.error) {
                             Task { await reset() }
@@ -66,6 +76,73 @@ struct EditDetailsSheet: View {
         }
         .background(m3.surface)
         .onAppear(perform: load)
+        .sheet(isPresented: Binding(get: { !picking.isEmpty }, set: { if !$0 { picking = [] } })) {
+            NavigationStack {
+                List(Array(picking.enumerated()), id: \.offset) { _, match in
+                    Button {
+                        picking = []
+                        fillFrom([match])
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(match.title).font(M3Type.bodyLarge).foregroundStyle(m3.onSurface)
+                            Text([match.trackerName, match.author, match.publishingStatus].filter { !$0.isEmpty }.joined(separator: " · "))
+                                .font(M3Type.bodySmall)
+                                .foregroundStyle(m3.onSurfaceVariant)
+                        }
+                    }
+                }
+                .navigationTitle(String(localized: "Which series is this?"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(String(localized: "Cancel")) { picking = [] }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The linked trackers' details, or else search results to pick from. Only fills the form:
+    /// nothing is saved until Save, so it can all be checked first.
+    private func fill() async {
+        let fill = TrackerFill(trackers: app.trackers.signedIn)
+        guard fill.canFill else {
+            fillMessage = String(localized: "Sign in to a tracker in Settings → Tracking first")
+            return
+        }
+        filling = true
+        defer { filling = false }
+        fillMessage = nil
+        let tracks = (try? await app.database.tracks(seriesId: series.id)) ?? []
+        let linked = await fill.linked(tracks)
+        if !linked.isEmpty {
+            fillFrom(linked)
+            return
+        }
+        do {
+            let query = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let found = try await fill.search(query.isEmpty ? series.name : query)
+            if found.isEmpty {
+                fillMessage = String(localized: "No tracker found this series. Try changing the title above, then search again.")
+            }
+            picking = found
+        } catch {
+            fillMessage = error.localizedDescription
+        }
+    }
+
+    private func fillFrom(_ matches: [TrackerFill.Match]) {
+        let before = TrackerFill.Form(author: author, artist: artist, description: summary, status: status)
+        let filled = matches.reduce(before) { TrackerFill.fill($0, from: $1, statusEdited: saved.status != nil) }
+        author = filled.author
+        artist = filled.artist
+        summary = filled.description
+        status = filled.status
+        fillMessage = if filled == before {
+            String(localized: "Nothing to fill: the tracker has nothing for the empty fields")
+        } else {
+            String(localized: "Filled from \(matches[0].trackerName). Check the details, then save.")
+        }
     }
 
     private func edited<T>(_ value: T?) -> String? { value == nil ? nil : String(localized: "Edited") }

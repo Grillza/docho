@@ -132,6 +132,7 @@ final class AppPreferences {
     var continueReadingButton: Bool { didSet { save(continueReadingButton, "display_continue_reading_button") } }
     var categoryTabs: Bool { didSet { save(categoryTabs, "display_category_tabs") } }
     var categoryCounts: Bool { didSet { save(categoryCounts, "display_number_of_items") } }
+    var showCurrentlyReading: Bool { didSet { save(showCurrentlyReading, "display_currently_reading") } }
     var librarySort: LibrarySort { didSet { save(librarySort.rawValue, "library_sorting_mode") } }
     var librarySortAscending: Bool { didSet { save(librarySortAscending, "library_sorting_ascending") } }
     var filterDownloaded: ChapterDisplay.TriState { didSet { save(filterDownloaded.rawValue, "pref_filter_library_downloaded_v2") } }
@@ -267,6 +268,7 @@ final class AppPreferences {
         continueReadingButton = bool("display_continue_reading_button", false)
         categoryTabs = bool("display_category_tabs", true)
         categoryCounts = bool("display_number_of_items", false)
+        showCurrentlyReading = bool("display_currently_reading", false)
         librarySort = string("library_sorting_mode").flatMap(LibrarySort.init) ?? .alphabetical
         librarySortAscending = bool("library_sorting_ascending", true)
         filterDownloaded = tri("pref_filter_library_downloaded_v2")

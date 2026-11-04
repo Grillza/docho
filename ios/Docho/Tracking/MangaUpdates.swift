@@ -89,12 +89,24 @@ final class MangaUpdates: Tracker {
             title: HTMLText.plain(record.string("title") ?? ""),
             coverURL: record.dict("image")?.dict("url")?.string("original").flatMap(URL.init(string:)),
             summary: HTMLText.plain(record.string("description") ?? ""),
+            publishingStatus: publishingStatus(record),
             publishingType: record.string("type") ?? "", startDate: record.string("year") ?? "",
             score: record.double("bayesian_rating").flatMap { $0 > 0 ? $0 : nil } ?? -1,
             authors: authors.filter { $0.string("type") == "Author" }.compactMap { $0.string("name") },
             artists: authors.filter { $0.string("type") == "Artist" }.compactMap { $0.string("name") },
             trackingURL: record.string("url") ?? ""
         )
+    }
+
+    /// "43 Volumes (Ongoing)" as "Ongoing". Only a series' details have this, not search results.
+    static func publishingStatus(_ record: [String: Any]) -> String {
+        if record["completed"] as? Bool == true { return "Completed" }
+        guard let text = record.string("status") else { return "" }
+        for word in ["Ongoing", "Complete", "Hiatus", "Cancelled", "Discontinued", "Dropped"]
+        where text.range(of: "(\(word))", options: .caseInsensitive) != nil {
+            return word
+        }
+        return ""
     }
 
     /// The series on the user's lists, or nil if it isn't on one.

@@ -12,6 +12,7 @@ struct TrackingSettings: View {
     @State private var busy: Int64?
     @State private var error: String?
     @State private var webSignIn = WebSignIn()
+    @State private var fillingDetails = false
 
     var body: some View {
         @Bindable var trackers = app.trackers
@@ -21,6 +22,9 @@ struct TrackingSettings: View {
             row(box.tracker)
         }
         InfoPreference(text: String(localized: "Tracking keeps your reading progress on these sites. Link a series from its Tracking button once you're signed in."))
+        M3TextButton(title: String(localized: "Fill details from trackers")) { fillingDetails = true }
+            .padding(.horizontal, 16)
+            .sheet(isPresented: $fillingDetails) { TrackerFillView() }
             .m3Dialog(isPresented: Binding(get: { passwordFor != nil }, set: { if !$0 { passwordFor = nil } }), title: passwordFor.map { String(localized: "Sign in to \($0.tracker.name)") }) {
                 VStack(spacing: 12) {
                     M3TextField(label: String(localized: "Username"), text: $username)

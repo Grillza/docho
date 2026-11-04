@@ -35,6 +35,7 @@ struct LibraryView: View {
     var body: some View {
         VStack(spacing: 0) {
             appBar
+            if preferences.showCurrentlyReading, selection.isEmpty, !searching { CurrentlyReadingBar() }
             if preferences.categoryTabs, tabs.count > 1 {
                 M3Tabs(
                     tabs: Array(tabs.indices), selection: $categoryIndex, scrollable: true,
@@ -380,6 +381,7 @@ struct LibrarySettingsSheet: View {
                         CheckboxRow(title: String(localized: "Show number of items"), isOn: $preferences.categoryCounts)
                         PreferenceHeader(title: String(localized: "Other"))
                         CheckboxRow(title: String(localized: "Show continue reading button"), isOn: $preferences.continueReadingButton)
+                        CheckboxRow(title: String(localized: "Currently reading bar"), isOn: $preferences.showCurrentlyReading)
                     }
                 }
                 .padding(.vertical, 8)

@@ -226,6 +226,8 @@ enum SyncValues {
     static let kind = "kind"
     /// A series' edited details (`SeriesEdits`): only the edited fields, blank ones as "".
     static let details = "details"
+    /// What the tracker fill remembers about a series (`TrackerFillMemory`).
+    static let fill = "fill"
 
     static func key(_ source: Int64, _ url: String) -> String { "\(source)|\(url)" }
     static func id(_ kind: String, _ key: String) -> String { "\(kind)\t\(key)" }
@@ -442,6 +444,7 @@ final class DochoSync {
     @ObservationIgnored private let database: AppDatabase
     @ObservationIgnored private let renames: ChapterRenames
     @ObservationIgnored private let seriesEdits: SeriesEdits
+    @ObservationIgnored private let trackerFillMemory: TrackerFillMemory
     @ObservationIgnored private let refresh: @MainActor (SeriesRecord) async -> Void
     @ObservationIgnored private let stateURL: URL
     @ObservationIgnored private var running: Task<Status, Never>?
@@ -456,6 +459,7 @@ final class DochoSync {
     init(
         settings: DochoSyncSettings, client: DochoSyncClient, database: AppDatabase, renames: ChapterRenames,
         seriesEdits: SeriesEdits? = nil,
+        trackerFillMemory: TrackerFillMemory? = nil,
         stateURL: URL = URL.applicationSupportDirectory.appending(path: "docho-sync-state.json"),
         refresh: @escaping @MainActor (SeriesRecord) async -> Void
     ) {
@@ -464,6 +468,7 @@ final class DochoSync {
         self.database = database
         self.renames = renames
         self.seriesEdits = seriesEdits ?? SeriesEdits(defaults: UserDefaults(suiteName: "docho-series-edits-\(UUID().uuidString)")!)
+        self.trackerFillMemory = trackerFillMemory ?? TrackerFillMemory(defaults: UserDefaults(suiteName: "docho-tracker-fill-\(UUID().uuidString)")!)
         self.stateURL = stateURL
         self.refresh = refresh
     }
@@ -576,11 +581,16 @@ final class DochoSync {
         repeat {
             let batch = Array(outgoing.prefix(Self.batch))
             outgoing = outgoing.dropFirst(batch.count)
-            do {
-                page = try await client.sync(since: since, changes: batch)
-            } catch let error as DochoSyncError where error.message.hasPrefix("Unknown kind: \(SyncValues.details)") {
-                unsent.formUnion(batch.filter { $0.kind == SyncValues.details }.map(\.id))
-                page = try await client.sync(since: since, changes: batch.filter { $0.kind != SyncValues.details })
+            var sending = batch
+            while true {
+                do {
+                    page = try await client.sync(since: since, changes: sending)
+                    break
+                } catch let error as DochoSyncError {
+                    guard let kind = Set(sending.map(\.kind)).first(where: { error.message.hasPrefix("Unknown kind: \($0)") }) else { throw error }
+                    unsent.formUnion(sending.filter { $0.kind == kind }.map(\.id))
+                    sending = sending.filter { $0.kind != kind }
+                }
             }
             remote += page.changes
             since = page.seq
@@ -649,6 +659,9 @@ final class DochoSync {
         }
         for (key, details) in seriesEdits.edits where !details.isEmpty {
             put(SyncValues.details, key, details.json)
+        }
+        for (key, memory) in trackerFillMemory.all {
+            put(SyncValues.fill, key, memory.json)
         }
         return records
     }
@@ -744,6 +757,9 @@ final class DochoSync {
                 memo[ChapterMemo.kind] = .string(kind)
                 try await database.renameChapter(id: chapter.id, url: chapter.url, name: chapter.name, number: chapter.number, memo: memo)
             }
+            return true
+        case SyncValues.fill:
+            trackerFillMemory.put(record.key, value.map(TrackerFillMemory.Memory.init(json:)))
             return true
         case SyncValues.details:
             guard let (source, url) = SyncValues.parseKey(record.key) else { return true }
