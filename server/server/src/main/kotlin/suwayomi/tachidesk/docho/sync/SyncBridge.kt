@@ -37,11 +37,13 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.docho.DochoLibraryTable
+import suwayomi.tachidesk.docho.DochoSeriesFillTable
 import suwayomi.tachidesk.docho.DochoSeriesInfoTable
 import suwayomi.tachidesk.docho.DochoSyncRecordTable
 import suwayomi.tachidesk.docho.DochoSyncUserTable
 import suwayomi.tachidesk.docho.library.Libraries
 import suwayomi.tachidesk.docho.library.SeriesMetadata
+import suwayomi.tachidesk.docho.library.TrackerFill
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
@@ -72,6 +74,9 @@ import kotlin.time.Duration.Companion.seconds
 object SyncBridge {
     const val DEVICE = "docho-server"
     const val DETAILS = "details"
+
+    /** What the tracker fill remembers about a series: the status it gave, and what the user decided against. */
+    const val FILL = "fill"
     private const val CHAPTER = "chapter"
     private const val HISTORY = "history"
     private const val MANGA = "manga"
@@ -313,7 +318,11 @@ object SyncBridge {
                     }
                     RENAME -> applyRename(source, url, obj(change.value), obj(change.previous))
                     KIND -> applyKind(source, url, obj(change.value)?.string("kind"))
-                    DETAILS -> applyDetails(source, url, obj(change.value))
+                    DETAILS -> {
+                        applyDetails(source, url, obj(change.value))
+                        TrackerFill.settle(source, url)
+                    }
+                    FILL -> TrackerFill.fromSync(source, url, obj(change.value))
                 }
             } catch (e: Exception) {
                 logger.warn(e) { "Couldn't apply ${change.kind} ${change.key} to the server" }
@@ -728,6 +737,10 @@ object SyncBridge {
                             .where { DochoSeriesInfoTable.overrides neq "{}" }
                             .map { it[DochoSeriesInfoTable.manga].value }
                     edited.mapNotNullTo(changes) { detailsChange(userId, it) }
+                    DochoSeriesFillTable
+                        .select(DochoSeriesFillTable.manga)
+                        .map { it[DochoSeriesFillTable.manga].value }
+                        .mapNotNullTo(changes) { fillChange(userId, it) }
                 }
             }
             if (changes.isNotEmpty()) {
@@ -873,6 +886,33 @@ object SyncBridge {
                 }
             }
         }
+    }
+
+    /** Sends what the tracker fill remembers about a series to the apps. */
+    fun publishFill(mangaId: Int) {
+        val userId = linkedUserId() ?: return
+        synchronized(DochoSync) {
+            val change = transaction { fillChange(userId, mangaId) } ?: return
+            DochoSync.storeFromServer(userId, listOf(change))
+        }
+    }
+
+    /** Every "fill" record, by key, for choices that arrived before their series was on the server. */
+    fun fillRecords(): Map<String, JsonObject> {
+        val userId = linkedUserId() ?: return emptyMap()
+        return transaction { allRecords(userId, FILL) }.mapNotNull { (key, record) -> obj(record.value)?.let { key to it } }.toMap()
+    }
+
+    private fun fillChange(
+        userId: Int,
+        mangaId: Int,
+    ): DochoSync.Change? {
+        val manga = MangaTable.selectAll().where { MangaTable.id eq mangaId }.firstOrNull() ?: return null
+        val key = "${manga[MangaTable.sourceReference]}|${manga[MangaTable.url]}"
+        val value = DochoSync.canonical(TrackerFill.recordOf(mangaId) ?: return null)
+        val record = records(userId, FILL, listOf(key))[key]
+        if (record?.value == value) return null
+        return DochoSync.Change(FILL, key, value, maxOf(System.currentTimeMillis(), (record?.updatedAt ?: 0) + 1))
     }
 
     /** Sends a series' details after they were edited (or reset) on the server. */

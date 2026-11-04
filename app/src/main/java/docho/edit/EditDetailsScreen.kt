@@ -1,5 +1,6 @@
 package docho.edit
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,8 +8,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,6 +42,7 @@ import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.launch
 import mihon.core.metro.metroGraph
 import mihon.app.di.AppGraph
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -81,6 +86,82 @@ class EditDetailsScreen(
             )
         }
 
+        var filling by remember { mutableStateOf(false) }
+        var picking by remember { mutableStateOf<List<TrackerFill.Match>>(emptyList()) }
+
+        // Only what's empty; nothing is saved until Save, so it can all be checked first
+        fun fillFrom(matches: List<TrackerFill.Match>) {
+            val before = TrackerFill.Form(author, artist, description, status)
+            val filled = matches.fold(before) { form, match -> TrackerFill.fill(form, match, saved.status != null) }
+            author = filled.author
+            artist = filled.artist
+            description = filled.description
+            status = filled.status
+            context.toast(
+                if (filled == before) {
+                    context.stringResource(MR.strings.edit_details_fill_nothing)
+                } else {
+                    context.stringResource(MR.strings.edit_details_fill_done, matches.first().trackerName)
+                },
+            )
+        }
+
+        fun startFill() {
+            if (!graph.trackerFill.canFill()) {
+                context.toast(context.stringResource(MR.strings.edit_details_fill_not_signed_in))
+                return
+            }
+            filling = true
+            scope.launch {
+                val linked = graph.trackerFill.linked(manga)
+                if (linked.isNotEmpty()) {
+                    fillFrom(linked)
+                } else {
+                    val found = runCatching { graph.trackerFill.search(title.trim().ifEmpty { manga.title }) }
+                    found.onFailure { context.toast(it.message) }
+                    found.onSuccess {
+                        if (it.isEmpty()) context.toast(context.stringResource(MR.strings.edit_details_fill_no_results))
+                        picking = it
+                    }
+                }
+                filling = false
+            }
+        }
+
+        if (picking.isNotEmpty()) {
+            AlertDialog(
+                onDismissRequest = { picking = emptyList() },
+                title = { Text(stringResource(MR.strings.edit_details_fill_pick)) },
+                text = {
+                    LazyColumn {
+                        items(picking) { match ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        picking = emptyList()
+                                        fillFrom(listOf(match))
+                                    }
+                                    .padding(vertical = 8.dp),
+                            ) {
+                                Text(match.title, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    listOf(match.trackerName, match.author, match.publishingStatus)
+                                        .filter { it.isNotBlank() }
+                                        .joinToString(" · "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { picking = emptyList() }) { Text(stringResource(MR.strings.action_cancel)) }
+                },
+            )
+        }
+
         val savedText = stringResource(MR.strings.edit_details_saved)
         Scaffold(
             topBar = { scrollBehavior ->
@@ -119,6 +200,9 @@ class EditDetailsScreen(
                     supporting = stringResource(MR.strings.edit_details_genres_hint),
                 ) { genres = it }
                 StatusField(status, saved.status != null) { status = it }
+                OutlinedButton(enabled = !filling, onClick = ::startFill) {
+                    Text(stringResource(MR.strings.edit_details_fill))
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

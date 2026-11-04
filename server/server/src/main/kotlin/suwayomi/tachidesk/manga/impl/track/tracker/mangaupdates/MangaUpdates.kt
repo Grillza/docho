@@ -106,6 +106,9 @@ class MangaUpdates(
                 it.toTrackSearch(id)
             }
 
+    /** A search result with its people and status, which only a series' details have. */
+    suspend fun details(remoteId: Long): TrackSearch = api.getSeriesDetails(remoteId).toTrackSearch(id)
+
     override suspend fun refresh(track: Track): Track {
         val (series, rating) = api.getSeriesListItem(track)
         return track.copyFrom(series, rating)

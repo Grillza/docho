@@ -178,7 +178,19 @@ data object LibraryTab : Tab {
                     )
                 }
                 else -> {
+                    val currentlyReading by viewModel.currentlyReading.collectAsStateWithLifecycle()
                     LibraryContent(
+                        header = {
+                            if (state.selection.isEmpty() && state.searchQuery.isNullOrEmpty()) {
+                                docho.library.CurrentlyReadingBar(
+                                    items = currentlyReading,
+                                    onClickSeries = { navigator.push(MangaScreen(it)) },
+                                    onResume = {
+                                        context.startActivity(ReaderActivity.newIntent(context, it.mangaId, it.chapterId))
+                                    },
+                                )
+                            }
+                        },
                         categories = state.displayedCategories,
                         searchQuery = state.searchQuery,
                         selection = state.selection,

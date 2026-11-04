@@ -98,7 +98,13 @@ class LibraryViewModel(
     private val downloadManager: DownloadManager,
     private val downloadCache: DownloadCache,
     private val trackerManager: TrackerManager,
+    currentlyReading: docho.library.CurrentlyReading,
 ) : ViewModel() {
+
+    /** The bar at the top of the library, if it's turned on. */
+    val currentlyReading = libraryPreferences.showCurrentlyReading.changes()
+        .flatMapLatest { show -> if (show) currentlyReading.subscribe() else flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val subscriberGate = SubscriberGate()
 

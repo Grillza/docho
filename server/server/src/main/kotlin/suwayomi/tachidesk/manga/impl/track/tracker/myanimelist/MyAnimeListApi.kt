@@ -105,7 +105,7 @@ class MyAnimeListApi(
                     .appendPath(id.toString())
                     .appendQueryParameter(
                         "fields",
-                        "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date",
+                        "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date,authors{first_name,last_name}",
                     ).build()
             with(json) {
                 authClient
@@ -124,6 +124,8 @@ class MyAnimeListApi(
                             publishing_status = it.status.replace("_", " ")
                             publishing_type = it.mediaType.replace("_", " ")
                             start_date = it.startDate ?: ""
+                            authors = it.authors.filter { author -> "Story" in author.role }.map { author -> author.node.name }
+                            artists = it.authors.filter { author -> "Art" in author.role }.map { author -> author.node.name }
                         }
                     }
             }

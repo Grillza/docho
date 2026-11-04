@@ -85,6 +85,7 @@ object SettingsTrackingScreen : SearchableSettings {
 
     @Composable
     override fun getPreferences(): List<Preference> {
+        val navigator = cafe.adriel.voyager.navigator.LocalNavigator.current!!
         val context = LocalContext.current
         val trackPreferences = remember { context.appGraph.trackPreferences }
         val trackerManager = remember { context.appGraph.trackerManager }
@@ -185,6 +186,10 @@ object SettingsTrackingScreen : SearchableSettings {
                         logout = { dialog = LogoutDialog(trackerManager.comick) },
                     ),
                     Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.tracking_info)),
+                    Preference.PreferenceItem.TextPreference(
+                        title = stringResource(MR.strings.tracker_fill_title),
+                        onClick = { navigator.push(docho.edit.TrackerFillScreen()) },
+                    ),
                 ),
             ),
             Preference.PreferenceGroup(

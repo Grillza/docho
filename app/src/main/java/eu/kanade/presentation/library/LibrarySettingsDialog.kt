@@ -285,6 +285,10 @@ private fun ColumnScope.DisplayPage(
         label = stringResource(MR.strings.action_display_show_continue_reading_button),
         pref = viewModel.libraryPreferences.showContinueReadingButton,
     )
+    CheckboxItem(
+        label = stringResource(MR.strings.action_display_currently_reading),
+        pref = viewModel.libraryPreferences.showCurrentlyReading,
+    )
 
     HeadingItem(MR.strings.tabs_header)
     CheckboxItem(

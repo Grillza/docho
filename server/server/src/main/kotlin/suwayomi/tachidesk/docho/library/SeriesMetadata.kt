@@ -123,6 +123,7 @@ object SeriesMetadata {
                             }
                     }.toMap()
             SyncBridge.editDetails(mangaId, set, edit.reset.mapNotNull { keys[it] }.toSet())
+            TrackerFill.settle(mangaId)
             return
         }
         val libraryId = info[DochoSeriesInfoTable.library].value
@@ -146,6 +147,7 @@ object SeriesMetadata {
             }
         }
         SyncBridge.publishDetails(mangaId)
+        TrackerFill.settle(mangaId)
     }
 
     /** The fields a "details" record carries, by its key there. */

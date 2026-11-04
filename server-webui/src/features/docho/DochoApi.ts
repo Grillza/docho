@@ -156,6 +156,46 @@ export type DochoSeriesEditInput = {
     reset?: DochoSeriesField[];
 };
 
+export type DochoTrackerMatch = {
+    trackerName: string;
+    title: string;
+    writers: string[];
+    artists: string[];
+    summary: string;
+    publishingStatus: string;
+    status: number;
+    linked: boolean;
+};
+
+export type DochoTrackerFillStatus = {
+    running: boolean;
+    total: number;
+    done: number;
+    unchanged: number;
+    failed: number;
+    ready: number;
+    conflicts: number;
+    /** A GraphQL Long, so it comes as text. */
+    finishedAt: string;
+};
+
+export type DochoTrackerFillProblem = 'READY' | 'DIFFERENT' | 'SEVERAL_MATCHES' | 'NO_MATCH';
+
+export type DochoTrackerFillChange = {
+    field: DochoSeriesField;
+    current: string;
+    options: { value: string; trackerName: string }[];
+    conflict: boolean;
+};
+
+export type DochoTrackerFillItem = {
+    mangaId: number;
+    title: string;
+    problem: DochoTrackerFillProblem;
+    changes: DochoTrackerFillChange[];
+    candidates: DochoTrackerMatch[];
+};
+
 /** Library sources have ids 0x0D0C000000000000 + library id; the Series Groups source is the base itself. */
 const LIBRARY_SOURCE_BASE = BigInt('0x0D0C000000000000');
 
@@ -475,6 +515,135 @@ export const EDIT_DOCHO_SERIES = gql`
     mutation EditDochoSeries($input: DochoSeriesEditInput!) {
         editDochoSeries(input: $input) {
             ${SERIES_DETAILS_FIELDS}
+        }
+    }
+`;
+
+export const GET_DOCHO_TRACKER_MATCHES = gql`
+    query DochoTrackerMatches($mangaId: Int!, $query: String) {
+        dochoTrackerMatches(mangaId: $mangaId, query: $query) {
+            trackerName
+            title
+            writers
+            artists
+            summary
+            publishingStatus
+            status
+            linked
+        }
+    }
+`;
+
+const TRACKER_FILL_STATUS_FIELDS = `
+    running
+    total
+    done
+    unchanged
+    failed
+    ready
+    conflicts
+    finishedAt
+`;
+
+const TRACKER_FILL_ITEM_FIELDS = `
+    mangaId
+    title
+    problem
+    changes {
+        field
+        current
+        conflict
+        options {
+            value
+            trackerName
+        }
+    }
+    candidates {
+        trackerName
+        title
+        writers
+        artists
+        summary
+        publishingStatus
+        status
+        linked
+    }
+`;
+
+export const GET_DOCHO_TRACKER_FILL_STATUS = gql`
+    query DochoTrackerFillStatus {
+        dochoTrackerFillStatus {
+            ${TRACKER_FILL_STATUS_FIELDS}
+        }
+    }
+`;
+
+export const GET_DOCHO_TRACKER_FILL_ITEMS = gql`
+    query DochoTrackerFillItems {
+        dochoTrackerFillItems {
+            ${TRACKER_FILL_ITEM_FIELDS}
+        }
+    }
+`;
+
+export const START_DOCHO_TRACKER_FILL = gql`
+    mutation StartDochoTrackerFill($compareAll: Boolean, $forgetChoices: Boolean) {
+        startDochoTrackerFill(compareAll: $compareAll, forgetChoices: $forgetChoices) {
+            ${TRACKER_FILL_STATUS_FIELDS}
+        }
+    }
+`;
+
+export const CANCEL_DOCHO_TRACKER_FILL = gql`
+    mutation CancelDochoTrackerFill {
+        cancelDochoTrackerFill {
+            ${TRACKER_FILL_STATUS_FIELDS}
+        }
+    }
+`;
+
+export const RESOLVE_DOCHO_TRACKER_FILL_ITEM = gql`
+    mutation ResolveDochoTrackerFillItem($mangaId: Int!, $choices: [TrackerFillChoiceInput!]!) {
+        resolveDochoTrackerFillItem(mangaId: $mangaId, choices: $choices)
+    }
+`;
+
+export const SKIP_DOCHO_TRACKER_FILL_ITEM = gql`
+    mutation SkipDochoTrackerFillItem($mangaId: Int!) {
+        skipDochoTrackerFillItem(mangaId: $mangaId)
+    }
+`;
+
+export const PICK_DOCHO_TRACKER_FILL_MATCH = gql`
+    mutation PickDochoTrackerFillMatch($mangaId: Int!, $index: Int!) {
+        pickDochoTrackerFillMatch(mangaId: $mangaId, index: $index) {
+            mangaId
+        }
+    }
+`;
+
+export const SEARCH_DOCHO_TRACKER_FILL_ITEM = gql`
+    mutation SearchDochoTrackerFillItem($mangaId: Int!, $query: String!) {
+        searchDochoTrackerFillItem(mangaId: $mangaId, query: $query) {
+            mangaId
+        }
+    }
+`;
+
+export const APPLY_READY_DOCHO_TRACKER_FILL = gql`
+    mutation ApplyReadyDochoTrackerFill {
+        applyReadyDochoTrackerFill {
+            applied
+            failed
+        }
+    }
+`;
+
+export const DISMISS_DOCHO_TRACKER_FILL_CONFLICTS = gql`
+    mutation DismissDochoTrackerFillConflicts {
+        dismissDochoTrackerFillConflicts {
+            applied
+            failed
         }
     }
 `;

@@ -21,7 +21,22 @@ data class MURecord(
     val ratingVotes: Int? = null,
     @SerialName("latest_chapter")
     val latestChapter: Int? = null,
+    val authors: List<MUAuthor> = emptyList(),
+    val status: String? = null,
+    val completed: Boolean? = null,
 )
+
+@Serializable
+data class MUAuthor(
+    val name: String,
+    val type: String,
+)
+
+private val STATUS_IN_BRACKETS = Regex("""\((Ongoing|Complete|Hiatus|Cancelled|Discontinued|Dropped)\)""", RegexOption.IGNORE_CASE)
+
+/** "43 Volumes (Ongoing)" as "Ongoing". Only a series' details have this, not search results. */
+private fun MURecord.publishingStatus(): String =
+    if (completed == true) "Completed" else status?.let { STATUS_IN_BRACKETS.find(it)?.groupValues?.get(1) }.orEmpty()
 
 fun MURecord.toTrackSearch(id: Int): TrackSearch =
     TrackSearch.create(id).apply {
@@ -31,7 +46,9 @@ fun MURecord.toTrackSearch(id: Int): TrackSearch =
         cover_url = this@toTrackSearch.image?.url?.original ?: ""
         summary = this@toTrackSearch.description?.htmlDecode() ?: ""
         tracking_url = this@toTrackSearch.url ?: ""
-        publishing_status = ""
+        publishing_status = publishingStatus()
         publishing_type = this@toTrackSearch.type.toString()
         start_date = this@toTrackSearch.year.toString()
+        authors = this@toTrackSearch.authors.filter { it.type == "Author" }.map { it.name }
+        artists = this@toTrackSearch.authors.filter { it.type == "Artist" }.map { it.name }
     }
