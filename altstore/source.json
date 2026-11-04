@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.6",
+          "buildVersion": "63",
+          "date": "2026-11-04T03:32:32Z",
+          "localizedDescription": "Version 0.32.6. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.6.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Fill details from trackers. As on Android, in Settings → Tracking. iOS doesn't let a long scan run in the background, so it pauses when you leave the app and picks up where it stopped when you return.\n• Fill from tracker in Edit details. As on Android.\n• Your choices sync. As on Android, across your devices and Dōchō Server.\n• Currently reading bar. As on Android, off by default: turn it on in the library's display settings.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.6/docho-0.32.6.ipa",
+          "size": 88409293,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.3",
           "buildVersion": "62",
           "date": "2026-11-03T20:41:17Z",
