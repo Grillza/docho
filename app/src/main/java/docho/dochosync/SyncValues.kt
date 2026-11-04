@@ -27,6 +27,9 @@ object SyncValues {
     /** A series' edited details (SeriesEdits): only the edited fields, blank ones as "". */
     const val DETAILS = "details"
 
+    /** What the tracker fill remembers about a series (TrackerFillMemory). */
+    const val FILL = "fill"
+
     fun key(sourceId: Long, url: String) = "$sourceId|$url"
 
     /** The source id and url in a [key], or null if it isn't one. */

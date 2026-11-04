@@ -27,6 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun LibraryContent(
+    header: @Composable () -> Unit = {},
     categories: List<Category>,
     searchQuery: String?,
     selection: Set<Long>,
@@ -53,6 +54,8 @@ fun LibraryContent(
             end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
         ),
     ) {
+        header()
+
         val pagerState = rememberPagerState(currentPage) { categories.size }
 
         val scope = rememberCoroutineScope()

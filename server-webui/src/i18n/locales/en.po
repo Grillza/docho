@@ -379,6 +379,10 @@ msgstr "A code such as en or ja"
 msgid "A migration is already in progress"
 msgstr "A migration is already in progress"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "A new scan replaces the list waiting for review. Scan again?"
+msgstr "A new scan replaces the list waiting for review. Scan again?"
+
 #: src/features/settings/Settings.constants.ts
 msgid "A preview focused web frontend built with svelte"
 msgstr "A preview focused web frontend built with svelte"
@@ -514,6 +518,10 @@ msgstr "Allow deleting bookmarked chapters"
 msgid "Alpha"
 msgstr "Alpha"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Also compare series with no empty fields (takes longer, finds more conflicts)"
+msgstr "Also compare series with no empty fields (takes longer, finds more conflicts)"
+
 #. placeholder {0}: tracker.name
 #: src/features/tracker/components/cards/TrackerActiveCard.tsx
 msgid "Also remove from {0}"
@@ -527,6 +535,19 @@ msgstr "and"
 #: src/features/settings/screens/Settings.tsx
 msgid "Appearance"
 msgstr "Appearance"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Applied {applied} series, {failed} failed"
+msgstr "Applied {applied} series, {failed} failed"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Apply"
+msgstr "Apply"
+
+#. placeholder {0}: ready.length
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Apply all {0}"
+msgstr "Apply all {0}"
 
 #: src/features/reader/settings/general/components/ReaderSettingSafeAreaInset.tsx
 msgid "Apply safe area padding"
@@ -550,6 +571,7 @@ msgid "Artist"
 msgstr "Artist"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 msgid "Artists"
 msgstr "Artists"
 
@@ -557,6 +579,10 @@ msgstr "Artists"
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Ascending"
 msgstr "Ascending"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Ask again about everything I kept or skipped"
+msgstr "Ask again about everything I kept or skipped"
 
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Authentication"
@@ -870,6 +896,7 @@ msgid "Cancel downloads of selected"
 msgstr "Cancel downloads of selected"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/manga/Manga.constants.ts
 #: src/features/tracker/Tracker.constants.ts
 msgid "Cancelled"
@@ -1031,6 +1058,7 @@ msgstr "Client data"
 #: src/base/components/feedback/SnackbarWithDescription.tsx
 #: src/features/app-updates/components/VersionUpdateInfoDialog.tsx
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/migration/components/migration-entry/MigrationDestinationEntry.tsx
 msgid "Close"
 msgstr "Close"
@@ -1077,6 +1105,7 @@ msgid "Compatible"
 msgstr "Compatible"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Completed"
 msgstr "Completed"
@@ -1084,6 +1113,11 @@ msgstr "Completed"
 #: src/features/settings/components/images/Processing.tsx
 msgid "Compression level"
 msgstr "Compression level"
+
+#. placeholder {0}: conflicts.length
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Conflicts ({0})"
+msgstr "Conflicts ({0})"
 
 #: src/features/settings/components/images/Processing.tsx
 msgid "Connect timeout"
@@ -1372,6 +1406,10 @@ msgstr "Could not save theme changes"
 msgid "Could not search source"
 msgstr "Could not search source"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Could not search the trackers"
+msgstr "Could not search the trackers"
+
 #: src/features/settings/screens/ServerSettings.tsx
 #: src/features/sync/components/SyncButton.tsx
 msgid "Could not start sync"
@@ -1384,6 +1422,10 @@ msgstr "Could not start the scan"
 #: src/features/updates/components/UpdateChecker.tsx
 msgid "Could not stop global update"
 msgstr "Could not stop global update"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Could not stop the scan"
+msgstr "Could not stop the scan"
 
 #: src/features/docho/screens/DochoSeriesGroups.tsx
 msgid "Could not suggest names"
@@ -2061,6 +2103,19 @@ msgstr "File types"
 msgid "Filename"
 msgstr "Filename"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Fill details from trackers"
+msgstr "Fill details from trackers"
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Fill from tracker"
+msgstr "Fill from tracker"
+
+#. placeholder {0}: matches[0].trackerName
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Filled from {0}. Check the details, then save."
+msgstr "Filled from {0}. Check the details, then save."
+
 #: src/features/chapter/components/ChapterOptions.tsx
 #: src/features/library/components/LibraryOptionsPanel.tsx
 #: src/features/source/browse/components/SourceOptions.tsx
@@ -2499,6 +2554,14 @@ msgstr "JWT audience claim"
 msgid "JWT refresh token expiry"
 msgstr "JWT refresh token expiry"
 
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Keep everything"
+msgstr "Keep everything"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Keep everything for all"
+msgstr "Keep everything for all"
+
 #: src/features/settings/Settings.constants.ts
 msgid "Keep local"
 msgstr "Keep local"
@@ -2514,6 +2577,16 @@ msgstr "Keep remote"
 #: src/features/reader/settings/behaviour/ReaderBehaviourSettings.tsx
 msgid "Keep screen on"
 msgstr "Keep screen on"
+
+#. placeholder {0}: conflicts.length
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Keep what every series has and clear all {0} conflicts?"
+msgstr "Keep what every series has and clear all {0} conflicts?"
+
+#. placeholder {0}: labels.value(change, change.current)
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Keep: {0}"
+msgstr "Keep: {0}"
 
 #: src/features/reader/settings/ReaderSettings.constants.tsx
 msgid "Keybinds"
@@ -2548,6 +2621,13 @@ msgstr "Large"
 #: src/features/downloads/components/DeleteChaptersWhileReadingSetting.tsx
 msgid "Last read chapter"
 msgstr "Last read chapter"
+
+#. placeholder {0}: status.done
+#. placeholder {1}: status.unchanged
+#. placeholder {2}: status.failed
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Last scan: {0} series looked at, {1} with nothing to add, {2} tracker errors"
+msgstr "Last scan: {0} series looked at, {1} with nothing to add, {2} tracker errors"
 
 #: src/features/settings/screens/ServerSettings.tsx
 msgid "Last sync: {syncDate}"
@@ -2639,6 +2719,7 @@ msgid "Library saved"
 msgstr "Library saved"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Licensed"
 msgstr "Licensed"
@@ -3044,6 +3125,10 @@ msgstr "No chapters matching filter"
 msgid "No collections yet."
 msgstr "No collections yet."
 
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "No conflicts left."
+msgstr "No conflicts left."
+
 #: src/features/downloads/screens/DownloadQueue.tsx
 msgid "No downloads"
 msgstr "No downloads"
@@ -3092,6 +3177,14 @@ msgstr "No sources found. Install Some extensions first."
 msgid "No sources installed"
 msgstr "No sources installed"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "No tracker found this series. Try changing the title, then search again."
+msgstr "No tracker found this series. Try changing the title, then search again."
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "No tracker has this exact title. Is it one of these?"
+msgstr "No tracker has this exact title. Is it one of these?"
+
 #: src/features/backup/Backup.utils.ts
 #: src/features/category/components/CategoriesInclusionSetting.tsx
 #: src/features/downloads/screens/DownloadSettings.tsx
@@ -3120,6 +3213,14 @@ msgstr "Notes"
 #: src/features/manga/components/details/MangaNotes.tsx
 msgid "Notes saved"
 msgstr "Notes saved"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Nothing is ready to apply."
+msgstr "Nothing is ready to apply."
+
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Nothing to fill: the tracker has nothing for the empty fields"
+msgstr "Nothing to fill: the tracker has nothing for the empty fields"
 
 #: src/features/tracker/Tracker.constants.ts
 msgid "Novel"
@@ -3185,6 +3286,7 @@ msgid "Ok"
 msgstr "Ok"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 msgid "On hiatus"
 msgstr "On hiatus"
 
@@ -3197,6 +3299,7 @@ msgid "Oneshot"
 msgstr "Oneshot"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Ongoing"
 msgstr "Ongoing"
@@ -3408,6 +3511,7 @@ msgid "Publisher"
 msgstr "Publisher"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/manga/Manga.constants.ts
 msgid "Publishing finished"
 msgstr "Publishing finished"
@@ -3463,6 +3567,11 @@ msgstr "Reading direction"
 #: src/features/reader/settings/layout/components/ReaderSettingReadingMode.tsx
 msgid "Reading mode"
 msgstr "Reading mode"
+
+#. placeholder {0}: ready.length
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Ready ({0})"
+msgstr "Ready ({0})"
 
 #: src/base/components/AppbarSearch.tsx
 msgid "Recent searches"
@@ -3617,6 +3726,14 @@ msgstr "Retry all"
 msgid "Retry errored pages"
 msgstr "Retry errored pages"
 
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Review"
+msgstr "Review"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Review tracker details"
+msgstr "Review tracker details"
+
 #: src/features/reader/overlay/progress-bar/settings/components/ReaderSettingProgressBarPosition.tsx
 #: src/features/reader/settings/general/components/ReaderSettingSafeAreaInset.tsx
 msgid "Right"
@@ -3701,9 +3818,19 @@ msgstr "Scanlator"
 msgid "Scanning {0}"
 msgstr "Scanning {0}"
 
+#. placeholder {0}: status.done
+#. placeholder {1}: status.total
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scanning series {0} of {1}"
+msgstr "Scanning series {0} of {1}"
+
 #: src/features/docho/screens/DochoLibraries.tsx
 msgid "Scanning…"
 msgstr "Scanning…"
+
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Scans your library using the trackers signed in on this server, then lists what it found for you to review. No series changes until you apply it. Applied fields are locked like any edit and reach the apps through Dōchō Sync."
+msgstr "Scans your library using the trackers signed in on this server, then lists what it found for you to review. No series changes until you apply it. Applied fields are locked like any edit and reach the apps through Dōchō Sync."
 
 #: src/features/docho/screens/DochoLibraries.tsx
 msgid "Scheduled scan"
@@ -3731,6 +3858,7 @@ msgid "Scroll forward"
 msgstr "Scroll forward"
 
 #: src/base/components/AppbarSearch.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/migration/components/MigrationBulkSearchOptionsDialog.tsx
 msgid "Search"
 msgstr "Search"
@@ -3753,6 +3881,10 @@ msgid "Search for a ID via \"id:<ID>\" (e.g. \"id:13\")\n"
 "Limit search to your lists via \"my:<Title>\" (e.g. \"my:One Piece\")"
 msgstr "Search for a ID via \"id:<ID>\" (e.g. \"id:13\")\n"
 "Limit search to your lists via \"my:<Title>\" (e.g. \"my:One Piece\")"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Search for another title"
+msgstr "Search for another title"
 
 #: src/features/migration/components/MigrationBulkSearchOptionsDialog.tsx
 msgid "Search options"
@@ -3912,6 +4044,10 @@ msgstr "Setting can not be changed while the reader is opened"
 msgid "Settings"
 msgstr "Settings"
 
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Several results could be this series. Which is it?"
+msgstr "Several results could be this series. Which is it?"
+
 #: src/features/manga/components/MangaToolbarMenu.tsx
 #: src/features/reader/overlay/mobile/ReaderOverlayHeaderMobile.tsx
 #: src/features/reader/overlay/navigation/desktop/components/ReaderNavBarDesktopActions.tsx
@@ -3955,6 +4091,7 @@ msgstr "Show less"
 
 #: src/base/components/feedback/EmptyView.tsx
 #: src/base/components/feedback/SnackbarWithDescription.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/global-search/screens/SearchAll.tsx
 #: src/features/migration/components/migration-entry/MigrationDestinationEntry.tsx
 #: src/features/tracker/components/cards/TrackerMangaCard.tsx
@@ -4033,6 +4170,10 @@ msgstr "Skip duplicate chapters"
 #: src/features/reader/settings/behaviour/ReaderBehaviourSettings.tsx
 msgid "Skip filtered chapters"
 msgstr "Skip filtered chapters"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "Skip this series"
+msgstr "Skip this series"
 
 #: src/features/settings/components/globalUpdate/GlobalUpdateSettingsEntries.tsx
 msgid "Skip updating entries"
@@ -4169,6 +4310,7 @@ msgid "Static navigation"
 msgstr "Static navigation"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/library/components/LibraryOptionsPanel.tsx
 #: src/features/manga/components/details/MangaDetails.tsx
 #: src/features/tracker/components/cards/TrackerActiveCard.tsx
@@ -4176,6 +4318,7 @@ msgstr "Static navigation"
 msgid "Status"
 msgstr "Status"
 
+#: src/features/docho/screens/DochoLibraries.tsx
 #: src/features/downloads/screens/DownloadQueue.tsx
 msgid "Stop"
 msgstr "Stop"
@@ -4212,6 +4355,7 @@ msgid "Suggested"
 msgstr "Suggested"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/docho/screens/DochoCollections.tsx
 msgid "Summary"
 msgstr "Summary"
@@ -4292,6 +4436,10 @@ msgstr "Tap zones"
 #: src/features/settings/components/images/Processing.tsx
 msgid "Target mode"
 msgstr "Target mode"
+
+#: src/features/docho/components/DochoTrackerFillReview.tsx
+msgid "That didn't work"
+msgstr "That didn't work"
 
 #: src/features/settings/Settings.constants.ts
 msgid "That haven't been started"
@@ -4581,6 +4729,7 @@ msgid "Uninstalling"
 msgstr "Uninstalling"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 #: src/features/manga/components/details/MangaDetails.tsx
 #: src/features/manga/Manga.constants.ts
 #: src/features/migration/components/migration-entry/MigrationEntryMetadataText.tsx
@@ -4747,6 +4896,12 @@ msgstr "Volume"
 msgid "VUI"
 msgstr "VUI"
 
+#. placeholder {0}: status.conflicts
+#. placeholder {1}: status.ready
+#: src/features/docho/screens/DochoLibraries.tsx
+msgid "Waiting for review: {0} conflicts, {1} ready to apply"
+msgstr "Waiting for review: {0} conflicts, {1} ready to apply"
+
 #: src/base/components/feedback/SnackbarWithDescription.tsx
 msgid "Warning"
 msgstr "Warning"
@@ -4811,6 +4966,10 @@ msgstr "When you enable this, you may need to refresh this tab for the login pag
 msgid "Where to start the WebUI when starting the server"
 msgstr "Where to start the WebUI when starting the server"
 
+#: src/features/docho/components/DochoEditSeriesDialog.tsx
+msgid "Which series is this?"
+msgstr "Which series is this?"
+
 #: src/features/reader/settings/general/components/ReaderSettingBackgroundColor.tsx
 msgid "White"
 msgstr "White"
@@ -4824,6 +4983,7 @@ msgid "With unread chapter(s)"
 msgstr "With unread chapter(s)"
 
 #: src/features/docho/components/DochoEditSeriesDialog.tsx
+#: src/features/docho/components/DochoTrackerFillReview.tsx
 msgid "Writers"
 msgstr "Writers"
 

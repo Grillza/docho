@@ -236,7 +236,8 @@ class MyAnimeListApi(
             publishing_type = searchItem.mediaType.replace("_", " ")
             start_date = searchItem.startDate ?: ""
             artists = searchItem.authors
-                .filter { authorNode -> authorNode.role == "Art" }
+                // "Story & Art" counts as both, as it does for authors below
+                .filter { authorNode -> authorNode.role.contains("Art") }
                 .mapNotNull { authorNode -> authorNode.node.getFullName() }
             authors = searchItem.authors
                 // count all with "Story" or "Story & Art" as authors, like is done for library entries

@@ -65,7 +65,7 @@ object DochoSync {
 
     /** The account made for syncing through the server's own authentication. */
     private const val SERVER_ACCOUNT = "docho-server"
-    private val KINDS = setOf("manga", "category", "rename", "kind", "chapter", "history", SyncBridge.DETAILS)
+    private val KINDS = setOf("manga", "category", "rename", "kind", "chapter", "history", SyncBridge.DETAILS, SyncBridge.FILL)
     private const val MAX_BODY = 32 * 1024 * 1024
     private const val MAX_CHANGES = 50_000
     private const val PAGE = 5_000

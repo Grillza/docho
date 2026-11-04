@@ -182,6 +182,15 @@ class MangaUpdatesApi(
         }
     }
 
+    /** A series with its people and status, which search results don't have. */
+    suspend fun getSeriesDetails(id: Long): MURecord =
+        with(json) {
+            client
+                .newCall(GET("$BASE_URL/v1/series/$id"))
+                .awaitSuccess()
+                .parseAs<MURecord>()
+        }
+
     suspend fun authenticate(
         username: String,
         password: String,

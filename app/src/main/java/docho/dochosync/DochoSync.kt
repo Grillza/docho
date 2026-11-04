@@ -65,6 +65,7 @@ class DochoSync(
     private val sourceManager: SourceManager,
     private val updateMangaFromRemote: UpdateMangaFromRemote,
     private val seriesEdits: docho.edit.SeriesEdits,
+    private val trackerFillMemory: docho.edit.TrackerFillMemory,
 ) {
 
     sealed interface Status {
@@ -176,12 +177,17 @@ class DochoSync(
             // Large first syncs go in parts, so no request gets too big
             val batch = outgoing.take(BATCH)
             outgoing = outgoing.drop(BATCH)
-            val page = try {
-                api.sync(since, batch)
-            } catch (e: java.io.IOException) {
-                if (e.message?.startsWith("Unknown kind: ${SyncValues.DETAILS}") != true) throw e
-                batch.filter { it.kind == SyncValues.DETAILS }.mapTo(unsent) { SyncValues.id(it.kind, it.key) }
-                api.sync(since, batch.filter { it.kind != SyncValues.DETAILS })
+            var sending: List<SyncRecord> = batch
+            var page: SyncPage? = null
+            while (page == null) {
+                try {
+                    page = api.sync(since, sending)
+                } catch (e: java.io.IOException) {
+                    val kind = sending.map { it.kind }.distinct().firstOrNull { e.message?.startsWith("Unknown kind: $it") == true }
+                        ?: throw e
+                    sending.filter { it.kind == kind }.mapTo(unsent) { SyncValues.id(it.kind, it.key) }
+                    sending = sending.filter { it.kind != kind }
+                }
             }
             remote += page.changes
             since = page.seq
@@ -275,6 +281,9 @@ class DochoSync(
         }
         for ((key, details) in seriesEdits.edits.get()) {
             if (!details.isEmpty) put(SyncValues.DETAILS, key, docho.edit.SeriesEdits.toJson(details))
+        }
+        for ((key, memory) in trackerFillMemory.all.get()) {
+            put(SyncValues.FILL, key, docho.edit.TrackerFillMemory.toJson(memory))
         }
         return records
     }
@@ -385,6 +394,10 @@ class DochoSync(
                 findChapter(record.key, value.string("manga"))?.let {
                     chapterRepository.rename(it.id, it.url, it.name, it.chapterNumber, it.withKind(kind).memo)
                 }
+                true
+            }
+            SyncValues.FILL -> {
+                trackerFillMemory.put(record.key, value?.let(docho.edit.TrackerFillMemory::fromJson))
                 true
             }
             SyncValues.DETAILS -> {

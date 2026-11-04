@@ -30,6 +30,7 @@ import suwayomi.tachidesk.docho.library.LibrarySettings
 import suwayomi.tachidesk.docho.library.LibraryType
 import suwayomi.tachidesk.docho.library.SeriesMetadata
 import suwayomi.tachidesk.docho.library.Shelf
+import suwayomi.tachidesk.docho.library.TrackerFill
 import suwayomi.tachidesk.docho.sync.SyncBridge
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -37,7 +38,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.io.File
+import java.util.concurrent.CompletableFuture
 
 private fun mangas(ids: List<Int>): List<MangaType> {
     if (ids.isEmpty()) return emptyList()
@@ -272,6 +275,24 @@ class DochoQuery {
     @RequireAuth
     fun dochoSeriesInfo(mangaId: Int): DochoSeriesInfo = DochoSeriesInfo(mangaId)
 
+    /**
+     * What trackers know about a series, for Edit details to fill empty fields from: the entries
+     * it's linked to, or else search results for [query] (its title if not given) to pick from.
+     */
+    @RequireAuth
+    fun dochoTrackerMatches(
+        mangaId: Int,
+        query: String? = null,
+    ): CompletableFuture<List<TrackerFill.TrackerMatch>> = future { TrackerFill.matches(mangaId, query) }
+
+    /** How the library scan against trackers is going, and what's waiting to be reviewed. */
+    @RequireAuth
+    fun dochoTrackerFillStatus(): TrackerFill.TrackerFillStatus = TrackerFill.status()
+
+    /** What the scan found: conflicts to decide on first, then series ready to fill. */
+    @RequireAuth
+    fun dochoTrackerFillItems(): List<TrackerFill.TrackerFillItem> = TrackerFill.items()
+
     /** Chapters of a series renamed or given a Volume/Chapter type, in the WebUI or the apps. */
     @RequireAuth
     fun dochoChapterEdits(mangaId: Int): List<SyncBridge.ChapterEdit> = SyncBridge.chapterEdits(mangaId)
@@ -369,6 +390,58 @@ class DochoMutation {
         SyncBridge.renameChapter(chapterId, name?.trim()?.ifEmpty { null }, number?.toFloat(), kind)
         return true
     }
+
+    /**
+     * Scans the library against trackers for a review list, changing no series. [compareAll] also
+     * looks up series with no empty fields; [forgetChoices] asks again about what was kept or skipped.
+     */
+    @RequireAuth
+    fun startDochoTrackerFill(
+        compareAll: Boolean? = true,
+        forgetChoices: Boolean? = false,
+    ): TrackerFill.TrackerFillStatus = TrackerFill.start(compareAll ?: true, forgetChoices ?: false)
+
+    @RequireAuth
+    fun cancelDochoTrackerFill(): TrackerFill.TrackerFillStatus = TrackerFill.cancel()
+
+    /** Settles a series on the review list: each field takes its choice, or keeps what it has. */
+    @RequireAuth
+    fun resolveDochoTrackerFillItem(
+        mangaId: Int,
+        choices: List<TrackerFill.TrackerFillChoice>,
+    ): Boolean {
+        TrackerFill.resolve(mangaId, choices)
+        return true
+    }
+
+    /** Takes a series off the review list, keeping what it has. */
+    @RequireAuth
+    fun skipDochoTrackerFillItem(mangaId: Int): Boolean {
+        TrackerFill.skip(mangaId)
+        return true
+    }
+
+    /** Takes one of an item's candidates as the series. Null if that has nothing to add. */
+    @RequireAuth
+    fun pickDochoTrackerFillMatch(
+        mangaId: Int,
+        index: Int,
+    ): CompletableFuture<TrackerFill.TrackerFillItem?> = future { TrackerFill.pick(mangaId, index) }
+
+    /** Searches trackers again for a series on the review list, under another title. */
+    @RequireAuth
+    fun searchDochoTrackerFillItem(
+        mangaId: Int,
+        query: String,
+    ): CompletableFuture<TrackerFill.TrackerFillItem> = future { TrackerFill.searchFor(mangaId, query) }
+
+    /** Applies every series on the review list with nothing to decide. */
+    @RequireAuth
+    fun applyReadyDochoTrackerFill(): TrackerFill.TrackerFillResult = TrackerFill.applyReady()
+
+    /** Takes every conflict off the review list, keeping what the series have. */
+    @RequireAuth
+    fun dismissDochoTrackerFillConflicts(): TrackerFill.TrackerFillResult = TrackerFill.dismissConflicts()
 
     @RequireAuth
     fun createDochoLibrary(input: LibraryInput): DochoLibrary = DochoLibrary(Libraries.create(input))

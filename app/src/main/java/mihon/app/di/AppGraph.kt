@@ -157,6 +157,8 @@ interface AppGraph : ViewModelGraph {
     val dochoSyncApi: DochoSyncApi
     val dochoSync: DochoSync
     val seriesEdits: docho.edit.SeriesEdits
+    val trackerFill: docho.edit.TrackerFill
+    val trackerFillScan: docho.edit.TrackerFillScan
     val updateMangaFromRemote: mihon.domain.source.interactor.UpdateMangaFromRemote
 
     val koreaderPreferences: KoreaderPreferences

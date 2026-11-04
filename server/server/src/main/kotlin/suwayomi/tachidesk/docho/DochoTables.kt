@@ -46,6 +46,28 @@ object DochoLibraryTable : IntIdTable("docho_library") {
     val lastScanResult = varchar("last_scan_result", 1024).nullable()
 }
 
+/**
+ * What the tracker fill remembers about a series. `status` is the status it last gave: while the
+ * series still has it, nobody has changed it since, so it's only out of date. `ignored` is what
+ * the user decided against, as JSON, so it isn't asked about again.
+ */
+object DochoSeriesFillTable : Table("docho_series_fill") {
+    val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
+    val status = integer("status").nullable()
+    val ignored = unlimitedVarchar("ignored")
+
+    override val primaryKey = PrimaryKey(manga)
+}
+
+/** The tracker fill's review list: what a scan found, waiting to be decided on. */
+object DochoTrackerFillItemTable : Table("docho_tracker_fill_item") {
+    val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
+    val problem = varchar("problem", 32)
+    val data = unlimitedVarchar("data")
+
+    override val primaryKey = PrimaryKey(manga)
+}
+
 /** One file (or image folder) found by a scan, which is one chapter of a series. */
 object DochoLibraryFileTable : IntIdTable("docho_library_file") {
     val library = reference("library", DochoLibraryTable, ReferenceOption.CASCADE)

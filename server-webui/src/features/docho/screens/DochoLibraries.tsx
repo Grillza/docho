@@ -45,7 +45,9 @@ import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewA
 import { makeToast } from '@/base/utils/Toast.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
+import { DochoTrackerFillReview } from '@/features/docho/components/DochoTrackerFillReview.tsx';
 import {
+    CANCEL_DOCHO_TRACKER_FILL,
     CREATE_DOCHO_LIBRARY,
     DELETE_DOCHO_LIBRARY,
     dochoMutate,
@@ -53,11 +55,19 @@ import {
     GET_DOCHO_FOLDERS,
     GET_DOCHO_LIBRARY_ROOT,
     GET_DOCHO_LIBRARIES,
+    GET_DOCHO_TRACKER_FILL_STATUS,
     SCAN_DOCHO_LIBRARY,
+    START_DOCHO_TRACKER_FILL,
     UPDATE_DOCHO_LIBRARY,
     useDochoQuery,
 } from '@/features/docho/DochoApi.ts';
-import type { DochoFileType, DochoLibrary, DochoLibraryInput, DochoLibraryType } from '@/features/docho/DochoApi.ts';
+import type {
+    DochoFileType,
+    DochoLibrary,
+    DochoLibraryInput,
+    DochoLibraryType,
+    DochoTrackerFillStatus,
+} from '@/features/docho/DochoApi.ts';
 
 const LIBRARY_TYPES: { value: DochoLibraryType; label: string; help: string }[] = [
     { value: 'MANGA', label: 'Manga', help: 'A folder per series. Files are volumes and chapters, read right to left.' },
@@ -364,6 +374,104 @@ function LibraryDialog({
     );
 }
 
+/** Scans the library against the trackers signed in on the server, for a list to review. */
+function DochoTrackerFillCard() {
+    const { t } = useLingui();
+    const [compareAll, setCompareAll] = useState(true);
+    const [forgetChoices, setForgetChoices] = useState(false);
+    const [reviewing, setReviewing] = useState(false);
+    const { data, refetch } = useDochoQuery<{ dochoTrackerFillStatus: DochoTrackerFillStatus }>(
+        GET_DOCHO_TRACKER_FILL_STATUS,
+        undefined,
+        { pollInterval: 3000 },
+    );
+    const status = data?.dochoTrackerFillStatus;
+
+    const start = async () => {
+        // eslint-disable-next-line no-alert
+        if (waiting && !window.confirm(t`A new scan replaces the list waiting for review. Scan again?`)) {
+            return;
+        }
+        try {
+            await dochoMutate(START_DOCHO_TRACKER_FILL, { compareAll, forgetChoices });
+            setForgetChoices(false);
+            refetch();
+        } catch (e) {
+            makeToast(t`Could not start the scan`, 'error', getErrorMessage(e));
+        }
+    };
+
+    const cancel = async () => {
+        try {
+            await dochoMutate(CANCEL_DOCHO_TRACKER_FILL, {});
+            refetch();
+        } catch (e) {
+            makeToast(t`Could not stop the scan`, 'error', getErrorMessage(e));
+        }
+    };
+
+    if (!status) {
+        return null;
+    }
+    const waiting = status.ready + status.conflicts;
+    return (
+        <Card variant="outlined">
+            {status.running && (
+                <LinearProgress
+                    variant={status.total ? 'determinate' : 'indeterminate'}
+                    value={status.total ? (status.done / status.total) * 100 : 0}
+                />
+            )}
+            <CardContent>
+                <Typography variant="h6">{t`Fill details from trackers`}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                    {t`Scans your library using the trackers signed in on this server, then lists what it found for you to review. No series changes until you apply it. Applied fields are locked like any edit and reach the apps through Dōchō Sync.`}
+                </Typography>
+                {!status.running && (
+                    <FormGroup sx={{ mt: 1 }}>
+                        <FormControlLabel
+                            control={<Checkbox checked={compareAll} onChange={(e) => setCompareAll(e.target.checked)} />}
+                            label={t`Also compare series with no empty fields (takes longer, finds more conflicts)`}
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox checked={forgetChoices} onChange={(e) => setForgetChoices(e.target.checked)} />
+                            }
+                            label={t`Ask again about everything I kept or skipped`}
+                        />
+                    </FormGroup>
+                )}
+                {status.running && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        {t`Scanning series ${status.done} of ${status.total}`}
+                    </Typography>
+                )}
+                {Number(status.finishedAt) > 0 && !status.running && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        {t`Last scan: ${status.done} series looked at, ${status.unchanged} with nothing to add, ${status.failed} tracker errors`}
+                    </Typography>
+                )}
+                {!!waiting && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        {t`Waiting for review: ${status.conflicts} conflicts, ${status.ready} ready to apply`}
+                    </Typography>
+                )}
+            </CardContent>
+            <CardActions>
+                {status.running ? (
+                    <Button color="error" onClick={cancel}>{t`Stop`}</Button>
+                ) : (
+                    <Button onClick={start}>{t`Scan`}</Button>
+                )}
+                <Button variant="contained" disabled={!waiting} onClick={() => setReviewing(true)}>
+                    {t`Review`}
+                </Button>
+            </CardActions>
+            {reviewing && <DochoTrackerFillReview onClose={() => setReviewing(false)} onChanged={refetch} />}
+        </Card>
+    );
+}
+
 export function DochoLibraries() {
     const { t } = useLingui();
     useAppTitle(t`Libraries`);
@@ -416,6 +524,7 @@ export function DochoLibraries() {
                 />
             )}
             <Stack sx={{ gap: 2 }}>
+                <DochoTrackerFillCard />
                 {libraries.map((library) => (
                     <Card key={library.id} variant="outlined">
                         {library.scanning && <LinearProgress />}

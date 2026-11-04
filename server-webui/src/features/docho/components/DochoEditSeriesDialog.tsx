@@ -23,6 +23,9 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
 import Box from '@mui/material/Box';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
@@ -32,11 +35,17 @@ import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import {
     EDIT_DOCHO_SERIES,
     GET_DOCHO_SERIES_INFO,
+    GET_DOCHO_TRACKER_MATCHES,
     dochoClient,
     dochoMutate,
     dochoQuery,
 } from '@/features/docho/DochoApi.ts';
-import type { DochoSeriesDetails, DochoSeriesEditInput, DochoSeriesField } from '@/features/docho/DochoApi.ts';
+import type {
+    DochoSeriesDetails,
+    DochoSeriesEditInput,
+    DochoSeriesField,
+    DochoTrackerMatch,
+} from '@/features/docho/DochoApi.ts';
 
 type Form = {
     title: string;
@@ -101,6 +110,21 @@ const toForm = (d: DochoSeriesDetails): Form => ({
 
 const same = (a: Form[keyof Form], b: Form[keyof Form]) => JSON.stringify(a) === JSON.stringify(b);
 
+// Sources often send "Unknown" for a missing name.
+const noNames = (names: string[]) => !names.some((name) => name.trim() && name.trim().toLowerCase() !== 'unknown');
+
+/**
+ * Puts a tracker's details in the fields that are empty, leaving what's there. A status edited
+ * earlier can go stale, so a tracker's status replaces it; it's all checked before saving.
+ */
+const fillFromTracker = (form: Form, match: DochoTrackerMatch, statusEdited: boolean): Form => ({
+    ...form,
+    writers: noNames(form.writers) && match.writers.length ? match.writers : form.writers,
+    artists: noNames(form.artists) && match.artists.length ? match.artists : form.artists,
+    summary: form.summary.trim() ? form.summary : match.summary,
+    status: match.status && (!form.status || statusEdited) ? match.status : form.status,
+});
+
 /**
  * Edits a library series' details, as Kavita does: an edited field is locked, so scans keep it
  * over what the files say, until it's unlocked again. Edits reach the apps through Dōchō Sync.
@@ -112,6 +136,8 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
     const [reset, setReset] = useState<Set<DochoSeriesField>>(new Set());
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>();
+    const [filling, setFilling] = useState(false);
+    const [picking, setPicking] = useState<DochoTrackerMatch[]>([]);
 
     useEffect(() => {
         dochoQuery<{ dochoSeriesInfo: DochoSeriesDetails }, { mangaId: number }>(GET_DOCHO_SERIES_INFO, { mangaId })
@@ -242,6 +268,45 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
         </Stack>
     );
 
+    const fillFrom = (matches: DochoTrackerMatch[]) => {
+        const statusEdited = details.editedFields.includes('STATUS');
+        const filled = matches.reduce((next, match) => fillFromTracker(next, match, statusEdited), form);
+        if (JSON.stringify(filled) === JSON.stringify(form)) {
+            makeToast(t`Nothing to fill: the tracker has nothing for the empty fields`, 'info');
+            return;
+        }
+        setForm(filled);
+        const changed = new Set(reset);
+        (['writers', 'artists', 'summary', 'status'] as const).forEach((key) => {
+            if (!same(filled[key], form[key])) {
+                changed.delete(FIELD_OF[key]);
+            }
+        });
+        setReset(changed);
+        makeToast(t`Filled from ${matches[0].trackerName}. Check the details, then save.`, 'success');
+    };
+
+    const fill = async () => {
+        setFilling(true);
+        try {
+            const { dochoTrackerMatches: matches } = await dochoQuery<
+                { dochoTrackerMatches: DochoTrackerMatch[] },
+                { mangaId: number; query: string }
+            >(GET_DOCHO_TRACKER_MATCHES, { mangaId, query: form.title });
+            if (matches.some((match) => match.linked)) {
+                fillFrom(matches);
+            } else if (matches.length) {
+                setPicking(matches);
+            } else {
+                makeToast(t`No tracker found this series. Try changing the title, then search again.`, 'info');
+            }
+        } catch (e) {
+            makeToast(t`Could not search the trackers`, 'error', getErrorMessage(e));
+        } finally {
+            setFilling(false);
+        }
+    };
+
     const save = async () => {
         const input: DochoSeriesEditInput = { mangaId, reset: [...reset] };
         (Object.keys(form) as (keyof Form)[]).forEach((key) => {
@@ -269,7 +334,7 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
     return (
         <Dialog open onClose={onClose} fullWidth maxWidth="md">
             <DialogTitle>{t`Edit details`}</DialogTitle>
-            {saving && <LinearProgress />}
+            {(saving || filling) && <LinearProgress />}
             <DialogContent dividers>
                 <Stack sx={{ gap: 2 }}>
                     <Typography variant="body2" color="text.secondary">
@@ -339,11 +404,41 @@ export function DochoEditSeriesDialog({ mangaId, onClose }: { mangaId: number; o
                 </Stack>
             </DialogContent>
             <DialogActions>
+                <Button disabled={saving || filling} onClick={fill} sx={{ mr: 'auto' }}>
+                    {t`Fill from tracker`}
+                </Button>
                 <Button onClick={onClose}>{t`Cancel`}</Button>
                 <Button variant="contained" disabled={saving} onClick={save}>
                     {t`Save`}
                 </Button>
             </DialogActions>
+            <Dialog open={!!picking.length} onClose={() => setPicking([])} fullWidth maxWidth="sm">
+                <DialogTitle>{t`Which series is this?`}</DialogTitle>
+                <DialogContent dividers sx={{ p: 0 }}>
+                    <List>
+                        {picking.map((match, index) => (
+                            <ListItemButton
+                                // eslint-disable-next-line react/no-array-index-key
+                                key={index}
+                                onClick={() => {
+                                    setPicking([]);
+                                    fillFrom([match]);
+                                }}
+                            >
+                                <ListItemText
+                                    primary={match.title}
+                                    secondary={[match.trackerName, match.writers.join(', '), match.publishingStatus]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                />
+                            </ListItemButton>
+                        ))}
+                    </List>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setPicking([])}>{t`Cancel`}</Button>
+                </DialogActions>
+            </Dialog>
         </Dialog>
     );
 }
