@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.7",
+          "buildVersion": "64",
+          "date": "2026-11-06T21:45:48Z",
+          "localizedDescription": "Version 0.32.7. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.7.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Syncs while Dōchō is open. As on Android: every 5 minutes by default, changed under Dōchō Server / Suwayomi → How often to sync while open.\n• Syncs in the background. Dōchō now asks iOS for time to sync in the background, though iOS decides when, and it may be rarely.\n\nFixed\n\n• Reading on another device could be lost. As on Android: the furthest page is kept, and going back on purpose still works.\n• The reader is up to date when it opens. As on Android.\n• A reader left open can't undo newer progress. As on Android.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.7/docho-0.32.7.ipa",
+          "size": 88418124,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.6",
           "buildVersion": "63",
           "date": "2026-11-04T03:32:32Z",
