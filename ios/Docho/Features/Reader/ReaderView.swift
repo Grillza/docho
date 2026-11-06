@@ -4,6 +4,7 @@ import SwiftUI
 /// the screen with the title, the chapter navigator and quick settings.
 struct ReaderView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.m3) private var m3
     @State var model: ReaderModel
     @State private var sliderPage: Double = 0
@@ -30,6 +31,9 @@ struct ReaderView: View {
             model.app.dochoSync.syncInBackground()
         }
         .onChange(of: model.page) { _, page in sliderPage = Double(page) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { model.returnedToForeground() }
+        }
         .onKeyPress(.escape) {
             dismiss()
             return .handled

@@ -110,7 +110,7 @@ final class SyncTriggers {
         backgroundTask = .invalid
     }
 
-    private func submitBackgroundRefresh() {
+    func submitBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: Self.refreshTaskIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
         // Fails in the simulator and when background refresh is off; the in-app retries remain.

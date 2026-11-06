@@ -62,6 +62,7 @@ final class AppModel {
     var availableUpdate: AppRelease?
     var updateChecker = AppUpdateChecker()
     @ObservationIgnored private var lastUpdateCheck: Date?
+    @ObservationIgnored fileprivate var dochoSyncWhileOpen: Task<Void, Never>?
 
     init(
         settings: KavitaSettings = KavitaSettings(),
@@ -162,6 +163,7 @@ final class AppModel {
         Task { _ = try? await checkForAppUpdate() }
         Task { await suwayomi.refreshSources() }
         await downloads.resume()
+        restartDochoSyncWhileOpen()
         if dochoSyncSettings.isConfigured, dochoSyncSettings.automatic { await dochoSync.sync() }
         await sync.syncLibrary()
         if preferences.updateOnLaunch { await library.update() }
@@ -277,7 +279,13 @@ final class AppModel {
     }
 
     func backgroundRefresh() async {
-        await (triggers ?? SyncTriggers(sync: sync)).backgroundRefresh()
+        let triggers = triggers ?? SyncTriggers(sync: sync)
+        await triggers.backgroundRefresh()
+        // Other devices' reading is here next time the app opens, and this one's has gone out.
+        if dochoSync.syncsAutomatically {
+            await dochoSync.sync()
+            triggers.submitBackgroundRefresh()
+        }
     }
 
     func source(for series: SeriesRecord) -> any MangaSource {
@@ -307,14 +315,27 @@ final class AppModel {
 }
 
 extension AppModel {
-    /// Dōchō Sync runs when the app comes back (to take other devices' changes) and as it goes to
-    /// the background (to send this one's), with a little extra time to finish there.
+    /// Keeps syncing every so often while the app is open.
+    fileprivate func restartDochoSyncWhileOpen() {
+        dochoSyncWhileOpen?.cancel()
+        dochoSyncWhileOpen = Task { [dochoSync] in await dochoSync.syncWhileOpen() }
+    }
+
+    /// Dōchō Sync runs when the app comes back (to take other devices' changes), every so often while
+    /// it's open, and as it goes to the background (to send this one's), with a little extra time to
+    /// finish there. iOS decides when, if at all, it runs after that.
     fileprivate func syncDochoOnSceneChange(_ phase: SyncTriggers.ScenePhaseChange) {
-        guard triggers != nil, dochoSyncSettings.isConfigured, dochoSyncSettings.automatic else { return }
+        guard triggers != nil else { return }
+        switch phase {
+        case .active: restartDochoSyncWhileOpen()
+        case .background: dochoSyncWhileOpen?.cancel()
+        }
+        guard dochoSyncSettings.isConfigured, dochoSyncSettings.automatic else { return }
         switch phase {
         case .active:
             Task { await dochoSync.sync() }
         case .background:
+            triggers?.submitBackgroundRefresh()
             let task = BackgroundTask()
             task.id = UIApplication.shared.beginBackgroundTask(withName: "docho-sync") {
                 MainActor.assumeIsolated { task.end() }

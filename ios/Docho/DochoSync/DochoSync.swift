@@ -37,6 +37,14 @@ final class DochoSyncSettings: Sendable {
         set { store.setBool("automatic", newValue) }
     }
 
+    /// Minutes between syncs while the app is open; one of `intervals`.
+    var intervalMinutes: Int {
+        get { Int(store.string("interval_minutes")) ?? 5 }
+        set { store.setString("interval_minutes", String(newValue)) }
+    }
+
+    static let intervals = [1, 2, 5, 10, 15, 30, 60]
+
     /// The server's change number this device has caught up to; 0 until the first sync.
     var since: Int64 {
         get { Int64(store.string("since")) ?? 0 }
@@ -428,7 +436,9 @@ final class DochoSyncClient {
 
 /// Runs a sync: works out what changed here by comparing every record with how it was when last
 /// synced, sends that, and applies what other devices changed. The server keeps the newest write of
-/// each record. The first sync of a device merges instead, so neither device's reading is lost.
+/// each record, except that reading progress sent without having seen another device's is put
+/// together with it there, keeping the furthest page. The first sync of a device merges too, so
+/// neither device's reading is lost.
 @MainActor
 @Observable
 final class DochoSync {
@@ -438,7 +448,16 @@ final class DochoSync {
         case failed(String)
     }
 
+    /// Reading another device did on a chapter, as it's applied here.
+    struct RemoteProgress: Sendable {
+        var chapterId: Int
+        var page: Int
+        var read: Bool
+    }
+
     private(set) var status: Status = .idle
+    /// So an open reader doesn't later write its older page over what arrived.
+    @ObservationIgnored var onRemoteProgress: (@MainActor (RemoteProgress) -> Void)?
     @ObservationIgnored let settings: DochoSyncSettings
     @ObservationIgnored let client: DochoSyncClient
     @ObservationIgnored private let database: AppDatabase
@@ -474,6 +493,25 @@ final class DochoSync {
     }
 
     var isEnabled: Bool { settings.isConfigured }
+    var syncsAutomatically: Bool { settings.isConfigured && settings.automatic }
+    /// If the last sync failed, the server may be out of reach and isn't worth waiting for.
+    var lastSyncWorked: Bool { settings.lastError.isEmpty }
+
+    /// Syncs every so often until cancelled, which is while the app is open. A sync that just happened
+    /// for another reason (such as reading) counts, so reading doesn't add any syncs. Checks each
+    /// minute, so a changed setting applies soon.
+    func syncWhileOpen() async {
+        var lastAsked = Date().timeIntervalSince1970
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(60))
+            guard !Task.isCancelled, syncsAutomatically else { continue }
+            let now = Date().timeIntervalSince1970
+            if now - max(lastAsked, settings.lastSyncAt) >= Double(settings.intervalMinutes * 60) {
+                lastAsked = now
+                await sync()
+            }
+        }
+    }
 
     @ObservationIgnored private var soon: Task<Void, Never>?
 
@@ -713,6 +751,9 @@ final class DochoSync {
                     sql: "UPDATE chapter SET read = ?, bookmark = ?, lastPageRead = ? WHERE id = ?",
                     arguments: [read, bookmark, page, chapter.id]
                 )
+            }
+            if read != chapter.read || page != chapter.lastPageRead {
+                onRemoteProgress?(RemoteProgress(chapterId: chapter.id, page: page, read: read))
             }
             return true
         case SyncValues.history:

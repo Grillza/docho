@@ -23,6 +23,12 @@ final class ReaderModel {
     /// A page the view should move to, e.g. from the slider. A new value is a new request.
     private(set) var jump: PageJump?
 
+    /// Another device's reading, by chapter, that arrived while the reader is open. This reader's
+    /// page may be behind it, and turning that page mustn't write over it.
+    @ObservationIgnored private var remoteProgress: [Int: DochoSync.RemoteProgress] = [:]
+    /// The page is still the one it was opened or returned to: free to move to where another device got to.
+    @ObservationIgnored private var pageUntouched = true
+
     struct PageJump: Equatable {
         var page: Int
         let id = UUID()
@@ -79,11 +85,17 @@ final class ReaderModel {
     /// Before the first page: picks up the page reached on another device, waiting at most
     /// `timeout` (then the pull carries on and local progress is used), and loads the page list.
     func prepare(timeout: Duration = .seconds(4)) async {
-        if !isReady, app.sync.syncs(series) {
+        app.dochoSync.onRemoteProgress = { [weak self] in self?.remoteProgressArrived($0) }
+        let pullsProgress = app.sync.syncs(series)
+        let dochoPulls = !app.preferences.incognitoMode && app.dochoSync.syncsAutomatically
+        if !isReady, pullsProgress || dochoPulls {
             // Whichever finishes first; the pull isn't cancelled, so it still lands in the database.
             let (finished, signal) = AsyncStream<Void>.makeStream()
+            let docho = dochoPulls ? Task { [app] in await app.dochoSync.sync() } : nil
+            let waitForDocho = app.dochoSync.lastSyncWorked
             Task { [app, series, chapter] in
-                await app.sync.syncSeries(series, chapterIds: [chapter.id])
+                if pullsProgress { await app.sync.syncSeries(series, chapterIds: [chapter.id]) }
+                if waitForDocho { _ = await docho?.value }
                 signal.yield()
             }
             let timer = Task {
@@ -103,6 +115,21 @@ final class ReaderModel {
         isReady = true
         await loadPages()
         try? await app.database.touchSeries(seriesId)
+    }
+
+    /// The reader is back on screen, maybe after reading on another device.
+    func returnedToForeground() {
+        pageUntouched = true
+    }
+
+    private func remoteProgressArrived(_ progress: DochoSync.RemoteProgress) {
+        remoteProgress[progress.chapterId] = progress
+        guard progress.chapterId == chapter.id else { return }
+        update {
+            $0.read = $0.read || progress.read
+            $0.lastPageRead = max($0.lastPageRead, progress.page)
+        }
+        if isReady, pageUntouched, !progress.read, progress.page > page { jump(to: progress.page) }
     }
 
     /// Lists the chapter's pages from its files or its source.
@@ -135,13 +162,16 @@ final class ReaderModel {
     func pageShown(_ page: Int) async {
         guard page != self.page || !chapter.read && page == pageCount - 1 else { return }
         self.page = page
+        pageUntouched = false
         let wasRead = chapter.read
         let read = chapter.read || page >= pageCount - 1
-        update { $0.lastPageRead = page; $0.read = read }
+        // Not behind what another device reached while this reader was open.
+        let saved = max(page, remoteProgress[chapter.id]?.page ?? 0)
+        update { $0.lastPageRead = saved; $0.read = read }
         try? await app.database.saveProgress(
-            chapterId: chapter.id, lastPageRead: page, read: read, pages: pageCount, history: !app.preferences.incognitoMode
+            chapterId: chapter.id, lastPageRead: saved, read: read, pages: pageCount, history: !app.preferences.incognitoMode
         )
-        await app.sync.pageChanged(series, chapter: chapter, page: page, pageCount: pageCount, read: read)
+        await app.sync.pageChanged(series, chapter: chapter, page: saved, pageCount: pageCount, read: read)
         // Dōchō Sync: the page reaches other devices and Dōchō Server within seconds.
         app.dochoSync.syncSoon()
         if read, !wasRead { await chapterFinished() }

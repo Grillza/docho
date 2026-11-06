@@ -93,6 +93,45 @@ final class DochoSyncLiveTests: XCTestCase {
         XCTAssertFalse(libraryA.contains { $0.url == seriesURL })
     }
 
+    /// The iPad reads a little and doesn't get to sync; Android reads on to page 110 and does. When
+    /// the iPad syncs, its page 4 must not replace page 110, on either device.
+    func testAStaleDeviceDoesntUndoReadingOnAnother() async throws {
+        guard let url = ProcessInfo.processInfo.environment["DOCHO_SYNC_TEST_URL"] else { throw XCTSkip("No test server") }
+        let android = try device("android", url: url)
+        let ipad = try device("ipad", url: url)
+        let chapterURL = "/chapter/stale-\(UUID().uuidString)"
+        let seriesA = try await addSeries(android, chapters: [chapterURL])
+        guard case .done = await android.sync.sync() else { return XCTFail("android first sync") }
+        let seriesI = try await addSeries(ipad, chapters: [chapterURL])
+        guard case .done = await ipad.sync.sync() else { return XCTFail("ipad first sync") }
+        let chaptersA = try await android.database.chapterList(seriesId: seriesA.id)
+        let chaptersI = try await ipad.database.chapterList(seriesId: seriesI.id)
+        let chapterA = try XCTUnwrap(chaptersA.first { $0.url == chapterURL })
+        let chapterI = try XCTUnwrap(chaptersI.first { $0.url == chapterURL })
+
+        var arrived: [DochoSync.RemoteProgress] = []
+        ipad.sync.onRemoteProgress = { arrived.append($0) }
+        try await ipad.database.saveProgress(chapterId: chapterI.id, lastPageRead: 4, read: false)
+        try await android.database.saveProgress(chapterId: chapterA.id, lastPageRead: 110, read: false)
+        guard case .done = await android.sync.sync() else { return XCTFail("android sync") }
+        guard case .done = await ipad.sync.sync() else { return XCTFail("ipad sync") }
+        guard case .done = await android.sync.sync() else { return XCTFail("android sync after") }
+
+        let pageI = try await ipad.database.chapterList(seriesId: seriesI.id).first { $0.url == chapterURL }?.lastPageRead
+        let pageA = try await android.database.chapterList(seriesId: seriesA.id).first { $0.url == chapterURL }?.lastPageRead
+        XCTAssertEqual(pageI, 110)
+        XCTAssertEqual(pageA, 110)
+        // An open reader hears about it, to keep from writing its older page.
+        XCTAssertEqual(arrived.last?.page, 110)
+
+        // The iPad, now caught up, goes back on purpose: that's kept.
+        try await ipad.database.saveProgress(chapterId: chapterI.id, lastPageRead: 50, read: false)
+        guard case .done = await ipad.sync.sync() else { return XCTFail("ipad sync back") }
+        guard case .done = await android.sync.sync() else { return XCTFail("android sync back") }
+        let back = try await android.database.chapterList(seriesId: seriesA.id).first { $0.url == chapterURL }?.lastPageRead
+        XCTAssertEqual(back, 50)
+    }
+
     func testDetailsEditedOnTheServerReachTheSeries() async throws {
         guard let url = ProcessInfo.processInfo.environment["DOCHO_SYNC_TEST_URL"] else { throw XCTSkip("No test server") }
         let a = try device("a", url: url)

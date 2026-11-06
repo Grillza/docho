@@ -291,6 +291,7 @@ private struct DochoSyncRows: View {
     @Environment(AppModel.self) private var app
     @State private var enabled = true
     @State private var automatic = true
+    @State private var intervalMinutes = 5
     @State private var loaded = false
     @State private var connection: DochoSyncConnection = .unknown
 
@@ -307,15 +308,25 @@ private struct DochoSyncRows: View {
             })
             SwitchPreference(
                 title: String(localized: "Sync automatically"),
-                subtitle: String(localized: "While you read, when Dōchō opens and goes to the background, and when a series opens"),
+                subtitle: String(localized: "While you read, when Dōchō opens and goes to the background, when a series opens, and every few minutes while it's open"),
                 isOn: $automatic
             )
+            if automatic {
+                ListPreference(
+                    title: String(localized: "How often to sync while open"),
+                    selection: $intervalMinutes,
+                    options: DochoSyncSettings.intervals.map { minutes in
+                        (minutes, minutes == 1 ? String(localized: "Every minute") : String(localized: "Every \(minutes) minutes"))
+                    }
+                )
+            }
         }
         Color.clear.frame(height: 0)
             .onAppear {
                 guard !loaded else { return }
                 enabled = settings.enabled
                 automatic = settings.automatic
+                intervalMinutes = settings.intervalMinutes
                 loaded = true
                 Task { await app.dochoSyncClient.checkConnection() }
             }
@@ -324,6 +335,7 @@ private struct DochoSyncRows: View {
                 if value { Task { if case .connected = await app.dochoSyncClient.checkConnection() { await app.dochoSync.sync() } } }
             }
             .onChange(of: automatic) { _, value in settings.automatic = value }
+            .onChange(of: intervalMinutes) { _, value in settings.intervalMinutes = value }
             .task { for await state in app.dochoSyncClient.changes { connection = state } }
     }
 
