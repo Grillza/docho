@@ -132,6 +132,7 @@ class ReaderViewModel(
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
     private val progressSync: ProgressSync,
+    private val dochoSync: docho.dochosync.DochoSync,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -302,6 +303,15 @@ class ReaderViewModel(
     private var incognitoMode: Boolean = false
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading.get()
 
+    /**
+     * Another device's reading, by chapter, that arrived while the reader is open. This reader's
+     * page may be behind it, and turning that page mustn't write over it.
+     */
+    private val remoteProgress = mutableMapOf<Long, docho.dochosync.DochoSync.RemoteProgress>()
+
+    /** Whether the page is still the one it was opened or returned to: free to move to where another device got to. */
+    private var pageUntouched = true
+
     init {
         // To save state
         state.map { it.viewerChapters?.currChapter }
@@ -318,8 +328,32 @@ class ReaderViewModel(
             }
             .launchIn(viewModelScope)
 
+        dochoSync.remoteProgress
+            .onEach(::onRemoteProgress)
+            .launchIn(viewModelScope)
+
         if (hasValidArgs) {
             viewModelScope.launch { init() }
+        }
+    }
+
+    /** The reader is back on screen, maybe after reading on another device. */
+    fun onReaderResumed() {
+        pageUntouched = true
+    }
+
+    private fun onRemoteProgress(progress: docho.dochosync.DochoSync.RemoteProgress) {
+        remoteProgress[progress.chapterId] = progress
+        val chapters = state.value.viewerChapters ?: return
+        val chapter = listOfNotNull(chapters.prevChapter, chapters.currChapter, chapters.nextChapter)
+            .find { it.chapter.id == progress.chapterId } ?: return
+        // A change here waiting to be saved goes out with this included
+        chapter.update {
+            it.copy(read = it.read || progress.read, lastPageRead = maxOf(it.lastPageRead, progress.page))
+        }
+        val isBehind = !progress.read && progress.page > state.value.currentPage - 1
+        if (chapter == chapters.currChapter && pageUntouched && isBehind) {
+            eventChannel.trySend(Event.MoveToPage(progress.page))
         }
     }
 
@@ -355,10 +389,17 @@ class ReaderViewModel(
                 val manga = getManga.await(mangaId) ?: error("Requested manga of id $mangaId not found")
                 val source = sourceManager.getOrStub(manga.source)
                 incognitoMode = getIncognitoState.await(manga.source)
-                if (!incognitoMode && progressSync.isEnabledFor(manga)) {
+                if (!incognitoMode) {
                     // Pick up the page reached on another device before the chapter list is read.
+                    // Dōchō Sync isn't tied to this reader: if it's slow it lands later (onRemoteProgress).
+                    val dochoPull = if (dochoSync.syncsAutomatically()) appScope.async { dochoSync.sync() } else null
+                    val waitForDocho = dochoSync.lastSyncWorked()
+                    val pullsProgress = progressSync.isEnabledFor(manga)
                     val openingChapterId = if (chapterId == -1L) initialChapterId else chapterId
-                    withTimeoutOrNull(PROGRESS_PULL_TIMEOUT) { progressSync.syncManga(manga, setOf(openingChapterId)) }
+                    withTimeoutOrNull(PROGRESS_PULL_TIMEOUT) {
+                        if (pullsProgress) progressSync.syncManga(manga, setOf(openingChapterId))
+                        if (waitForDocho) dochoPull?.await()
+                    }
                 }
                 mutableState.update { it.copy(manga = manga, source = source) }
                 if (chapterId == -1L) chapterId = initialChapterId
@@ -664,6 +705,7 @@ class ReaderViewModel(
         mutableState.update {
             it.copy(currentPage = pageIndex + 1)
         }
+        if (pageIndex != readerChapter.requestedPage) pageUntouched = false
         readerChapter.requestedPage = pageIndex
         chapterPageIndex = pageIndex
 
@@ -672,7 +714,9 @@ class ReaderViewModel(
         val read = readerChapter.chapter.read || readerChapter.pages?.lastIndex == pageIndex
         // A page change in another chapter would replace that chapter's pending save
         if (pendingProgressChapter != readerChapter) saveChapterProgress()
-        readerChapter.update { it.copy(lastPageRead = pageIndex, read = read) }
+        // Not behind what another device reached while this reader was open
+        val remotePage = remoteProgress[readerChapter.chapter.id]?.page ?: 0
+        readerChapter.update { it.copy(lastPageRead = maxOf(pageIndex, remotePage), read = read) }
         pendingProgressSave?.cancel()
 
         if (readerChapter.pages?.lastIndex == pageIndex) {
@@ -1160,6 +1204,7 @@ class ReaderViewModel(
     sealed interface Event {
         data object ReloadViewerChapters : Event
         data object PageChanged : Event
+        data class MoveToPage(val index: Int) : Event
         data class SetOrientation(val orientation: Int) : Event
         data class SetCoverResult(val result: SetAsCoverResult) : Event
 

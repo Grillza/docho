@@ -81,6 +81,17 @@ const DIRECTION_TO_READING_DIRECTION: Record<Direction, ReadingDirection> = {
 };
 
 export class ReaderService {
+    private static remotePages = new Map<number, number>();
+
+    /** The page another device reached on a chapter while the reader was open (useReaderProgressRefresh). */
+    static setRemotePage(chapterId: number, page: number): void {
+        this.remotePages.set(chapterId, page);
+    }
+
+    static getRemotePage(chapterId: number): number {
+        return this.remotePages.get(chapterId) ?? 0;
+    }
+
     private static downloadAheadQueue: Queue = new Queue(1);
 
     private static chapterUpdateQueues: Map<ChapterIdInfo['id'], Queue> = new Map();

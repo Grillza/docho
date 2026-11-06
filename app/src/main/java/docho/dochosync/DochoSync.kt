@@ -12,8 +12,12 @@ import docho.rename.ChapterRenames
 import docho.rename.ChapterRenames.Companion.withKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -47,8 +51,10 @@ import kotlin.time.Instant
  *
  * Each sync works out what changed here by comparing every record with how it was when last
  * synced, sends that, and applies what other devices changed. The server keeps the newest write
- * of each record. The very first sync of a device merges instead, so neither device's reading is
- * lost: a chapter read on either is read, the library and categories are joined.
+ * of each record, except that reading progress sent without having seen another device's is put
+ * together with it there, keeping the furthest page. The very first sync of a device merges too,
+ * so neither device's reading is lost: a chapter read on either is read, the library and
+ * categories are joined.
  */
 @Inject
 @SingleIn(AppScope::class)
@@ -80,6 +86,17 @@ class DochoSync(
 
     private val mutex = Mutex()
 
+    /** Reading another device did on a chapter, as it's applied here. */
+    data class RemoteProgress(val chapterId: Long, val page: Int, val read: Boolean)
+
+    private val mutableRemoteProgress = MutableSharedFlow<RemoteProgress>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** So an open reader doesn't later write its older page over what arrived. */
+    val remoteProgress: SharedFlow<RemoteProgress> = mutableRemoteProgress.asSharedFlow()
+
     /** What was last synced (canonical values by record id) and records waiting to be applied. */
     @Serializable
     private data class State(
@@ -90,6 +107,11 @@ class DochoSync(
     private val stateFile get() = File(context.filesDir, "docho-sync-state.json")
 
     fun isEnabled(): Boolean = preferences.isConfigured()
+
+    fun syncsAutomatically(): Boolean = preferences.isConfigured() && preferences.automatic.get()
+
+    /** Whether the last sync got through; if it didn't, the server may be out of reach and isn't worth waiting for. */
+    fun lastSyncWorked(): Boolean = preferences.lastError.get().isBlank()
 
     suspend fun sync(): Status = withContext(Dispatchers.IO) {
         if (!preferences.isConfigured()) return@withContext Status.Idle
@@ -344,13 +366,18 @@ class DochoSync(
                 } else {
                     value
                 }
+                val read = merged.bool("read")
+                val page = (merged.long("page") ?: 0).toInt()
                 chapterRepository.update(
                     ChapterUpdate(chapter.id) {
-                        read = merged.bool("read")
+                        this.read = read
                         bookmark = merged.bool("bookmark")
-                        lastPageRead = (merged.long("page") ?: 0).toInt()
+                        lastPageRead = page
                     },
                 )
+                if (read != chapter.read || page != chapter.lastPageRead) {
+                    mutableRemoteProgress.tryEmit(RemoteProgress(chapter.id, page, read))
+                }
                 true
             }
             SyncValues.HISTORY -> {

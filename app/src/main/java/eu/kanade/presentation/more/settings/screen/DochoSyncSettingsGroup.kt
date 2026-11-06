@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import docho.dochosync.DochoSync
 import docho.dochosync.DochoSyncConnection
+import docho.dochosync.DochoSyncPreferences
 import docho.dochosync.DochoSyncWorker
 import docho.koreader.KoreaderApi
 import eu.kanade.presentation.more.settings.Preference
@@ -49,6 +50,7 @@ object DochoSyncSettingsGroup {
         val api = remember { graph.dochoSyncApi }
         val server = remember { graph.suwayomiPreferences }
         val enabled by preferences.enabled.collectAsState()
+        val automatic by preferences.automatic.collectAsState()
         val serverUrl by server.serverUrl.collectAsState()
         val username by server.username.collectAsState()
         val password by server.password.collectAsState()
@@ -115,6 +117,28 @@ object DochoSyncSettingsGroup {
                         subtitle = stringResource(MR.strings.pref_docho_sync_automatic_summary),
                         onValueChanged = {
                             preferences.automatic.set(it)
+                            DochoSyncWorker.schedulePeriodic(context)
+                            true
+                        },
+                    ),
+                )
+                add(
+                    Preference.PreferenceItem.ListPreference(
+                        preference = preferences.intervalMinutes,
+                        entries = DochoSyncPreferences.INTERVALS.associateWith { minutes ->
+                            if (minutes == 1) {
+                                stringResource(MR.strings.docho_sync_every_minute)
+                            } else {
+                                stringResource(MR.strings.docho_sync_every_minutes, minutes)
+                            }
+                        },
+                        title = stringResource(MR.strings.pref_docho_sync_interval),
+                        subtitleProvider = { value, entries ->
+                            stringResource(MR.strings.pref_docho_sync_interval_summary, entries[value].orEmpty())
+                        },
+                        visible = automatic,
+                        onValueChanged = {
+                            preferences.intervalMinutes.set(it)
                             DochoSyncWorker.schedulePeriodic(context)
                             true
                         },

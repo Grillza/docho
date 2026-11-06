@@ -54,6 +54,7 @@ import eu.kanade.tachiyomi.util.system.isDebugBuildType
 import eu.kanade.tachiyomi.util.system.notify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -112,6 +113,8 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
 
     @Inject @AppCoroutineScope
     private lateinit var scope: CoroutineScope
+
+    private var dochoSyncWhileOpen: Job? = null
 
     private val disableIncognitoReceiver = DisableIncognitoReceiver()
 
@@ -271,10 +274,14 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         SecureActivityDelegate.onApplicationStart(this)
         // Dōchō Sync: take what other devices changed while the app was away
         DochoSyncWorker.syncNow(this)
+        // and keep up with them while it's open
+        dochoSyncWhileOpen?.cancel()
+        dochoSyncWhileOpen = scope.launch { DochoSyncWorker.syncWhileOpen(this@App) }
     }
 
     override fun onStop(owner: LifecycleOwner) {
         SecureActivityDelegate.onApplicationStopped(this)
+        dochoSyncWhileOpen?.cancel()
         // and send what changed here before the app sleeps
         DochoSyncWorker.syncNow(this)
     }

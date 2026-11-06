@@ -25,6 +25,9 @@ class DochoSyncPreferences(
     /** Whether to sync while reading, when the app opens and closes, and every so often in between. */
     val automatic: Preference<Boolean> = preferenceStore.getBoolean("docho_sync_automatic", true)
 
+    /** Minutes between syncs while the app is open; one of [INTERVALS]. */
+    val intervalMinutes: Preference<Int> = preferenceStore.getInt("docho_sync_interval_minutes", 5)
+
     /** The server's change number this device has caught up to; 0 until the first sync. */
     val since: Preference<Long> = preferenceStore.getLong(Preference.appStateKey("docho_sync_since"), 0)
 
@@ -64,6 +67,9 @@ class DochoSyncPreferences(
     companion object {
         /** The sync state is Dōchō Server's (0.32.3); see [epoch]. */
         const val SERVER_EPOCH = 2
+
+        /** The choices for [intervalMinutes]. */
+        val INTERVALS = listOf(1, 2, 5, 10, 15, 30, 60)
     }
 
     /** Forgets where syncing is up to, so the next sync is a first sync, which merges. */
