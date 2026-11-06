@@ -53,8 +53,9 @@ import javax.crypto.spec.PBEKeySpec
  * server's own reader, under /api/docho/sync/v1.
  *
  * Every record is a kind, a key and a JSON value (null once deleted). Devices send what changed
- * and get back what other devices changed since they last asked. The newest write wins, so a
- * device that was offline can't undo newer changes from another.
+ * and get back what other devices changed since they last asked. The newest write wins, except for
+ * reading progress a device sends without having seen another device's newer progress: those are
+ * put together ([mergeUnseen]), so a device that was asleep can't undo reading done elsewhere.
  *
  * The apps sync through the server's own authentication and send no token: they sync as the
  * server's account ([serverAccount]). Tokens from apps before 0.32.1, which made accounts with
@@ -62,6 +63,12 @@ import javax.crypto.spec.PBEKeySpec
  */
 object DochoSync {
     const val VERSION = "1"
+
+    /**
+     * The device on records put together from two devices' progress ([mergeUnseen]). It's neither
+     * of theirs, because a device skips its own records and both need this one.
+     */
+    const val MERGED_DEVICE = "docho-merged"
 
     /** The account made for syncing through the server's own authentication. */
     private const val SERVER_ACCOUNT = "docho-server"
@@ -71,6 +78,9 @@ object DochoSync {
     private const val PAGE = 5_000
     private const val PASSWORD_ITERATIONS = 600_000
     private const val MAX_VALUE = 64_000
+
+    /** Kinds that are reading progress, where a device that hadn't seen a change is put together with it. */
+    private val MERGED_KINDS = setOf("chapter", "history")
 
     private val random = SecureRandom()
     private val registrationOpen get() = System.getenv("DOCHO_SYNC_REGISTRATION") == "open"
@@ -342,7 +352,7 @@ object DochoSync {
         if (changes.size > MAX_CHANGES) throw ApiError(HttpStatus.CONTENT_TOO_LARGE, "Too many changes at once")
         val parsed = changes.map(::parseChange)
         return transaction {
-            val stored = store(userId, parsed, device)
+            val stored = store(userId, parsed, device, since)
             // The server's own read progress follows the linked account (SyncBridge).
             if (SyncBridge.isLinked(userId)) {
                 val corrections = SyncBridge.fromDevices(stored)
@@ -409,11 +419,18 @@ object DochoSync {
      * A device that has just added a series sends each of its chapters as unread. Where another
      * device (or the server) has progress for those chapters, that progress is kept and sent back
      * to the device instead, so adding a series somewhere new doesn't wipe where you were.
+     *
+     * [since] is what the device has caught up to, or null for the server's own records. A device's
+     * updatedAt is when it synced rather than when it read, so a page read days ago arrives looking
+     * new. What tells a stale write from a deliberate one is whether the device had seen the record
+     * it would replace: if it had, going back to an earlier page is what you asked for; if it hadn't,
+     * the two are put together ([mergeUnseen]).
      */
     private fun store(
         userId: Int,
         changes: List<Change>,
         device: String,
+        since: Long? = null,
     ): List<Stored> {
         var seq = currentSeq(userId)
         val stored = mutableListOf<Stored>()
@@ -425,6 +442,34 @@ object DochoSync {
                     .where {
                         (DochoSyncRecordTable.user eq userId) and (DochoSyncRecordTable.kind eq change.kind) and (DochoSyncRecordTable.key eq change.key)
                     }.firstOrNull()
+            val currentValue = current?.get(DochoSyncRecordTable.value)
+            val unseen =
+                current != null &&
+                    since != null &&
+                    current[DochoSyncRecordTable.seq] > since &&
+                    current[DochoSyncRecordTable.device] != device &&
+                    change.kind in MERGED_KINDS &&
+                    change.value != null &&
+                    currentValue != null
+            if (unseen) {
+                val merged = mergeUnseen(change.kind, currentValue!!, change.value!!)
+                // Nothing to add: the record is after [since], so this response takes it to the device.
+                if (merged == currentValue) continue
+                seq++
+                val at = maxOf(change.updatedAt, current!![DochoSyncRecordTable.updatedAt] + 1)
+                val from = if (merged == change.value) device else MERGED_DEVICE
+                DochoSyncRecordTable.upsert {
+                    it[user] = userId
+                    it[kind] = change.kind
+                    it[key] = change.key
+                    it[value] = merged
+                    it[updatedAt] = at
+                    it[DochoSyncRecordTable.device] = from
+                    it[DochoSyncRecordTable.seq] = seq
+                }
+                stored += Stored(change.kind, change.key, merged, at, from, currentValue)
+                continue
+            }
             // Newest wins; on the same millisecond, the device id breaks the tie the same way
             // every time, so devices can't keep overwriting each other.
             if (current != null) {
@@ -461,6 +506,38 @@ object DochoSync {
             it[DochoSyncCounterTable.seq] = seq
         }
         return stored
+    }
+
+    /**
+     * Reading progress from two devices that hadn't seen each other's: read on either is read,
+     * bookmarked on either is bookmarked, and the furthest page is kept. For history, the latest
+     * read. Returns canonical text, the same as [current] or [incoming] where one already says it all.
+     */
+    fun mergeUnseen(
+        kind: String,
+        current: String,
+        incoming: String,
+    ): String {
+        val here = parseObject(current) ?: return incoming
+        val there = parseObject(incoming) ?: return current
+        fun JsonObject.flag(name: String) = (this[name] as? JsonPrimitive)?.booleanOrNull == true
+        fun JsonObject.number(name: String) = (this[name] as? JsonPrimitive)?.longOrNull ?: 0L
+        return when (kind) {
+            "chapter" -> {
+                val read = here.flag("read") || there.flag("read")
+                val merged =
+                    there +
+                        mapOf(
+                            "read" to JsonPrimitive(read),
+                            "bookmark" to JsonPrimitive(here.flag("bookmark") || there.flag("bookmark")),
+                            // As the apps write it: the page is 0 once read.
+                            "page" to JsonPrimitive(if (read) 0L else maxOf(here.number("page"), there.number("page"))),
+                        )
+                canonical(JsonObject(merged))
+            }
+            "history" -> if (there.number("readAt") > here.number("readAt")) incoming else current
+            else -> incoming
+        }
     }
 
     /** "source|url" of the series in [changes] that the device has newly added to its library. */

@@ -498,7 +498,8 @@ class ReaderControlsClass {
                     const isLastPage = actualPageIndex === currentChapterUpToDate.pageCount - 1;
 
                     updateChapter({
-                        lastPageRead: actualPageIndex,
+                        // Not behind what another device reached while this reader was open.
+                        lastPageRead: Math.max(actualPageIndex, ReaderService.getRemotePage(currentChapter.id)),
                         isRead: isLastPage ? true : undefined,
                     });
                 };

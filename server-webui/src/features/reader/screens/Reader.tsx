@@ -32,6 +32,7 @@ import { useWakeLock } from '@/base/hooks/useWakeLock.ts';
 import { useReaderSetSettingsState } from '@/features/reader/hooks/useReaderSetSettingsState.ts';
 import { useReaderShowSettingPreviewOnChange } from '@/features/reader/hooks/useReaderShowSettingPreviewOnChange.ts';
 import { useReaderSetChaptersState } from '@/features/reader/hooks/useReaderSetChaptersState.ts';
+import { useReaderProgressRefresh } from '@/features/reader/hooks/useReaderProgressRefresh.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { useChapterListOptions } from '@/features/chapter/utils/ChapterList.util.tsx';
 import { FALLBACK_MANGA } from '@/features/manga/Manga.constants.ts';
@@ -178,6 +179,7 @@ const BaseReader = ({
         shouldShowReadingModePreview,
         shouldShowTapZoneLayoutPreview,
     );
+    useReaderProgressRefresh(mangaId, currentChapter?.id);
     useReaderSetChaptersState(
         chaptersResponse,
         chapterSourceOrder,

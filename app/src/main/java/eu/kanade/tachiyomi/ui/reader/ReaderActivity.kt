@@ -225,6 +225,9 @@ class ReaderActivity : BaseActivity() {
                     ReaderViewModel.Event.PageChanged -> {
                         displayRefreshHost.flash()
                     }
+                    is ReaderViewModel.Event.MoveToPage -> {
+                        moveToPageIndex(event.index)
+                    }
                     is ReaderViewModel.Event.SetOrientation -> {
                         setOrientation(event.orientation)
                     }
@@ -354,6 +357,7 @@ class ReaderActivity : BaseActivity() {
      */
     override fun onResume() {
         super.onResume()
+        viewModel.onReaderResumed()
         viewModel.restartReadTimer()
         setMenuVisibility(viewModel.state.value.menuVisible)
     }

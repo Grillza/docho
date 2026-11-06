@@ -97,9 +97,17 @@ tablet, Android or iOS, and in Dōchō Server's web reader. It's built into
    password if you turned its login on. **Sync with Dōchō Server** is on by default.
 3. Do the same on each other device.
 
-Dōchō syncs a few seconds after you turn a page or mark chapters, when you leave the reader, when a
-series opens, when the app opens and goes to the background (and every hour on Android), or when
-you tap **Sync now**. Series are matched by their source, so set up the same sources (the same
-Kavita, Komga or BookOrbit server, or the same files for the Local source) on every device. A
-device's first sync merges with what's on the server: chapters read on either side stay read,
-and libraries and categories are joined. After that, the most recent change wins.
+Dōchō syncs a few seconds after you turn a page or mark chapters, when you open or leave the
+reader, when a series opens, when the app opens and goes to the background, every few minutes while
+it's open (5 by default; **How often to sync while open** changes it), or when you tap **Sync now**.
+In the background it syncs when the system lets it: about every 15 minutes at best on Android, and
+whenever iOS chooses on iPhone and iPad. Dōchō Server's web reader checks for new progress when a
+chapter opens, when its tab comes back, and every 5 minutes.
+
+Series are matched by their source, so set up the same sources (the same Kavita, Komga or BookOrbit
+server, or the same files for the Local source) on every device. A device's first sync merges with
+what's on the server: chapters read on either side stay read, and libraries and categories are
+joined. After that, the most recent change wins, with one exception for reading progress: a device
+that sends progress without having seen newer progress from another device can't undo it. The two
+are put together instead (read on either stays read, bookmarked on either stays bookmarked, and the
+furthest page is kept), so going back to an earlier page on a device that's up to date still works.

@@ -1312,7 +1312,11 @@
     <string name="pref_docho_sync_enabled">Sync with Dōchō Server</string>
     <string name="pref_docho_sync_now">Sync now</string>
     <string name="pref_docho_sync_automatic">Sync automatically</string>
-    <string name="pref_docho_sync_automatic_summary">While you read, when Dōchō opens and closes, when a series opens, and every hour</string>
+    <string name="pref_docho_sync_automatic_summary">While you read, when Dōchō opens and closes, when a series opens, and every few minutes while it\'s open</string>
+    <string name="pref_docho_sync_interval">How often to sync while open</string>
+    <string name="pref_docho_sync_interval_summary">%1$s. In the background, about every 15 minutes at best.</string>
+    <string name="docho_sync_every_minute">Every minute</string>
+    <string name="docho_sync_every_minutes">Every %1$d minutes</string>
     <string name="docho_sync_running">Syncing…</string>
     <string name="docho_sync_done">Synced: sent %1$d, received %2$d changes</string>
     <string name="docho_sync_failed">Last sync failed: %1$s</string>

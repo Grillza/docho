@@ -11,14 +11,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkerParameters
 import eu.kanade.tachiyomi.util.system.workManager
+import kotlinx.coroutines.delay
 import mihon.app.di.AppGraph
 import mihon.core.metro.metroGraph
 import java.util.concurrent.TimeUnit
 
 /**
- * Runs a Dōchō Sync: when the app opens and goes to the background, every hour or so, and when
- * asked to in settings. It's work rather than a coroutine so a sync started as the app closes
- * still finishes.
+ * Runs a Dōchō Sync: when the app opens and goes to the background, every few minutes while it's
+ * open ([syncWhileOpen]), about every 15 minutes in the background at best, and when asked to in
+ * settings. It's work rather than a coroutine so a sync started as the app closes still finishes.
  */
 class DochoSyncWorker(context: Context, workerParams: WorkerParameters) :
     CoroutineWorker(context, workerParams) {
@@ -39,6 +40,10 @@ class DochoSyncWorker(context: Context, workerParams: WorkerParameters) :
 
         /** How long after a change [syncSoon] syncs; changes made meanwhile go in the same sync. */
         private const val SOON_SECONDS = 15L
+
+        /** The shortest time Android's periodic work runs at. */
+        private const val MIN_BACKGROUND_MINUTES = 15L
+        private const val CHECK_MILLIS = 60_000L
 
         private val constraints = Constraints(requiredNetworkType = NetworkType.CONNECTED)
 
@@ -72,18 +77,43 @@ class DochoSyncWorker(context: Context, workerParams: WorkerParameters) :
             context.workManager.enqueueUniqueWork(SOON_TAG, ExistingWorkPolicy.KEEP, request)
         }
 
-        /** Keeps the hourly sync scheduled while Dōchō Sync is set up and automatic. */
+        /**
+         * Keeps the background sync scheduled while Dōchō Sync is set up and automatic, as often as
+         * the setting says, down to the 15 minutes that's the most Android allows.
+         */
         fun schedulePeriodic(context: Context) {
             val preferences = context.metroGraph<AppGraph>().dochoSyncPreferences
             if (!preferences.isConfigured() || !preferences.automatic.get()) {
                 context.workManager.cancelUniqueWork(PERIODIC_TAG)
                 return
             }
-            val request = PeriodicWorkRequestBuilder<DochoSyncWorker>(1, TimeUnit.HOURS)
+            val minutes = preferences.intervalMinutes.get().toLong().coerceAtLeast(MIN_BACKGROUND_MINUTES)
+            val request = PeriodicWorkRequestBuilder<DochoSyncWorker>(minutes, TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .addTag(PERIODIC_TAG)
                 .build()
-            context.workManager.enqueueUniquePeriodicWork(PERIODIC_TAG, ExistingPeriodicWorkPolicy.KEEP, request)
+            // UPDATE so an installed app moves off the old hourly schedule, and picks up the setting.
+            context.workManager.enqueueUniquePeriodicWork(PERIODIC_TAG, ExistingPeriodicWorkPolicy.UPDATE, request)
+        }
+
+        /**
+         * Syncs every so often for as long as it runs, which is while the app is open. Android's
+         * periodic work can't go below 15 minutes or be relied on, so this does the job while there's
+         * someone to see it. A sync that just happened for another reason (such as reading) counts,
+         * so reading doesn't add any syncs. Checks each minute, so a changed setting applies soon.
+         */
+        suspend fun syncWhileOpen(context: Context) {
+            val preferences = context.metroGraph<AppGraph>().dochoSyncPreferences
+            var lastAsked = System.currentTimeMillis()
+            while (true) {
+                delay(CHECK_MILLIS)
+                val interval = preferences.intervalMinutes.get() * 60_000L
+                val now = System.currentTimeMillis()
+                if (now - maxOf(lastAsked, preferences.lastSyncAt.get()) >= interval) {
+                    lastAsked = now
+                    syncNow(context)
+                }
+            }
         }
     }
 }
