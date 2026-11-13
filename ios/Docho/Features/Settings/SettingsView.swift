@@ -300,6 +300,11 @@ private struct ReaderSettingsPage: View {
         SwitchPreference(title: String(localized: "Fullscreen"), isOn: $reader.fullscreen)
         SwitchPreference(title: String(localized: "Keep screen on"), isOn: $reader.keepScreenOn)
         SwitchPreference(title: String(localized: "Show page number"), isOn: $reader.showPageNumber)
+        SwitchPreference(
+            title: String(localized: "Reduce moiré"),
+            subtitle: String(localized: "Smooths fine screentone into even grey while a page is shrunk, so it can't turn into wavy patterns"),
+            isOn: $reader.reduceMoire
+        )
         PreferenceHeader(title: String(localized: "Reading"))
         SwitchPreference(title: String(localized: "Skip chapters marked read"), isOn: $reader.skipRead)
         SwitchPreference(title: String(localized: "Always show chapter transition"), isOn: $reader.alwaysShowTransition)

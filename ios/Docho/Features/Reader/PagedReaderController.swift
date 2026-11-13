@@ -19,6 +19,8 @@ struct ReaderContent: Equatable {
     var background = ReaderBackground.black
     var doubleTapZoom = true
     var animate = true
+    /// Smooth screentone while pages are shrunk (`ReduceMoireProcessor`).
+    var reduceMoire = true
     /// Long strip only: space between pages, in points.
     var gap: CGFloat = 0
 }
@@ -127,6 +129,7 @@ final class PagedReaderController: UIViewController, ReaderController {
             || content.spreads != self.content?.spreads
             || content.coverAlone != self.content?.coverAlone
             || content.vertical != self.content?.vertical
+            || content.reduceMoire != self.content?.reduceMoire
         self.content = content
         view.backgroundColor = content.background.color
         collectionView.backgroundColor = content.background.color
@@ -237,16 +240,22 @@ final class PagedReaderController: UIViewController, ReaderController {
     // MARK: Images
 
     /// Pages are downsampled to twice their share of the view, enough for zooming without
-    /// holding full-resolution scans in memory.
-    private func request(for page: Int, share: Int = 1) -> ImageRequest? {
+    /// holding full-resolution scans in memory. With Reduce moiré on, the full page is filtered
+    /// first for the size it's shown at: fitted, times `zoom`.
+    private func request(for page: Int, share: Int = 1, zoom: CGFloat = 1) -> ImageRequest? {
         guard let urlRequest = pageRequest(page) else { return nil }
         let scale = view.window?.windowScene?.screen.scale ?? 2
         let width = view.bounds.width / CGFloat(max(share, 1))
         let size = CGSize(width: width * scale * 2, height: view.bounds.height * scale * 2)
         let isFile = urlRequest.url?.isFileURL == true
+        var processors: [any ImageProcessing] = []
+        if content?.reduceMoire == true {
+            processors.append(ReduceMoireProcessor(boxWidth: width * scale, boxHeight: view.bounds.height * scale, zoom: zoom))
+        }
+        processors.append(ImageProcessors.Resize(size: size, unit: .pixels, contentMode: .aspectFit, upscale: false))
         return ImageRequest(
             urlRequest: urlRequest,
-            processors: [.resize(size: size, unit: .pixels, contentMode: .aspectFit, upscale: false)],
+            processors: processors,
             // Downloaded pages are already on disk.
             options: isFile ? [.disableDiskCacheWrites] : []
         )
@@ -330,6 +339,9 @@ extension PagedReaderController: UICollectionViewDataSource, UICollectionViewDel
             cell.onImageSize = { [weak self] page, size in
                 // Not while the collection view is asking for cells (cached images arrive at once).
                 Task { @MainActor in self?.imageLoaded(page: page, size: size) }
+            }
+            cell.requestsForZoom = { [weak self] zoom in
+                pages.map { self?.request(for: $0, share: pages.count, zoom: zoom) }
             }
             cell.configure(
                 requests: pages.map { request(for: $0, share: pages.count) }, pages: pages,

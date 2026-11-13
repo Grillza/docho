@@ -88,6 +88,10 @@ final class WebtoonReaderController: UIViewController, ReaderController {
 
     func show(_ content: ReaderContent, page: Int) {
         let reload = content.chapterId != self.content?.chapterId || content.pageCount != self.content?.pageCount
+        if content.reduceMoire != self.content?.reduceMoire, self.content != nil, !reload {
+            self.content = content
+            collectionView.reloadData()
+        }
         if content.gap != self.content?.gap {
             layout.minimumLineSpacing = content.gap
             layout.invalidateLayout()
@@ -157,9 +161,15 @@ final class WebtoonReaderController: UIViewController, ReaderController {
     private func request(for page: Int) -> ImageRequest? {
         guard let urlRequest = pageRequest(page) else { return nil }
         let scale = view.window?.windowScene?.screen.scale ?? 2
+        var processors: [any ImageProcessing] = []
+        if content?.reduceMoire == true {
+            // Pages are kept at screen width, so zooming the strip can't show finer detail anyway.
+            processors.append(ReduceMoireProcessor(boxWidth: view.bounds.width * scale, boxHeight: .greatestFiniteMagnitude))
+        }
+        processors.append(ImageProcessors.Resize(width: view.bounds.width * scale, unit: .pixels, upscale: false))
         return ImageRequest(
             urlRequest: urlRequest,
-            processors: [.resize(width: view.bounds.width * scale, unit: .pixels, upscale: false)],
+            processors: processors,
             // Downloaded pages are already on disk.
             options: urlRequest.url?.isFileURL == true ? [.disableDiskCacheWrites] : []
         )

@@ -9,6 +9,9 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
 
     /// Called with each page's image size once it has loaded.
     var onImageSize: (Int, CGSize) -> Void = { _, _ in }
+    /// The pages' requests for a zoom level, so Reduce moiré can filter for the size they're
+    /// now shown at when a zoom ends.
+    var requestsForZoom: (CGFloat) -> [ImageRequest?] = { _ in [] }
 
     private let scrollView = UIScrollView()
     private let container = UIView()
@@ -18,6 +21,8 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
     private var loadTasks: [Task<Void, Never>] = []
     private var pages: [Int] = []
     private var rightToLeft = false
+    /// The zoom the shown images were requested for (see `zoomBucket`).
+    private var requestedZoom: CGFloat = 1
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -58,6 +63,7 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
         super.prepareForReuse()
         loadTasks.forEach { $0.cancel() }
         loadTasks = []
+        requestedZoom = 1
         resetZoom()
     }
 
@@ -65,6 +71,7 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
     func configure(requests: [ImageRequest?], pages: [Int], pageCount: Int, rightToLeft: Bool) {
         loadTasks.forEach { $0.cancel() }
         loadTasks = []
+        requestedZoom = 1
         self.pages = pages
         self.rightToLeft = rightToLeft
         accessibilityLabel = pages.count == 1
@@ -94,13 +101,15 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
             show(cached.image, at: index)
             return
         }
-        spinner.startAnimating()
+        // Reloading for a new zoom keeps the current image up until the new one is ready.
+        if imageViews[index].image == nil { spinner.startAnimating() }
         loadTasks.append(Task { [weak self] in
             do {
                 let image = try await ImagePipeline.shared.image(for: request)
+                guard !Task.isCancelled else { return }
                 self?.show(image, at: index)
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, self?.imageViews[index].image == nil else { return }
                 self?.spinner.stopAnimating()
                 self?.errorLabel.text = String(localized: "Couldn't load this page.\n\(error.localizedDescription)")
                 self?.errorLabel.isHidden = false
@@ -161,6 +170,7 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
     func resetZoom() {
         guard scrollView.zoomScale != 1 else { return }
         scrollView.setZoomScale(1, animated: false)
+        reload(forZoom: 1)
     }
 
     func toggleZoom(at point: CGPoint) {
@@ -179,6 +189,27 @@ final class PageCell: UICollectionViewCell, UIScrollViewDelegate {
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         centerContent()
+    }
+
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        reload(forZoom: scale)
+    }
+
+    private func reload(forZoom scale: CGFloat) {
+        let zoom = Self.zoomBucket(scale)
+        guard zoom != requestedZoom, !pages.isEmpty else { return }
+        requestedZoom = zoom
+        let requests = requestsForZoom(zoom)
+        loadTasks.forEach { $0.cancel() }
+        loadTasks = []
+        for (index, request) in requests.enumerated() where index < pages.count {
+            load(request, into: index)
+        }
+    }
+
+    /// Zoom rounded to quarters, so a pinch doesn't filter the page again for every small change.
+    nonisolated static func zoomBucket(_ scale: CGFloat) -> CGFloat {
+        scale <= 1.01 ? 1 : (scale * 4).rounded() / 4
     }
 }
 

@@ -47,6 +47,7 @@ struct ReaderPagesView<Controller: ReaderController>: UIViewControllerRepresenta
             background: model.settings.background,
             doubleTapZoom: model.settings.doubleTapZoom,
             animate: model.settings.animatePageTransitions,
+            reduceMoire: model.settings.reduceMoire,
             gap: model.mode == .webtoonGaps ? 16 : 0
         )
         if controller.content != content {

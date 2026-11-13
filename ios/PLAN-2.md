@@ -482,18 +482,11 @@ iPad, and commit at the end of each.
 
 ## To bring over from Android
 
-Android features released without iOS yet; add them to the next iOS release. (0.30.0 brought
-over chapter renaming, per-source prediction hiding, BookOrbit renames, and volumes and chapters.)
-
-- **Reduce moiré** (Android 0.32.8). Fine screentone (Kaiju No. 8's repeats every ~2.5 source
-  pixels) beats into moiré when a page is shrunk to fit. Android's high quality renderer runs a
-  built-in tile filter, on by default, only while a page is shrunk below 0.95x: a Gaussian in
-  linear light (sigma 0.97 / scale source px) turns screentone into flat grey, a Sobel on that
-  finds lines, the line mask is spread by sigma 1 / scale, and the page is mixed back so lines
-  stay sharp. Blur sizes are held at their 0.3x values below 0.3x. The shader is
-  `app/src/main/assets/webgpu/reduce_moire.wgsl` on main; the setting is "Reduce moiré" in the
-  reader's Reading mode settings (`webgpu_reduce_moire`). On iOS this would be a Metal or Core
-  Image pass before the page is scaled down.
+Android features released without iOS yet; add them to the next iOS release. Nothing is waiting
+(0.30.0 brought over chapter renaming, per-source prediction hiding, BookOrbit renames, and
+volumes and chapters; 0.32.8 brought over Reduce moiré, as Metal kernels in
+`Docho/Features/Reader/ReduceMoire.metal` run by a Nuke processor before a page is resized; paged
+mode filters again for the zoom when a pinch ends, in quarter steps).
 
 ## Open questions
 

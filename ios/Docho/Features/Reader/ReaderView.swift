@@ -226,6 +226,7 @@ private struct ReaderSettingsSheet: View {
                             CheckboxRow(title: String(localized: "First page alone"), isOn: $settings.coverAlone)
                             CheckboxRow(title: String(localized: "Double tap to zoom"), isOn: $settings.doubleTapZoom)
                         }
+                        CheckboxRow(title: String(localized: "Reduce moiré"), isOn: $settings.reduceMoire)
                     } else {
                         ListPreference(title: String(localized: "Background color"), selection: $settings.background, options: ReaderBackground.allCases.map { ($0, $0.title) })
                         CheckboxRow(title: String(localized: "Show page number"), isOn: $settings.showPageNumber)

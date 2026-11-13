@@ -153,6 +153,9 @@ final class ReaderSettings {
     var animatePageTransitions: Bool { didSet { defaults.set(animatePageTransitions, forKey: "pref_enable_transitions_key") } }
     /// Long strip: the page gap in points for "Long strip with gaps".
     var stripSidePadding: Int { didSet { defaults.set(stripSidePadding, forKey: "webtoon_side_padding") } }
+    /// Smooth screentone into flat grey while a page is shrunk, so it can't turn into moiré
+    /// (Android's key, though there it's part of the high quality renderer).
+    var reduceMoire: Bool { didSet { defaults.set(reduceMoire, forKey: "webgpu_reduce_moire") } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -173,5 +176,6 @@ final class ReaderSettings {
         doubleTapZoom = bool("pref_enable_double_tap_zoom", true)
         animatePageTransitions = bool("pref_enable_transitions_key", true)
         stripSidePadding = defaults.object(forKey: "webtoon_side_padding") as? Int ?? 0
+        reduceMoire = bool("webgpu_reduce_moire", true)
     }
 }
