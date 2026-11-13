@@ -225,6 +225,9 @@ class ReaderPreferences(
     val disableDoubleTapGestures: Preference<Boolean> =
         preferenceStore.getBoolean("webgpu_disable_double_tap_gestures", false)
 
+    /** Built-in tile filter that turns screentone into flat grey while a page is shrunk, so it can't beat into moiré. */
+    val reduceMoire: Preference<Boolean> = preferenceStore.getBoolean("webgpu_reduce_moire", true)
+
     /** In run order. */
     val imageFilters: Preference<List<WebGpuShader>> = preferenceStore.getObjectFromString(
         "webgpu_image_filters",

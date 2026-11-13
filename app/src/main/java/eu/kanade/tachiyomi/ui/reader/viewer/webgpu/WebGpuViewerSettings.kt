@@ -255,6 +255,16 @@ internal fun WebGpuViewerSettings(viewModel: ReaderSettingsViewModel) {
     LaunchedEffect(Unit) {
         WebGpuShaders.prune(context, listOf(viewModel.preferences.imageFilters, viewModel.preferences.tileFilters))
     }
+    CheckboxItem(
+        label = stringResource(MR.strings.pref_reduce_moire),
+        pref = viewModel.preferences.reduceMoire,
+    )
+    Text(
+        text = stringResource(MR.strings.pref_reduce_moire_summary),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = SettingsItemsPaddings.Horizontal),
+    )
     ShaderList(MR.strings.pref_image_filters, viewModel.preferences.imageFilters)
     ShaderList(MR.strings.pref_tile_filters, viewModel.preferences.tileFilters)
 }
