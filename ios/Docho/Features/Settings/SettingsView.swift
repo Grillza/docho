@@ -196,6 +196,10 @@ private struct AppearanceSettings: View {
             isOn: $preferences.relativeTimestamps
         )
         ListPreference(
+            title: String(localized: "Show sync banners"), selection: $preferences.syncBannerPlace,
+            options: SyncBannerPlace.allCases.map { ($0, $0.title) }
+        )
+        ListPreference(
             title: String(localized: "Sync banners stay for"), selection: $preferences.syncBannerSeconds,
             options: [5, 10, 15, 30, 60].map { ($0, String(localized: "\($0) seconds")) } + [(0, String(localized: "Until closed"))]
         )

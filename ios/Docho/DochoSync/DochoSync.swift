@@ -488,10 +488,13 @@ final class DochoSync {
     }
 
     /// Reading another device did on a chapter, as it's applied here.
+    /// `chosen`: picked in the "Is this where you're up to?" banner, so an open reader goes there
+    /// even if you've turned pages.
     struct RemoteProgress: Sendable {
         var chapterId: Int
         var page: Int
         var read: Bool
+        var chosen = false
     }
 
     /// A chapter's read state and page.
@@ -521,6 +524,8 @@ final class DochoSync {
     /// Conflicts not yet answered, for the "Is this where you're up to?" banner.
     private(set) var conflicts: [Conflict] = []
     @ObservationIgnored private var found: [Conflict] = []
+    /// The screens with a banner, the one in front last (the reader covers the main screens).
+    var bannerScreens: [SyncBannerPlace] = []
 
     /// Keeps what the chapters have now: the banner was dismissed or ignored.
     func dismissConflicts(_ answered: [Conflict]? = nil) {
@@ -538,7 +543,7 @@ final class DochoSync {
                 arguments: [further.read, further.page, conflict.chapterId]
             )
         }
-        onRemoteProgress?(RemoteProgress(chapterId: conflict.chapterId, page: further.page, read: further.read))
+        onRemoteProgress?(RemoteProgress(chapterId: conflict.chapterId, page: further.page, read: further.read, chosen: true))
         dismissConflicts([conflict])
         syncSoon(after: 2)
     }

@@ -36,6 +36,8 @@ final class AppPreferences {
     var dateFormat: String { didSet { save(dateFormat, "app_date_format") } }
     /// Seconds a Dōchō Sync banner ("Is this where you're up to?") stays before it hides; 0 keeps it until closed.
     var syncBannerSeconds: Int { didSet { save(syncBannerSeconds, "docho_sync_banner_seconds") } }
+    /// Where Dōchō Sync banners show; with both, on whichever is seen first, once.
+    var syncBannerPlace: SyncBannerPlace { didSet { save(syncBannerPlace.rawValue, "docho_sync_banner_place") } }
 
     // MARK: Navigation (Docho 0.25)
 
@@ -251,6 +253,7 @@ final class AppPreferences {
         relativeTimestamps = bool("relative_time_v2", true)
         dateFormat = string("app_date_format") ?? ""
         syncBannerSeconds = int("docho_sync_banner_seconds", 10)
+        syncBannerPlace = string("docho_sync_banner_place").flatMap(SyncBannerPlace.init) ?? .reader
         showUpdatesTab = bool("nav_show_updates", true)
         showHistoryTab = bool("nav_show_history", true)
         showBrowseTab = bool("nav_show_browse", true)

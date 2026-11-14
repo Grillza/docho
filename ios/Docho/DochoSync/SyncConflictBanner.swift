@@ -1,16 +1,38 @@
 import SwiftUI
 
+/// Where Dōchō Sync banners show (Settings → Appearance). A banner shows once, on the first of these
+/// that's on screen, and hides everywhere once answered or timed out.
+enum SyncBannerPlace: String, CaseIterable, Sendable {
+    case main, reader, both
+
+    var title: String {
+        switch self {
+        case .main: String(localized: "On the main screens")
+        case .reader: String(localized: "In the reader")
+        case .both: String(localized: "Both, wherever you see it first")
+        }
+    }
+}
+
 /// "Is this where you're up to?" (Android's `SyncConflictBanner`): shown at the top of the screen when
 /// Dōchō Sync took a later change that went back (an earlier page, or unread) while further progress
 /// was elsewhere. Compare shows both and lets you keep either; Ignore keeps what's there. It hides
 /// itself after the time set in Appearance, keeping what's there.
 struct SyncConflictBanner: View {
+    /// The screen this banner is on: `.main` or `.reader`.
+    let place: SyncBannerPlace
     @Environment(AppModel.self) private var app
     @Environment(\.m3) private var m3
     @State private var comparing = false
 
     private var sync: DochoSync { app.dochoSync }
-    private var conflicts: [DochoSync.Conflict] { sync.conflicts }
+    /// Only where the setting allows, and only on the screen in front (the main screens stay
+    /// underneath the reader), so the time counts only while it's seen.
+    private var shownHere: Bool {
+        let setting = app.preferences.syncBannerPlace
+        return (setting == .both || setting == place) && sync.bannerScreens.last == place
+    }
+    private var conflicts: [DochoSync.Conflict] { shownHere ? sync.conflicts : [] }
 
     var body: some View {
         VStack {
@@ -42,6 +64,10 @@ struct SyncConflictBanner: View {
             }
         }
         .onChange(of: conflicts.isEmpty) { _, empty in if empty { comparing = false } }
+        .onAppear { sync.bannerScreens.append(place) }
+        .onDisappear {
+            if let index = sync.bannerScreens.lastIndex(of: place) { sync.bannerScreens.remove(at: index) }
+        }
     }
 
     private struct TimerKey: Hashable {

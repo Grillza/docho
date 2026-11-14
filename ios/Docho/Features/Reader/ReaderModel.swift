@@ -129,7 +129,8 @@ final class ReaderModel {
             $0.read = $0.read || progress.read
             $0.lastPageRead = max($0.lastPageRead, progress.page)
         }
-        if isReady, pageUntouched, !progress.read, progress.page > page { jump(to: progress.page) }
+        // Chosen in the "Is this where you're up to?" banner: go there even after turning pages.
+        if isReady, pageUntouched || progress.chosen, !progress.read, progress.page > page { jump(to: progress.page) }
     }
 
     /// Lists the chapter's pages from its files or its source.

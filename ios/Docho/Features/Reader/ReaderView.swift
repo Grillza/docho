@@ -21,6 +21,8 @@ struct ReaderView: View {
                 menu.transition(.opacity)
             }
         }
+        // Dōchō Sync: "Is this where you're up to?", over the page
+        .overlay(alignment: .top) { SyncConflictBanner(place: .reader) }
         .statusBarHidden(model.settings.fullscreen && !model.overlayVisible)
         .persistentSystemOverlays(model.overlayVisible ? .automatic : .hidden)
         .task { await model.prepare() }

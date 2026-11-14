@@ -15,7 +15,7 @@ struct DochoApp: App {
             ThemeRoot {
                 HomeView()
                     // Dōchō Sync: "Is this where you're up to?"
-                    .overlay(alignment: .top) { SyncConflictBanner() }
+                    .overlay(alignment: .top) { SyncConflictBanner(place: .main) }
             }
                 .environment(model)
                 .task {
