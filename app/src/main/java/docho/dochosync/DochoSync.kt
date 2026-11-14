@@ -89,8 +89,11 @@ class DochoSync(
 
     private val mutex = Mutex()
 
-    /** Reading another device did on a chapter, as it's applied here. */
-    data class RemoteProgress(val chapterId: Long, val page: Int, val read: Boolean)
+    /**
+     * Reading another device did on a chapter, as it's applied here. [chosen]: picked in the
+     * "Is this where you're up to?" banner, so an open reader goes there even if you've turned pages.
+     */
+    data class RemoteProgress(val chapterId: Long, val page: Int, val read: Boolean, val chosen: Boolean = false)
 
     private val mutableRemoteProgress = MutableSharedFlow<RemoteProgress>(
         extraBufferCapacity = 64,
@@ -149,7 +152,7 @@ class DochoSync(
                 lastPageRead = further.page
             },
         )
-        mutableRemoteProgress.tryEmit(RemoteProgress(conflict.chapterId, further.page, further.read))
+        mutableRemoteProgress.tryEmit(RemoteProgress(conflict.chapterId, further.page, further.read, chosen = true))
         dismissConflicts(listOf(conflict))
         DochoSyncWorker.syncSoon(context)
     }

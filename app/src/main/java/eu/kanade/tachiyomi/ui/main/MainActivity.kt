@@ -320,6 +320,7 @@ class MainActivity : BaseActivity() {
                             dochoSync = graph.dochoSync,
                             uiPreferences = graph.uiPreferences,
                             deviceId = remember { graph.dochoSyncPreferences.deviceId() },
+                            place = docho.dochosync.SyncBannerPlace.MAIN,
                             modifier = Modifier.align(Alignment.TopCenter),
                         )
                     }

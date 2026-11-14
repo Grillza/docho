@@ -46,6 +46,10 @@ class UiPreferences(
     /** Seconds a Dōchō Sync banner (such as "Is this where you're up to?") stays before it hides; 0 keeps it until closed. */
     val syncBannerSeconds: Preference<Int> = preferenceStore.getInt("docho_sync_banner_seconds", 10)
 
+    /** Where Dōchō Sync banners show; with both, on whichever is seen first, once. */
+    val syncBannerPlace: Preference<docho.dochosync.SyncBannerPlace> =
+        preferenceStore.getEnum("docho_sync_banner_place", docho.dochosync.SyncBannerPlace.READER)
+
     /** The user's own themes, at most [CustomTheme.MAX]. */
     val customThemes: Preference<List<CustomTheme>> = preferenceStore.getObjectFromString(
         key = "custom_themes",

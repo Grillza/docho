@@ -352,7 +352,8 @@ class ReaderViewModel(
             it.copy(read = it.read || progress.read, lastPageRead = maxOf(it.lastPageRead, progress.page))
         }
         val isBehind = !progress.read && progress.page > state.value.currentPage - 1
-        if (chapter == chapters.currChapter && pageUntouched && isBehind) {
+        // Chosen in the "Is this where you're up to?" banner: go there even after turning pages
+        if (chapter == chapters.currChapter && isBehind && (pageUntouched || progress.chosen)) {
             eventChannel.trySend(Event.MoveToPage(progress.page))
         }
     }

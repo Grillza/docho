@@ -352,6 +352,11 @@ object SettingsAppearanceScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_display_images_description),
                 ),
                 Preference.PreferenceItem.ListPreference(
+                    preference = uiPreferences.syncBannerPlace,
+                    entries = docho.dochosync.SyncBannerPlace.entries.associateWith { stringResource(it.title) },
+                    title = stringResource(MR.strings.pref_docho_sync_banner_place),
+                ),
+                Preference.PreferenceItem.ListPreference(
                     preference = uiPreferences.syncBannerSeconds,
                     entries = listOf(5, 10, 15, 30, 60, 0).associateWith {
                         if (it == 0) {

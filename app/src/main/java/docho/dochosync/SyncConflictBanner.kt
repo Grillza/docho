@@ -33,6 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import dev.icerock.moko.resources.StringResource
 import eu.kanade.domain.ui.UiPreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -41,6 +44,16 @@ import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState as collectPreferenceAsState
 import kotlin.time.Duration.Companion.seconds
+
+/**
+ * Where Dōchō Sync banners show (Settings → Appearance). A banner shows once, on the first of these
+ * that's on screen, and hides everywhere once answered or timed out.
+ */
+enum class SyncBannerPlace(val title: StringResource) {
+    MAIN(MR.strings.docho_sync_banner_main),
+    READER(MR.strings.docho_sync_banner_reader),
+    BOTH(MR.strings.docho_sync_banner_both),
+}
 
 /**
  * "Is this where you're up to?": shown at the top of the screen when Dōchō Sync took a later
@@ -53,9 +66,15 @@ fun SyncConflictBanner(
     dochoSync: DochoSync,
     uiPreferences: UiPreferences,
     deviceId: String,
+    place: SyncBannerPlace,
     modifier: Modifier = Modifier,
 ) {
-    val conflicts by dochoSync.conflicts.collectAsState()
+    val setting by uiPreferences.syncBannerPlace.collectPreferenceAsState()
+    // Only on the screen in front (the main screens stay behind the reader), so the time counts only while it's seen.
+    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+    val shownHere = (setting == SyncBannerPlace.BOTH || setting == place) && lifecycle.isAtLeast(Lifecycle.State.RESUMED)
+    val all by dochoSync.conflicts.collectAsState()
+    val conflicts = if (shownHere) all else emptyList()
     val seconds by uiPreferences.syncBannerSeconds.collectPreferenceAsState()
     var comparing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
