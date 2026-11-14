@@ -34,6 +34,8 @@ final class AppPreferences {
     var relativeTimestamps: Bool { didSet { save(relativeTimestamps, "relative_time_v2") } }
     /// "" follows the system; otherwise a `DateFormatter` pattern.
     var dateFormat: String { didSet { save(dateFormat, "app_date_format") } }
+    /// Seconds a Dōchō Sync banner ("Is this where you're up to?") stays before it hides; 0 keeps it until closed.
+    var syncBannerSeconds: Int { didSet { save(syncBannerSeconds, "docho_sync_banner_seconds") } }
 
     // MARK: Navigation (Docho 0.25)
 
@@ -248,6 +250,7 @@ final class AppPreferences {
         customThemeIndex = int("custom_theme_index", 0)
         relativeTimestamps = bool("relative_time_v2", true)
         dateFormat = string("app_date_format") ?? ""
+        syncBannerSeconds = int("docho_sync_banner_seconds", 10)
         showUpdatesTab = bool("nav_show_updates", true)
         showHistoryTab = bool("nav_show_history", true)
         showBrowseTab = bool("nav_show_browse", true)

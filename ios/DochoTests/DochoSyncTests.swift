@@ -48,4 +48,28 @@ final class DochoSyncTests: XCTestCase {
         let behind = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 4)
         XCTAssertEqual(SyncValues.mergeChapter(local: behind, remote: remote, remoteBookmark: true), remote)
     }
+
+    func testTheLaterChangeWinsByWhenItWasReadEvenGoingBack() {
+        let further = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 110, at: 200)
+        let back = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 4, at: 300)
+        XCTAssertEqual(SyncValues.mergeChapter(local: further, remote: back), back)
+        XCTAssertTrue(SyncValues.isBehind(back, further))
+        let stale = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 4, at: 100)
+        XCTAssertEqual(SyncValues.mergeChapter(local: further, remote: stale), further)
+        let read = SyncValues.chapter(mangaURL: "/s", read: true, bookmark: false, page: 0, at: 200)
+        let unread = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 0, at: 300)
+        XCTAssertEqual(SyncValues.mergeChapter(local: read, remote: unread), unread)
+    }
+
+    func testWithoutATimeOnOneSideTheStoredTimeDecidesElseTheFurthestPoint() {
+        let untimed = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 110)
+        let back = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 4, at: 300)
+        XCTAssertEqual(SyncValues.mergeChapter(local: untimed, remote: back, localStored: 250), back)
+        XCTAssertEqual(
+            SyncValues.mergeChapter(local: untimed, remote: back, localStored: 350),
+            SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 110, at: 300)
+        )
+        // The same text as Android's, so records compare alike
+        XCTAssertEqual(back.canonical, "{\"at\":300,\"bookmark\":false,\"manga\":\"/s\",\"page\":4,\"read\":false}")
+    }
 }

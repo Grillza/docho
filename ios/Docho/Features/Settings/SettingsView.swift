@@ -195,6 +195,10 @@ private struct AppearanceSettings: View {
             subtitle: String(localized: "\"Today\" instead of the date"),
             isOn: $preferences.relativeTimestamps
         )
+        ListPreference(
+            title: String(localized: "Sync banners stay for"), selection: $preferences.syncBannerSeconds,
+            options: [5, 10, 15, 30, 60].map { ($0, String(localized: "\($0) seconds")) } + [(0, String(localized: "Until closed"))]
+        )
     }
 
     private static func example(_ format: String) -> String {

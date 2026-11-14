@@ -133,6 +133,26 @@ struct AppDatabase: Sendable {
                 table.uniqueKey(["seriesId", "trackerId"])
             }
         }
+        migrator.registerMigration("v7") { db in
+            // When a chapter's read state, bookmark or page last changed here, in epoch milliseconds,
+            // for Dōchō Sync (Android's chapter_progress): between two devices the later change wins,
+            // so going back or marking unread on purpose syncs, while an app that's only behind doesn't
+            // undo reading done elsewhere. The trigger stamps every change, whoever makes it; Dōchō Sync
+            // then sets the time of a change it brought from elsewhere. Earlier reading has no time.
+            try db.create(table: "chapterProgress") { table in
+                table.primaryKey("chapterId", .integer).references("chapter", onDelete: .cascade)
+                table.column("at", .integer).notNull()
+            }
+            try db.execute(sql: """
+                CREATE TRIGGER chapterProgressChanged
+                AFTER UPDATE OF read, bookmark, lastPageRead ON chapter
+                WHEN new.read IS NOT old.read OR new.bookmark IS NOT old.bookmark OR new.lastPageRead IS NOT old.lastPageRead
+                BEGIN
+                    INSERT OR REPLACE INTO chapterProgress(chapterId, at)
+                    VALUES (new.id, CAST(round((julianday('now') - 2440587.5) * 86400000) AS INTEGER));
+                END
+                """)
+        }
         return migrator
     }
 

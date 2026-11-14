@@ -252,8 +252,29 @@ enum SyncValues {
         ])
     }
 
-    static func chapter(mangaURL: String, read: Bool, bookmark: Bool, page: Int64) -> SyncJSON {
-        .object(["bookmark": .bool(bookmark), "manga": .string(mangaURL), "page": .int(read ? 0 : page), "read": .bool(read)])
+    /// A chapter's progress. `at` is when it last changed on the device that read it (epoch ms), left
+    /// out where that isn't known (progress from before 0.32.9, or from an older app).
+    static func chapter(mangaURL: String, read: Bool, bookmark: Bool, page: Int64, at: Int64? = nil) -> SyncJSON {
+        var values: [String: SyncJSON] = ["bookmark": .bool(bookmark), "manga": .string(mangaURL), "page": .int(read ? 0 : page), "read": .bool(read)]
+        if let at, at > 0 { values["at"] = .int(at) }
+        return .object(values)
+    }
+
+    /// When a chapter record says its progress changed, if it does.
+    static func at(_ value: SyncJSON) -> Int64? { value["at"]?.int.flatMap { $0 > 0 ? $0 : nil } }
+
+    /// Whether a change at `at` surely came after the other's: after the other's own time, or, where
+    /// that isn't known, after the other was stored on the server (which can't be before it changed).
+    static func surelyAfter(_ at: Int64?, _ otherAt: Int64?, otherStored: Int64?) -> Bool {
+        guard let at else { return false }
+        if let otherAt { return at > otherAt }
+        return otherStored.map { at > $0 } ?? false
+    }
+
+    /// Whether chapter progress `value` is behind `other`: unread where it's read, or on an earlier page.
+    static func isBehind(_ value: SyncJSON, _ other: SyncJSON) -> Bool {
+        !(value["read"]?.bool ?? false)
+            && ((other["read"]?.bool ?? false) || (other["page"]?.int ?? 0) > (value["page"]?.int ?? 0))
     }
 
     static func history(mangaURL: String, readAt: Int64) -> SyncJSON {
@@ -276,17 +297,23 @@ enum SyncValues {
         value == value.rounded() && abs(value) < 1e15 ? String(Int64(value)) : String(value)
     }
 
-    /// A chapter's state here and on the server put together, keeping the furthest point: read
-    /// anywhere is read, and the further page is kept. The bookmark is `remote`'s when
-    /// `remoteBookmark`, else bookmarked on either is bookmarked (a first sync).
-    static func mergeChapter(local: SyncJSON, remote: SyncJSON, remoteBookmark: Bool = false) -> SyncJSON {
-        chapter(
+    /// A chapter's progress here and on the server put together; Dōchō Server's `mergeProgress`.
+    /// Where one surely changed after the other (`surelyAfter`) it wins whole, even going back.
+    /// Otherwise the furthest point is kept: read anywhere is read, the further page, the later known
+    /// time. The bookmark is then `remote`'s when `remoteBookmark`, else bookmarked on either.
+    static func mergeChapter(
+        local: SyncJSON, remote: SyncJSON, remoteBookmark: Bool = false, localStored: Int64? = nil, remoteStored: Int64? = nil
+    ) -> SyncJSON {
+        if surelyAfter(at(remote), at(local), otherStored: localStored) { return remote }
+        if surelyAfter(at(local), at(remote), otherStored: remoteStored) { return local }
+        return chapter(
             mangaURL: remote["manga"]?.string ?? local["manga"]?.string ?? "",
             read: (local["read"]?.bool ?? false) || (remote["read"]?.bool ?? false),
             bookmark: remoteBookmark
                 ? (remote["bookmark"]?.bool ?? false)
                 : (local["bookmark"]?.bool ?? false) || (remote["bookmark"]?.bool ?? false),
-            page: max(local["page"]?.int ?? 0, remote["page"]?.int ?? 0)
+            page: max(local["page"]?.int ?? 0, remote["page"]?.int ?? 0),
+            at: [at(local), at(remote)].compactMap { $0 }.max()
         )
     }
 
@@ -324,6 +351,8 @@ struct SyncPage: Sendable {
     var seq: Int64
     var more: Bool
     var changes: [SyncRecord]
+    /// Further progress on the server that this device's later change went back from (Dōchō Server 0.32.9).
+    var behind: [SyncRecord] = []
 }
 
 /// Talks to the Dōchō Sync built into Dōchō Server, through the server's own authentication.
@@ -388,15 +417,20 @@ final class DochoSyncClient {
             throw DochoSyncError(message: String(localized: "This server has no Dōchō Sync. Update it to Dōchō Server to sync."))
         }
         let response = try await post("sync", body)
-        let records = (response["changes"] as? [[String: Any]] ?? []).compactMap { change -> SyncRecord? in
-            guard let kind = change["kind"] as? String, let key = change["key"] as? String else { return nil }
-            let value = SyncJSON(any: change["value"])
-            return SyncRecord(
-                kind: kind, key: key, value: value == .null ? nil : value,
-                updatedAt: (change["updatedAt"] as? NSNumber)?.int64Value ?? 0, device: change["device"] as? String
-            )
+        func records(_ name: String) -> [SyncRecord] {
+            (response[name] as? [[String: Any]] ?? []).compactMap { change -> SyncRecord? in
+                guard let kind = change["kind"] as? String, let key = change["key"] as? String else { return nil }
+                let value = SyncJSON(any: change["value"])
+                return SyncRecord(
+                    kind: kind, key: key, value: value == .null ? nil : value,
+                    updatedAt: (change["updatedAt"] as? NSNumber)?.int64Value ?? 0, device: change["device"] as? String
+                )
+            }
         }
-        return SyncPage(seq: (response["seq"] as? NSNumber)?.int64Value ?? since, more: response["more"] as? Bool ?? false, changes: records)
+        return SyncPage(
+            seq: (response["seq"] as? NSNumber)?.int64Value ?? since, more: response["more"] as? Bool ?? false,
+            changes: records("changes"), behind: records("behind")
+        )
     }
 
     private var base: String? { ServerAddress.normalize(settings.serverURL, apiPath: "/api/docho/sync/v1") }
@@ -460,7 +494,54 @@ final class DochoSync {
         var read: Bool
     }
 
+    /// A chapter's read state and page.
+    struct Progress: Equatable, Sendable {
+        var read: Bool
+        var page: Int
+    }
+
+    /// Progress that went back by a later change (going back a page, or marking unread) while
+    /// further progress was elsewhere: right if it was on purpose, but worth asking about.
+    /// `kept` is what the chapter now has everywhere; `further` is what it went back from, on
+    /// `furtherDevice` (nil for this device) at `furtherAt`. `keptHere`: the change was made here.
+    struct Conflict: Identifiable, Equatable, Sendable {
+        var chapterId: Int
+        var seriesId: Int
+        var seriesTitle: String
+        var chapterName: String
+        var kept: Progress
+        var further: Progress
+        var furtherDevice: String?
+        var furtherAt: Int64?
+        var keptHere: Bool
+        var id: Int { chapterId }
+    }
+
     private(set) var status: Status = .idle
+    /// Conflicts not yet answered, for the "Is this where you're up to?" banner.
+    private(set) var conflicts: [Conflict] = []
+    @ObservationIgnored private var found: [Conflict] = []
+
+    /// Keeps what the chapters have now: the banner was dismissed or ignored.
+    func dismissConflicts(_ answered: [Conflict]? = nil) {
+        let ids = Set((answered ?? conflicts).map(\.chapterId))
+        conflicts.removeAll { ids.contains($0.chapterId) }
+    }
+
+    /// Goes to the further progress of `conflict`. It's a change made here now, so it's the latest
+    /// and syncs to the other devices.
+    func useFurther(_ conflict: Conflict) async {
+        let further = conflict.further
+        try? await database.writer.write { db in
+            try db.execute(
+                sql: "UPDATE chapter SET read = ?, lastPageRead = ? WHERE id = ?",
+                arguments: [further.read, further.page, conflict.chapterId]
+            )
+        }
+        onRemoteProgress?(RemoteProgress(chapterId: conflict.chapterId, page: further.page, read: further.read))
+        dismissConflicts([conflict])
+        syncSoon(after: 2)
+    }
     /// So an open reader doesn't later write its older page over what arrived.
     @ObservationIgnored var onRemoteProgress: (@MainActor (RemoteProgress) -> Void)?
     @ObservationIgnored let settings: DochoSyncSettings
@@ -585,6 +666,7 @@ final class DochoSync {
         let me = settings.deviceId
         let firstSync = settings.since == 0 && state.synced.isEmpty
         var since = settings.since
+        found = []
         var added: [SeriesRecord] = []
         var received = 0
 
@@ -639,6 +721,10 @@ final class DochoSync {
             }
             remote += page.changes
             since = page.seq
+            // What this device's later change went back from on the server
+            for record in page.behind {
+                if let conflict = try await conflictFromServer(record, sent: sending) { found.append(conflict) }
+            }
         } while page.more || !outgoing.isEmpty
         for change in changes where !unsent.contains(change.id) {
             if change.isDeleted { state.synced[change.id] = nil } else { state.synced[change.id] = change.value?.canonical }
@@ -668,6 +754,11 @@ final class DochoSync {
 
         saveState(state)
         settings.since = since
+        if !found.isEmpty {
+            var seen = Set<Int>()
+            let fresh = found.filter { seen.insert($0.chapterId).inserted }
+            conflicts = conflicts.filter { !seen.contains($0.chapterId) } + fresh
+        }
         return .done(sent: changes.count, received: received)
     }
 
@@ -692,7 +783,8 @@ final class DochoSync {
             let key = SyncValues.key(series.source, chapter.url)
             mangaURLByChapter[key] = series.url
             put(SyncValues.chapter, key, SyncValues.chapter(
-                mangaURL: series.url, read: chapter.read, bookmark: chapter.bookmark, page: Int64(chapter.lastPageRead)
+                mangaURL: series.url, read: chapter.read, bookmark: chapter.bookmark, page: Int64(chapter.lastPageRead),
+                at: data.progressAt[chapter.id]
             ))
             if let lastRead = data.history[chapter.id] {
                 put(SyncValues.history, key, SyncValues.history(mangaURL: series.url, readAt: Int64(lastRead.timeIntervalSince1970 * 1000)))
@@ -749,20 +841,42 @@ final class DochoSync {
         case SyncValues.chapter:
             guard let value else { return true }
             guard let chapter = try await findChapter(record.key, mangaURL: value["manga"]?.string) else { return false }
-            // Never goes back: where this device is further, it keeps its own and sends it next sync.
-            let merged = SyncValues.mergeChapter(
-                local: SyncValues.chapter(mangaURL: "", read: chapter.read, bookmark: chapter.bookmark, page: Int64(chapter.lastPageRead)),
-                remote: value,
-                remoteBookmark: !firstSync
+            let localAt = try await database.writer.read { db in
+                try Int64.fetchOne(db, sql: "SELECT at FROM chapterProgress WHERE chapterId = ?", arguments: [chapter.id])
+            }
+            let local = SyncValues.chapter(
+                mangaURL: "", read: chapter.read, bookmark: chapter.bookmark, page: Int64(chapter.lastPageRead), at: localAt
             )
+            let merged: SyncJSON
+            if firstSync {
+                // Both devices' reading, put together by when it was read, else the furthest point.
+                merged = SyncValues.mergeChapter(local: local, remote: value, remoteStored: record.updatedAt)
+            } else if SyncValues.surelyAfter(localAt, SyncValues.at(value), otherStored: record.updatedAt) {
+                // Changed here after that, while syncing: kept, and it goes up next sync.
+                return true
+            } else {
+                // The server has already put both together.
+                merged = value
+            }
             let read = merged["read"]?.bool ?? false
             let bookmark = merged["bookmark"]?.bool ?? false
             let page = Int(merged["page"]?.int ?? 0)
+            let at = SyncValues.at(merged)
             try await database.writer.write { db in
                 try db.execute(
                     sql: "UPDATE chapter SET read = ?, bookmark = ?, lastPageRead = ? WHERE id = ?",
                     arguments: [read, bookmark, page, chapter.id]
                 )
+                // When it was read where it was read, not now; so the record here matches the server's.
+                if let at {
+                    try db.execute(sql: "INSERT OR REPLACE INTO chapterProgress(chapterId, at) VALUES (?, ?)", arguments: [chapter.id, at])
+                } else {
+                    try db.execute(sql: "DELETE FROM chapterProgress WHERE chapterId = ?", arguments: [chapter.id])
+                }
+            }
+            if !firstSync, SyncValues.isBehind(merged, local),
+               let conflict = try await conflict(chapter, kept: merged, further: local, furtherDevice: nil, furtherAt: localAt, keptHere: false) {
+                found.append(conflict)
             }
             if read != chapter.read || page != chapter.lastPageRead {
                 onRemoteProgress?(RemoteProgress(chapterId: chapter.id, page: page, read: read))
@@ -877,6 +991,30 @@ final class DochoSync {
         }
     }
 
+    private func conflict(
+        _ chapter: ChapterRecord, kept: SyncJSON, further: SyncJSON, furtherDevice: String?, furtherAt: Int64?, keptHere: Bool
+    ) async throws -> Conflict? {
+        let title = try await database.writer.read { db in
+            try String.fetchOne(db, sql: "SELECT name FROM series WHERE id = ?", arguments: [chapter.seriesId])
+        }
+        func progress(_ value: SyncJSON) -> Progress { Progress(read: value["read"]?.bool ?? false, page: Int(value["page"]?.int ?? 0)) }
+        return Conflict(
+            chapterId: chapter.id, seriesId: chapter.seriesId, seriesTitle: title ?? "", chapterName: chapter.name,
+            kept: progress(kept), further: progress(further), furtherDevice: furtherDevice, furtherAt: furtherAt, keptHere: keptHere
+        )
+    }
+
+    /// A record the server says this device's later change went back from.
+    private func conflictFromServer(_ record: SyncRecord, sent: [SyncRecord]) async throws -> Conflict? {
+        guard record.kind == SyncValues.chapter, let further = record.value,
+              let kept = sent.first(where: { $0.kind == record.kind && $0.key == record.key })?.value,
+              let chapter = try await findChapter(record.key, mangaURL: further["manga"]?.string) else { return nil }
+        return try await conflict(
+            chapter, kept: kept, further: further, furtherDevice: record.device,
+            furtherAt: SyncValues.at(further) ?? record.updatedAt, keptHere: true
+        )
+    }
+
     private func findChapter(_ key: String, mangaURL: String?) async throws -> ChapterRecord? {
         guard let (source, url) = SyncValues.parseKey(key), let mangaURL else { return nil }
         return try await database.writer.read { db in
@@ -904,6 +1042,8 @@ private struct SyncSnapshotData: Sendable {
     var seriesCategories: [Int: [String]]
     var chapters: [ChapterRecord]
     var history: [Int: Date]
+    /// When each chapter's progress last changed here, where known.
+    var progressAt: [Int: Int64]
 
     static func fetch(_ db: Database) throws -> SyncSnapshotData {
         let categories = try CategoryRecord.fetchAll(db)
@@ -926,8 +1066,13 @@ private struct SyncSnapshotData: Sendable {
             """) {
             history[row["chapterId"]] = row["lastRead"]
         }
+        var progressAt: [Int: Int64] = [:]
+        for row in try Row.fetchAll(db, sql: "SELECT chapterId, at FROM chapterProgress") {
+            progressAt[row["chapterId"]] = row["at"]
+        }
         return SyncSnapshotData(
-            categories: categories.map(\.name), series: series, seriesCategories: seriesCategories, chapters: chapters, history: history
+            categories: categories.map(\.name), series: series, seriesCategories: seriesCategories, chapters: chapters, history: history,
+            progressAt: progressAt
         )
     }
 }

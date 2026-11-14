@@ -12,7 +12,11 @@ struct DochoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ThemeRoot { HomeView() }
+            ThemeRoot {
+                HomeView()
+                    // Dōchō Sync: "Is this where you're up to?"
+                    .overlay(alignment: .top) { SyncConflictBanner() }
+            }
                 .environment(model)
                 .task {
                     #if DEBUG
