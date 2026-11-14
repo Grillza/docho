@@ -69,8 +69,8 @@ import kotlin.time.Duration.Companion.seconds
  * - To the apps: every few seconds the server looks for chapters read in the WebUI and writes
  *   them as records from the device "docho-server". Edited series details go as "details" records.
  *
- * The newest change wins either way, as between devices, except that reading progress keeps the
- * furthest point ([DochoSync.mergeProgress]).
+ * The newest change wins either way, as between devices; for reading progress, by when it was read
+ * where that's known, else the furthest point ([DochoSync.mergeProgress]).
  */
 object SyncBridge {
     const val DEVICE = "docho-server"
@@ -146,8 +146,11 @@ object SyncBridge {
     ) {
         val key get() = "$source|$url"
 
-        /** As the apps write it (SyncValues.chapter): the page is 0 once read. */
-        fun value(): String =
+        /**
+         * As the apps write it (SyncValues.chapter): the page is 0 once read. [withAt] adds when
+         * it changed here (the end of that second), for records the server's own reading makes.
+         */
+        fun value(withAt: Boolean = false): String =
             DochoSync.canonical(
                 JsonObject(
                     mapOf(
@@ -155,7 +158,7 @@ object SyncBridge {
                         "manga" to JsonPrimitive(mangaUrl),
                         "page" to JsonPrimitive(if (read) 0L else page.toLong()),
                         "read" to JsonPrimitive(read),
-                    ),
+                    ) + (if (withAt && modifiedAt > 0) mapOf("at" to JsonPrimitive(modifiedAt * 1000 + 999)) else emptyMap()),
                 ),
             )
 
@@ -300,11 +303,20 @@ object SyncBridge {
                         val value = obj(change.value) ?: continue
                         val chapter = findChapter(source, value.string("manga") ?: continue, url) ?: continue
                         val here = chapter.value()
-                        if (here == change.value) continue
-                        // The furthest point wins, as between devices; the bookmark is the device's.
-                        val merged = DochoSync.mergeProgress(CHAPTER, here, change.value!!, deviceDecidesBookmark = true)
-                        if (merged != here) obj(merged)?.let { applyChapter(chapter, it) }
-                        if (merged != change.value) {
+                        if (DochoSync.sameProgress(here, change.value)) continue
+                        // As between devices: the later change wins, else the furthest point. The
+                        // server's own change time is in seconds, so it counts as the end of that second.
+                        val merged =
+                            DochoSync.mergeProgress(
+                                CHAPTER,
+                                chapter.value(withAt = true),
+                                change.value!!,
+                                currentStored = chapter.modifiedAt * 1000 + 999,
+                                incomingStored = change.updatedAt,
+                                deviceDecidesBookmark = true,
+                            )
+                        if (!DochoSync.sameProgress(merged, here)) obj(merged)?.let { applyChapter(chapter, it) }
+                        if (!DochoSync.sameProgress(merged, change.value)) {
                             corrections += DochoSync.Change(CHAPTER, chapter.key, merged, change.updatedAt + 1)
                         }
                     }
@@ -706,14 +718,14 @@ object SyncBridge {
                 val chapterRecords = records(userId, CHAPTER, keys)
                 val historyRecords = records(userId, HISTORY, keys)
                 for (chapter in chapters) {
-                    val here = chapter.value()
+                    val here = chapter.value(withAt = true)
                     val record = chapterRecords[chapter.key]
                     when {
                         record == null || record.value == null ->
                             if (!DochoSync.isUntouched(here)) {
                                 changes += DochoSync.Change(CHAPTER, chapter.key, here, (chapter.modifiedAt * 1000).takeIf { it > 0 } ?: System.currentTimeMillis())
                             }
-                        record.value == here -> Unit
+                        DochoSync.sameProgress(record.value, here) -> Unit
                         // A device changed it after the server did, and it wasn't applied yet.
                         record.updatedAt > chapter.modifiedAt * 1000 + 999 -> obj(record.value)?.let { applyChapter(chapter, it) }
                         else -> changes += DochoSync.Change(CHAPTER, chapter.key, here, maxOf(chapter.modifiedAt * 1000, record.updatedAt + 1))

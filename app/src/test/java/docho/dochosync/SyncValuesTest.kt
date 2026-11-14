@@ -68,4 +68,29 @@ class SyncValuesTest {
         val behind = SyncValues.chapter("/s", read = false, bookmark = false, page = 4)
         SyncValues.mergeChapter(behind, remote, remoteBookmark = true) shouldBe remote
     }
+
+    @Test
+    fun `the later change wins by when it was read, even going back`() {
+        val further = SyncValues.chapter("/s", read = false, bookmark = false, page = 110, at = 200)
+        val back = SyncValues.chapter("/s", read = false, bookmark = false, page = 4, at = 300)
+        SyncValues.mergeChapter(further, back) shouldBe back
+        SyncValues.isBehind(back, further) shouldBe true
+        // Read earlier, so the further page stays
+        val stale = SyncValues.chapter("/s", read = false, bookmark = false, page = 4, at = 100)
+        SyncValues.mergeChapter(further, stale) shouldBe further
+        // Unread on purpose after it was read
+        val read = SyncValues.chapter("/s", read = true, bookmark = false, page = 0, at = 200)
+        val unread = SyncValues.chapter("/s", read = false, bookmark = false, page = 0, at = 300)
+        SyncValues.mergeChapter(read, unread) shouldBe unread
+    }
+
+    @Test
+    fun `without a time on one side, the stored time decides, else the furthest point`() {
+        val untimed = SyncValues.chapter("/s", read = false, bookmark = false, page = 110)
+        val back = SyncValues.chapter("/s", read = false, bookmark = false, page = 4, at = 300)
+        SyncValues.mergeChapter(untimed, back, localStored = 250) shouldBe back
+        SyncValues.mergeChapter(untimed, back, localStored = 350) shouldBe
+            SyncValues.chapter("/s", read = false, bookmark = false, page = 110, at = 300)
+        SyncValues.canonical(untimed) shouldBe """{"bookmark":false,"manga":"/s","page":110,"read":false}"""
+    }
 }

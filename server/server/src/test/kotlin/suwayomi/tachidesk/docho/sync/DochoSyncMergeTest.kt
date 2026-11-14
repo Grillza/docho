@@ -7,8 +7,11 @@ package suwayomi.tachidesk.docho.sync
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class DochoSyncMergeTest {
     private fun chapter(
@@ -16,6 +19,12 @@ class DochoSyncMergeTest {
         read: Boolean = false,
         bookmark: Boolean = false,
     ) = """{"bookmark":$bookmark,"manga":"/series/1","page":$page,"read":$read}"""
+
+    private fun timed(
+        page: Long,
+        at: Long,
+        read: Boolean = false,
+    ) = DochoSync.canonical(Json.parseToJsonElement(chapter(page, read).dropLast(1) + ",\"at\":$at}"))
 
     private fun merge(
         current: String,
@@ -60,6 +69,37 @@ class DochoSyncMergeTest {
     fun `nothing further on the server keeps its text`() {
         val current = chapter(110)
         assertEquals(current, DochoSync.mergeProgress("chapter", current, chapter(110)))
+    }
+
+    @Test
+    fun `going back on purpose later wins`() {
+        assertEquals(timed(4, at = 300), DochoSync.mergeProgress("chapter", timed(110, at = 200), timed(4, at = 300)))
+        assertEquals(timed(0, at = 300), DochoSync.mergeProgress("chapter", timed(0, at = 200, read = true), timed(0, at = 300)))
+    }
+
+    @Test
+    fun `an older page read earlier doesn't win`() {
+        assertEquals(timed(110, at = 200), DochoSync.mergeProgress("chapter", timed(110, at = 200), timed(4, at = 100)))
+    }
+
+    @Test
+    fun `a change with a time beats one without only if it came after that was stored`() {
+        // Stored at 250 by an app that puts no time on it; read at 300, so it's later.
+        assertEquals(timed(4, at = 300), DochoSync.mergeProgress("chapter", chapter(110), timed(4, at = 300), currentStored = 250))
+        // Stored at 350: it may have been read after 300, so the furthest point is kept, with the known time.
+        assertEquals(timed(110, at = 300), DochoSync.mergeProgress("chapter", chapter(110), timed(4, at = 300), currentStored = 350))
+        // Without times at all, the furthest point.
+        assertEquals(chapter(110), DochoSync.mergeProgress("chapter", chapter(110), chapter(4), currentStored = 1, incomingStored = 2))
+    }
+
+    @Test
+    fun `progress compares without its time, and behind means unread or an earlier page`() {
+        assertTrue(DochoSync.sameProgress(timed(4, at = 1), chapter(4)))
+        assertFalse(DochoSync.sameProgress(timed(4, at = 1), chapter(5)))
+        assertTrue(DochoSync.isBehind(chapter(4), chapter(110)))
+        assertTrue(DochoSync.isBehind(chapter(4), chapter(0, read = true)))
+        assertFalse(DochoSync.isBehind(chapter(0, read = true), chapter(110)))
+        assertFalse(DochoSync.isBehind(chapter(110), chapter(4)))
     }
 
     @Test

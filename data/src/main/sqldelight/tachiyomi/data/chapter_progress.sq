@@ -1,0 +1,33 @@
+-- When a chapter's read state, bookmark or page last changed on this device, in epoch milliseconds,
+-- for Dōchō Sync: between two devices, the later change wins, so going back or marking unread on
+-- purpose syncs, while an app that's only behind doesn't undo reading done elsewhere.
+-- The trigger stamps every change, whoever makes it (reader, chapter list, other syncs, backups);
+-- Dōchō Sync then sets the time of a change it brought from elsewhere (setProgressAt).
+CREATE TABLE chapter_progress(
+    chapter_id INTEGER NOT NULL PRIMARY KEY,
+    at INTEGER NOT NULL,
+    FOREIGN KEY(chapter_id) REFERENCES chapter (id)
+    ON DELETE CASCADE
+);
+
+CREATE TRIGGER chapter_progress_changed
+AFTER UPDATE OF user_read, user_bookmark, user_last_page_read ON chapter
+WHEN new.user_read IS NOT old.user_read
+    OR new.user_bookmark IS NOT old.user_bookmark
+    OR new.user_last_page_read IS NOT old.user_last_page_read
+BEGIN
+    INSERT OR REPLACE INTO chapter_progress(chapter_id, at)
+    VALUES (new.id, CAST(round((julianday('now') - 2440587.5) * 86400000) AS INTEGER));
+END;
+
+getProgressAtByMangaIds:
+SELECT CP.chapter_id, CP.at
+FROM chapter_progress CP
+JOIN chapter C ON C.id = CP.chapter_id
+WHERE C.manga_id IN :mangaIds;
+
+setProgressAt:
+INSERT OR REPLACE INTO chapter_progress(chapter_id, at) VALUES (:chapterId, :at);
+
+clearProgressAt:
+DELETE FROM chapter_progress WHERE chapter_id = :chapterId;

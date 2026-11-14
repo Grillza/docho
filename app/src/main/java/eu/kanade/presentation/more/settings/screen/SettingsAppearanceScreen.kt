@@ -351,6 +351,17 @@ object SettingsAppearanceScreen : SearchableSettings {
                     preference = uiPreferences.imagesInDescription,
                     title = stringResource(MR.strings.pref_display_images_description),
                 ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = uiPreferences.syncBannerSeconds,
+                    entries = listOf(5, 10, 15, 30, 60, 0).associateWith {
+                        if (it == 0) {
+                            stringResource(MR.strings.pref_docho_sync_banner_until_closed)
+                        } else {
+                            pluralStringResource(MR.plurals.docho_sync_banner_seconds, it, it)
+                        }
+                    },
+                    title = stringResource(MR.strings.pref_docho_sync_banner),
+                ),
             ),
         )
     }

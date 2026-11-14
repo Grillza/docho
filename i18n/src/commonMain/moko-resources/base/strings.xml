@@ -1324,6 +1324,26 @@
     <string name="docho_sync_failed">Last sync failed: %1$s</string>
     <string name="docho_sync_last">Last synced %1$s</string>
     <string name="docho_sync_never">Not synced yet</string>
+    <string name="docho_sync_conflict_title">Is this where you\'re up to?</string>
+    <string name="docho_sync_conflict_went_back_here">%1$s, %2$s: you went to %3$s here, but %4$s had %5$s.</string>
+    <string name="docho_sync_conflict_went_back_there">%1$s, %2$s: another device went to %3$s, but this device had %4$s.</string>
+    <string name="docho_sync_conflict_compare">Compare</string>
+    <string name="docho_sync_conflict_ignore">Ignore</string>
+    <string name="docho_sync_conflict_details">Reading progress</string>
+    <string name="docho_sync_conflict_now">Now: %1$s</string>
+    <string name="docho_sync_conflict_further">Further: %1$s, on %2$s, %3$s</string>
+    <string name="docho_sync_conflict_further_undated">Further: %1$s, on %2$s</string>
+    <string name="docho_sync_conflict_keep">Keep this</string>
+    <string name="docho_sync_conflict_use_further">Go to %1$s</string>
+    <string name="docho_sync_conflict_keep_all">Keep all</string>
+    <string name="docho_sync_progress_page">page %1$d</string>
+    <string name="docho_sync_progress_unread">unread</string>
+    <string name="docho_sync_progress_read">read</string>
+    <string name="docho_sync_device_this">this device</string>
+    <string name="docho_sync_device_server">Dōchō Server</string>
+    <string name="docho_sync_device_other">another device</string>
+    <string name="pref_docho_sync_banner">Sync banners stay for</string>
+    <string name="pref_docho_sync_banner_until_closed">Until closed</string>
 
     <!-- Docho: Kavita -->
     <string name="pref_category_kavita" translatable="false">Kavita</string>
