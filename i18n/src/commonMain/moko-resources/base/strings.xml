@@ -1325,7 +1325,6 @@
     <string name="docho_sync_last">Last synced %1$s</string>
     <string name="docho_sync_never">Not synced yet</string>
     <string name="docho_sync_conflict_title">Is this where you\'re up to?</string>
-    <string name="docho_sync_conflict_went_back_here">%1$s, %2$s: you went to %3$s here, but %4$s had %5$s.</string>
     <string name="docho_sync_conflict_went_back_there">%1$s, %2$s: another device went to %3$s, but this device had %4$s.</string>
     <string name="docho_sync_conflict_compare">Compare</string>
     <string name="docho_sync_conflict_ignore">Ignore</string>

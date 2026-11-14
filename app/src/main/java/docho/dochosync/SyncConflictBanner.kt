@@ -56,8 +56,9 @@ enum class SyncBannerPlace(val title: StringResource) {
 }
 
 /**
- * "Is this where you're up to?": shown at the top of the screen when Dōchō Sync took a later
- * change that went back (an earlier page, or unread) while further progress was elsewhere. Compare
+ * "Is this where you're up to?": shown at the top of the screen when another device's later
+ * change went back (an earlier page, or unread) from further progress this device had. Going back
+ * on this device is on purpose, so it isn't asked about. Compare
  * shows both and lets you keep either; Ignore keeps what's there. It hides itself after the time
  * set in Appearance, keeping what's there.
  */
@@ -105,7 +106,7 @@ fun SyncConflictBanner(
             Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
                 Text(stringResource(MR.strings.docho_sync_conflict_title), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    summary(first, deviceId),
+                    summary(first),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 4.dp, end = 8.dp),
                 )
@@ -187,25 +188,14 @@ fun SyncConflictBanner(
 }
 
 @Composable
-private fun summary(conflict: DochoSync.Conflict, deviceId: String): String =
-    if (conflict.keptHere) {
-        stringResource(
-            MR.strings.docho_sync_conflict_went_back_here,
-            conflict.seriesTitle,
-            conflict.chapterName,
-            progressText(conflict.kept),
-            deviceText(conflict.furtherDevice, deviceId),
-            progressText(conflict.further),
-        )
-    } else {
-        stringResource(
-            MR.strings.docho_sync_conflict_went_back_there,
-            conflict.seriesTitle,
-            conflict.chapterName,
-            progressText(conflict.kept),
-            progressText(conflict.further),
-        )
-    }
+private fun summary(conflict: DochoSync.Conflict): String =
+    stringResource(
+        MR.strings.docho_sync_conflict_went_back_there,
+        conflict.seriesTitle,
+        conflict.chapterName,
+        progressText(conflict.kept),
+        progressText(conflict.further),
+    )
 
 /** "page 5", "unread" or "read"; pages count from 1 here, from 0 in the records. */
 @Composable
