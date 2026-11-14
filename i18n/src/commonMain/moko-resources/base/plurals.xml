@@ -130,4 +130,12 @@
         <item quantity="one">Imported %1$d setting</item>
         <item quantity="other">Imported %1$d settings</item>
     </plurals>
+    <plurals name="docho_sync_banner_seconds">
+        <item quantity="one">%d second</item>
+        <item quantity="other">%d seconds</item>
+    </plurals>
+    <plurals name="docho_sync_conflict_more">
+        <item quantity="one">And %d more chapter.</item>
+        <item quantity="other">And %d more chapters.</item>
+    </plurals>
 </resources>

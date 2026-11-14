@@ -4,6 +4,7 @@ import android.content.Context
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import docho.dochosync.SyncValues.at
 import docho.dochosync.SyncValues.bool
 import docho.dochosync.SyncValues.long
 import docho.dochosync.SyncValues.string
@@ -99,6 +100,60 @@ class DochoSync(
     /** So an open reader doesn't later write its older page over what arrived. */
     val remoteProgress: SharedFlow<RemoteProgress> = mutableRemoteProgress.asSharedFlow()
 
+    /** A chapter's read state and page. */
+    data class Progress(val read: Boolean, val page: Int)
+
+    /**
+     * Progress that went back by a later change (going back a page, or marking unread) while
+     * further progress was elsewhere: right if it was on purpose, but worth asking about.
+     *
+     * [kept] is what the chapter now has everywhere; [further] is what it went back from, on
+     * [furtherDevice] (null for this device) at [furtherAt]. [keptHere] is whether the change
+     * that went back was made on this device.
+     */
+    data class Conflict(
+        val chapterId: Long,
+        val mangaId: Long,
+        val seriesTitle: String,
+        val chapterName: String,
+        val kept: Progress,
+        val further: Progress,
+        val furtherDevice: String?,
+        val furtherAt: Long?,
+        val keptHere: Boolean,
+    )
+
+    private val mutableConflicts = MutableStateFlow<List<Conflict>>(emptyList())
+
+    /** Conflicts not yet answered, for the "Is this where you're up to?" banner. */
+    val conflicts: StateFlow<List<Conflict>> = mutableConflicts.asStateFlow()
+
+    /** Conflicts found during the sync running now. */
+    private val found = mutableListOf<Conflict>()
+
+    /** Keeps what the chapters have now: the banner was dismissed or ignored. */
+    fun dismissConflicts(conflicts: Collection<Conflict> = mutableConflicts.value) {
+        val ids = conflicts.map { it.chapterId }.toSet()
+        mutableConflicts.value = mutableConflicts.value.filterNot { it.chapterId in ids }
+    }
+
+    /**
+     * Goes to the further progress of [conflict]. It's a change made here now, so it's the latest
+     * and syncs to the other devices.
+     */
+    suspend fun useFurther(conflict: Conflict) {
+        val further = conflict.further
+        chapterRepository.update(
+            ChapterUpdate(conflict.chapterId) {
+                read = further.read
+                lastPageRead = further.page
+            },
+        )
+        mutableRemoteProgress.tryEmit(RemoteProgress(conflict.chapterId, further.page, further.read))
+        dismissConflicts(listOf(conflict))
+        DochoSyncWorker.syncSoon(context)
+    }
+
     /** What was last synced (canonical values by record id) and records waiting to be applied. */
     @Serializable
     private data class State(
@@ -152,6 +207,7 @@ class DochoSync(
         var state = loadState()
         val me = preferences.deviceId()
         val firstSync = preferences.since.get() == 0L && state.synced.isEmpty()
+        found.clear()
         var since = preferences.since.get()
         val synced = state.synced.toMutableMap()
         val pending = state.pending.toMutableMap()
@@ -215,6 +271,10 @@ class DochoSync(
             }
             remote += page.changes
             since = page.seq
+            // What this device's later change went back from on the server
+            for (record in page.behind) {
+                conflictFromServer(record, sending)?.let { found += it }
+            }
         } while (page.more || outgoing.isNotEmpty())
         for (change in changes) {
             if (SyncValues.id(change.kind, change.key) in unsent) continue
@@ -249,6 +309,10 @@ class DochoSync(
 
         state = State(synced, pending)
         saveState(state)
+        if (found.isNotEmpty()) {
+            val chapters = found.map { it.chapterId }.toSet()
+            mutableConflicts.value = mutableConflicts.value.filterNot { it.chapterId in chapters } + found.distinctBy { it.chapterId }
+        }
         preferences.since.set(since)
         return Status.Done(sent = changes.size, received = received)
     }
@@ -269,6 +333,7 @@ class DochoSync(
         val categories = if (ids.isEmpty()) emptyMap() else categoryRepository.getCategoriesByMangaIds(ids)
         val chapters = if (ids.isEmpty()) emptyMap() else chapterRepository.getChaptersByMangaIds(ids)
         val history = if (ids.isEmpty()) emptyMap() else historyRepository.getHistoryByMangaIds(ids)
+        val progressAt = if (ids.isEmpty()) emptyMap() else chapterRepository.getProgressAtByMangaIds(ids)
         val mangaUrlByChapter = HashMap<String, String>()
         for (manga in favorites) {
             put(
@@ -288,7 +353,7 @@ class DochoSync(
                 put(
                     SyncValues.CHAPTER,
                     key,
-                    SyncValues.chapter(manga.url, chapter.read, chapter.bookmark, chapter.lastPageRead.toLong()),
+                    SyncValues.chapter(manga.url, chapter.read, chapter.bookmark, chapter.lastPageRead.toLong(), progressAt[chapter.id]),
                 )
             }
             for (entry in history[manga.id].orEmpty()) {
@@ -365,12 +430,16 @@ class DochoSync(
             SyncValues.CHAPTER -> {
                 if (value == null) return true
                 val chapter = findChapter(record.key, value.string("manga")) ?: return false
-                // Never goes back: where this device is further, it keeps its own and sends it next sync.
-                val merged = SyncValues.mergeChapter(
-                    SyncValues.chapter("", chapter.read, chapter.bookmark, chapter.lastPageRead.toLong()),
-                    value,
-                    remoteBookmark = !firstSync,
-                )
+                val localAt = chapterRepository.getProgressAtByMangaIds(listOf(chapter.mangaId))[chapter.id]
+                val local = SyncValues.chapter("", chapter.read, chapter.bookmark, chapter.lastPageRead.toLong(), localAt)
+                val merged = when {
+                    // Both devices' reading, put together by when it was read, else the furthest point.
+                    firstSync -> SyncValues.mergeChapter(local, value, remoteStored = record.updatedAt)
+                    // Changed here after that, while syncing: kept, and it goes up next sync.
+                    SyncValues.surelyAfter(localAt, value.at(), record.updatedAt) -> return true
+                    // The server has already put both together.
+                    else -> value
+                }
                 val read = merged.bool("read")
                 val page = (merged.long("page") ?: 0).toInt()
                 chapterRepository.update(
@@ -380,6 +449,12 @@ class DochoSync(
                         lastPageRead = page
                     },
                 )
+                // When it was read where it was read, not now; so the record here matches the server's.
+                chapterRepository.setProgressAt(chapter.id, merged.at())
+                if (!firstSync && SyncValues.isBehind(merged, local)) {
+                    conflict(chapter, kept = merged, further = local, furtherDevice = null, furtherAt = localAt, keptHere = false)
+                        ?.let { found += it }
+                }
                 if (read != chapter.read || page != chapter.lastPageRead) {
                     mutableRemoteProgress.tryEmit(RemoteProgress(chapter.id, page, read))
                 }
@@ -511,6 +586,45 @@ class DochoSync(
 
     private suspend fun findCategory(name: String): Category? =
         categoryRepository.getAll().find { it.name == name && !it.isSystemCategory }
+
+    private suspend fun conflict(
+        chapter: Chapter,
+        kept: JsonObject,
+        further: JsonObject,
+        furtherDevice: String?,
+        furtherAt: Long?,
+        keptHere: Boolean,
+    ): Conflict? {
+        val manga = mangaRepository.getMangaById(chapter.mangaId)
+        fun JsonObject.progress() = Progress(bool("read"), (long("page") ?: 0).toInt())
+        return Conflict(
+            chapterId = chapter.id,
+            mangaId = chapter.mangaId,
+            seriesTitle = manga.title,
+            chapterName = chapter.name,
+            kept = kept.progress(),
+            further = further.progress(),
+            furtherDevice = furtherDevice,
+            furtherAt = furtherAt,
+            keptHere = keptHere,
+        )
+    }
+
+    /** A record the server says this device's later change went back from. */
+    private suspend fun conflictFromServer(record: SyncRecord, sent: List<SyncRecord>): Conflict? {
+        if (record.kind != SyncValues.CHAPTER) return null
+        val further = record.value as? JsonObject ?: return null
+        val kept = sent.find { it.kind == record.kind && it.key == record.key }?.value as? JsonObject ?: return null
+        val chapter = findChapter(record.key, further.string("manga")) ?: return null
+        return conflict(
+            chapter,
+            kept = kept,
+            further = further,
+            furtherDevice = record.device,
+            furtherAt = further.at() ?: record.updatedAt,
+            keptHere = true,
+        )
+    }
 
     private suspend fun findChapter(key: String, mangaUrl: String?): Chapter? {
         val (sourceId, url) = SyncValues.parseKey(key) ?: return null

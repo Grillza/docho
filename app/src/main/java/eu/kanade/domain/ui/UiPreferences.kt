@@ -43,6 +43,9 @@ class UiPreferences(
 
     val themeDarkAmoled: Preference<Boolean> = preferenceStore.getBoolean("pref_theme_dark_amoled_key", false)
 
+    /** Seconds a Dōchō Sync banner (such as "Is this where you're up to?") stays before it hides; 0 keeps it until closed. */
+    val syncBannerSeconds: Preference<Int> = preferenceStore.getInt("docho_sync_banner_seconds", 10)
+
     /** The user's own themes, at most [CustomTheme.MAX]. */
     val customThemes: Preference<List<CustomTheme>> = preferenceStore.getObjectFromString(
         key = "custom_themes",

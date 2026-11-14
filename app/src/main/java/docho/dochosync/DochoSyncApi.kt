@@ -158,4 +158,6 @@ data class SyncPage(
     val seq: Long,
     val more: Boolean = false,
     val changes: List<SyncRecord> = emptyList(),
+    /** Further progress on the server that this device's later change went back from (Dōchō Server 0.32.9). */
+    val behind: List<SyncRecord> = emptyList(),
 )

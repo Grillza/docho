@@ -313,6 +313,15 @@ class MainActivity : BaseActivity() {
                                     .background(MaterialTheme.colorScheme.surfaceContainer),
                             )
                         }
+
+                        // Dōchō Sync: "Is this where you're up to?"
+                        val graph = remember { context.appGraph }
+                        docho.dochosync.SyncConflictBanner(
+                            dochoSync = graph.dochoSync,
+                            uiPreferences = graph.uiPreferences,
+                            deviceId = remember { graph.dochoSyncPreferences.deviceId() },
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
                     }
                 }
 

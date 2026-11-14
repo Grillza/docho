@@ -54,9 +54,9 @@ import javax.crypto.spec.PBEKeySpec
  *
  * Every record is a kind, a key and a JSON value (null once deleted). Devices send what changed
  * and get back what other devices changed since they last asked. The newest write wins, except for
- * reading progress: what a device sends is put together with what the server has, keeping the
- * furthest point ([mergeProgress]), and where the server's is further it goes back to the device.
- * So a device that was asleep, reinstalled or updated can't undo reading done elsewhere.
+ * reading progress ([mergeProgress]): the change that was read later wins, by the time the apps put
+ * on it, and where that can't be told the furthest point is kept. So a device that was asleep,
+ * reinstalled or updated can't undo reading done elsewhere, and going back on purpose still syncs.
  *
  * The apps sync through the server's own authentication and send no token: they sync as the
  * server's account ([serverAccount]). Tokens from apps before 0.32.1, which made accounts with
@@ -353,7 +353,8 @@ object DochoSync {
         if (changes.size > MAX_CHANGES) throw ApiError(HttpStatus.CONTENT_TOO_LARGE, "Too many changes at once")
         val parsed = changes.map(::parseChange)
         return transaction {
-            val stored = store(userId, parsed, device, since)
+            val behind = mutableListOf<JsonObject>()
+            val stored = store(userId, parsed, device, since, behind)
             // The server's own read progress follows the linked account (SyncBridge).
             if (SyncBridge.isLinked(userId)) {
                 val corrections = SyncBridge.fromDevices(stored)
@@ -373,6 +374,8 @@ object DochoSync {
                 put("accepted", stored.count { it.device == device })
                 put("seq", if (more) page.last()[DochoSyncRecordTable.seq] else maxOf(seq, since))
                 put("more", more)
+                // Progress the device went back from, by its own later change: it can ask if that's right.
+                if (behind.isNotEmpty()) put("behind", JsonArray(behind))
                 put(
                     "changes",
                     buildJsonArray {
@@ -418,17 +421,19 @@ object DochoSync {
      * this object's lock. Returns the changes that were stored.
      *
      * [since] is what the device has caught up to, or null for the server's own records. Reading
-     * progress from a device is never taken as it is: a device's updatedAt is when it synced rather
-     * than when it read, and after an update, a reinstall or an open reader holding an old page it
-     * can send progress that's behind. So its progress is put together with the server's, keeping
-     * the furthest point ([mergeProgress]). Where the server's is further, its record is given a new
-     * seq (and, if it was this device's own, the merged device) so this response takes it back down.
+     * progress is put together with the server's ([mergeProgress]): the later change wins where its
+     * time ("at", when it was read) shows it's later, and otherwise the furthest point is kept, so an
+     * app that's behind (after an update, say) can't undo reading done elsewhere, while going back or
+     * marking unread on purpose still syncs. Where the server's is kept, its record is given a new seq
+     * (and, if it was this device's own, the merged device) so this response takes it back down.
+     * A device's later change that went back from further progress is added to [behind].
      */
     private fun store(
         userId: Int,
         changes: List<Change>,
         device: String,
         since: Long? = null,
+        behind: MutableList<JsonObject>? = null,
     ): List<Stored> {
         var seq = currentSeq(userId)
         val stored = mutableListOf<Stored>()
@@ -443,12 +448,21 @@ object DochoSync {
             if (current != null && currentValue != null && change.value != null && since != null && change.kind in MERGED_KINDS) {
                 val currentSeq = current[DochoSyncRecordTable.seq]
                 val currentDevice = current[DochoSyncRecordTable.device]
+                val currentAt = current[DochoSyncRecordTable.updatedAt]
                 // A bookmark the device had seen and changed is its call; one it hadn't seen is kept.
                 val seen = currentSeq <= since || currentDevice == device
-                val merged = mergeProgress(change.kind, currentValue, change.value, deviceDecidesBookmark = seen)
+                val merged =
+                    mergeProgress(
+                        change.kind,
+                        currentValue,
+                        change.value,
+                        currentStored = currentAt,
+                        incomingStored = change.updatedAt,
+                        deviceDecidesBookmark = seen,
+                    )
                 if (merged == currentValue) {
-                    // The server's is further. After [since] this response takes it anyway; if not, send it again.
-                    if (merged != change.value && currentSeq <= since) {
+                    // The server's is kept. After [since] this response takes it anyway; if not, send it again.
+                    if (!sameProgress(merged, change.value) && currentSeq <= since) {
                         seq++
                         DochoSyncRecordTable.update({
                             (DochoSyncRecordTable.user eq userId) and (DochoSyncRecordTable.kind eq change.kind) and (DochoSyncRecordTable.key eq change.key)
@@ -460,8 +474,19 @@ object DochoSync {
                     }
                     continue
                 }
+                if (change.kind == "chapter" && merged == change.value && isBehind(change.value, currentValue)) {
+                    behind?.add(
+                        buildJsonObject {
+                            put("kind", change.kind)
+                            put("key", change.key)
+                            put("value", Json.parseToJsonElement(currentValue))
+                            put("updatedAt", currentAt)
+                            put("device", currentDevice)
+                        },
+                    )
+                }
                 seq++
-                val at = maxOf(change.updatedAt, current[DochoSyncRecordTable.updatedAt] + 1)
+                val at = maxOf(change.updatedAt, currentAt + 1)
                 val from = if (merged == change.value) device else MERGED_DEVICE
                 DochoSyncRecordTable.upsert {
                     it[user] = userId
@@ -502,15 +527,22 @@ object DochoSync {
     }
 
     /**
-     * Reading progress from two places put together, keeping the furthest point: read on either is
-     * read, and the further page is kept. The bookmark is [incoming]'s when [deviceDecidesBookmark]
-     * (it had seen [current]'s), else bookmarked on either is bookmarked. For history, the latest
-     * read. Returns canonical text, the same as [current] or [incoming] where one already says it all.
+     * Reading progress from two places put together; the same rule as the apps' SyncValues.mergeChapter.
+     *
+     * A chapter record may say when its progress changed ("at", epoch ms). Where one surely changed
+     * after the other, it wins whole, even going back a page or to unread: its at is after the
+     * other's, or, where the other has none, after the other was stored ([currentStored] /
+     * [incomingStored], which can't be before it changed). Otherwise the furthest point is kept: read
+     * on either is read and the further page is kept, with the later known at. The bookmark is then
+     * [incoming]'s when [deviceDecidesBookmark], else bookmarked on either is bookmarked.
+     * For history, the latest read. Returns canonical text, [current] or [incoming] where one says it all.
      */
     fun mergeProgress(
         kind: String,
         current: String,
         incoming: String,
+        currentStored: Long? = null,
+        incomingStored: Long? = null,
         deviceDecidesBookmark: Boolean = false,
     ): String {
         val here = parseObject(current) ?: return incoming
@@ -519,23 +551,64 @@ object DochoSync {
         fun JsonObject.number(name: String) = (this[name] as? JsonPrimitive)?.longOrNull ?: 0L
         return when (kind) {
             "chapter" -> {
+                val hereAt = here.at()
+                val thereAt = there.at()
+                if (surelyAfter(thereAt, hereAt, currentStored)) return incoming
+                if (surelyAfter(hereAt, thereAt, incomingStored)) return current
                 val read = here.flag("read") || there.flag("read")
                 val bookmark = if (deviceDecidesBookmark) there.flag("bookmark") else here.flag("bookmark") || there.flag("bookmark")
+                val at = listOfNotNull(hereAt, thereAt).maxOrNull()
                 val merged =
-                    there +
+                    there - "at" +
                         mapOf(
                             "read" to JsonPrimitive(read),
                             "bookmark" to JsonPrimitive(bookmark),
                             // As the apps write it: the page is 0 once read.
                             "page" to JsonPrimitive(if (read) 0L else maxOf(here.number("page"), there.number("page"))),
-                        )
+                        ) + (if (at != null) mapOf("at" to JsonPrimitive(at)) else emptyMap())
                 val text = canonical(JsonObject(merged))
-                // Where the result says the same as what was there, keep that text.
-                if (text == canonical(here)) current else text
+                when (text) {
+                    canonical(here) -> current
+                    canonical(there) -> incoming
+                    else -> text
+                }
             }
             "history" -> if (there.number("readAt") > here.number("readAt")) incoming else current
             else -> incoming
         }
+    }
+
+    /** When a chapter record says its progress changed, if it does. */
+    private fun JsonObject.at(): Long? = (this["at"] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull?.takeIf { it > 0 }
+
+    /** Whether a change at [at] surely came after the other's, known by its [otherAt] or else by when it was stored. */
+    private fun surelyAfter(
+        at: Long?,
+        otherAt: Long?,
+        otherStored: Long?,
+    ): Boolean = at != null && if (otherAt != null) at > otherAt else otherStored != null && at > otherStored
+
+    /** Whether two chapter records say the same read state, bookmark and page, whenever they changed. */
+    fun sameProgress(
+        a: String?,
+        b: String?,
+    ): Boolean {
+        val one = parseObject(a) ?: return a == b
+        val two = parseObject(b) ?: return false
+        return canonical(JsonObject(one - "at")) == canonical(JsonObject(two - "at"))
+    }
+
+    /** Whether chapter record [value] is behind [other]: unread where it's read, or on an earlier page. */
+    fun isBehind(
+        value: String?,
+        other: String?,
+    ): Boolean {
+        val one = parseObject(value) ?: return false
+        val two = parseObject(other) ?: return false
+        fun JsonObject.flag(name: String) = (this[name] as? JsonPrimitive)?.booleanOrNull == true
+        fun JsonObject.number(name: String) = (this[name] as? JsonPrimitive)?.longOrNull ?: 0L
+        if (one.flag("read")) return false
+        return two.flag("read") || two.number("page") > one.number("page")
     }
 
     private fun parseObject(value: String?): JsonObject? = value?.let { runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull() }

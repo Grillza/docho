@@ -47,11 +47,18 @@ object SyncValues {
 
     fun category() = JsonObject(emptyMap())
 
-    fun chapter(mangaUrl: String, read: Boolean, bookmark: Boolean, page: Long) = obj(
-        "bookmark" to JsonPrimitive(bookmark),
-        "manga" to JsonPrimitive(mangaUrl),
-        "page" to JsonPrimitive(if (read) 0 else page),
-        "read" to JsonPrimitive(read),
+    /**
+     * A chapter's progress. [at] is when it last changed on the device that read it (epoch ms), left
+     * out where that isn't known (progress from before 0.32.9, or from an older app).
+     */
+    fun chapter(mangaUrl: String, read: Boolean, bookmark: Boolean, page: Long, at: Long? = null) = JsonObject(
+        buildMap {
+            if (at != null && at > 0) put("at", JsonPrimitive(at))
+            put("bookmark", JsonPrimitive(bookmark))
+            put("manga", JsonPrimitive(mangaUrl))
+            put("page", JsonPrimitive(if (read) 0 else page))
+            put("read", JsonPrimitive(read))
+        },
     )
 
     fun history(mangaUrl: String, readAt: Long) = obj(
@@ -105,20 +112,45 @@ object SyncValues {
     fun JsonObject.strings(name: String): List<String> =
         (get(name) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
 
+    /** When a chapter record says its progress changed, if it does. */
+    fun JsonObject.at(): Long? = long("at")?.takeIf { it > 0 }
+
     /**
-     * A chapter's state here and on the server put together, keeping the furthest point: read
-     * anywhere is read, and the further page is kept. The bookmark is [remote]'s when
-     * [remoteBookmark], else bookmarked on either is bookmarked (a first sync).
+     * Whether a change at [at] surely came after the other's: after the other's own time, or, where
+     * that isn't known, after the other was stored on the server ([otherStored], which can't be
+     * before it changed). Dōchō Server's `surelyAfter`.
      */
-    fun mergeChapter(local: JsonObject, remote: JsonObject, remoteBookmark: Boolean = false): JsonObject {
+    fun surelyAfter(at: Long?, otherAt: Long?, otherStored: Long?): Boolean =
+        at != null && if (otherAt != null) at > otherAt else otherStored != null && at > otherStored
+
+    /**
+     * A chapter's progress here and on the server put together; Dōchō Server's `mergeProgress`.
+     * Where one surely changed after the other ([surelyAfter]) it wins whole, even going back.
+     * Otherwise the furthest point is kept: read anywhere is read, the further page, the later
+     * known time. The bookmark is then [remote]'s when [remoteBookmark], else bookmarked on either.
+     */
+    fun mergeChapter(
+        local: JsonObject,
+        remote: JsonObject,
+        remoteBookmark: Boolean = false,
+        localStored: Long? = null,
+        remoteStored: Long? = null,
+    ): JsonObject {
+        if (surelyAfter(remote.at(), local.at(), localStored)) return remote
+        if (surelyAfter(local.at(), remote.at(), remoteStored)) return local
         val read = local.bool("read") || remote.bool("read")
         return chapter(
             mangaUrl = remote.string("manga") ?: local.string("manga").orEmpty(),
             read = read,
             bookmark = if (remoteBookmark) remote.bool("bookmark") else local.bool("bookmark") || remote.bool("bookmark"),
             page = maxOf(local.long("page") ?: 0, remote.long("page") ?: 0),
+            at = listOfNotNull(local.at(), remote.at()).maxOrNull(),
         )
     }
+
+    /** Whether chapter progress [value] is behind [other]: unread where it's read, or on an earlier page. */
+    fun isBehind(value: JsonObject, other: JsonObject): Boolean =
+        !value.bool("read") && (other.bool("read") || (other.long("page") ?: 0) > (value.long("page") ?: 0))
 
     fun id(kind: String, key: String) = "$kind\t$key"
 }

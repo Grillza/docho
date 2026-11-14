@@ -29,6 +29,15 @@ interface ChapterRepository {
 
     suspend fun getChaptersByMangaIds(mangaIds: List<Long>): Map<Long, List<Chapter>>
 
+    /**
+     * When each chapter's read state, bookmark or page last changed here (epoch milliseconds), by
+     * chapter id; chapters with no known time are missing. Every change is stamped as it's made.
+     */
+    suspend fun getProgressAtByMangaIds(mangaIds: List<Long>): Map<Long, Long>
+
+    /** Sets when a chapter's progress changed, for a change brought from elsewhere; null if not known. */
+    suspend fun setProgressAt(chapterId: Long, at: Long?)
+
     suspend fun getChapterSummaryByMangaId(mangaId: Long): ChapterSummary
 
     suspend fun getScanlatorsByMangaId(mangaId: Long): List<String>

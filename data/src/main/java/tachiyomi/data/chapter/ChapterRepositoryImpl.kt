@@ -99,6 +99,19 @@ class ChapterRepositoryImpl(
         }
     }
 
+    override suspend fun getProgressAtByMangaIds(mangaIds: List<Long>): Map<Long, Long> =
+        mangaIds.chunked(500).flatMap { ids ->
+            database.chapter_progressQueries.getProgressAtByMangaIds(ids).awaitAsList()
+        }.associate { it.chapter_id to it.at }
+
+    override suspend fun setProgressAt(chapterId: Long, at: Long?) {
+        if (at == null) {
+            database.chapter_progressQueries.clearProgressAt(chapterId)
+        } else {
+            database.chapter_progressQueries.setProgressAt(chapterId, at)
+        }
+    }
+
     private suspend fun partialUpdate(vararg chapterUpdates: ChapterUpdate) {
         database.transaction {
             chapterUpdates.forEach { chapterUpdate ->
