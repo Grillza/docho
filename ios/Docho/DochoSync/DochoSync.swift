@@ -276,12 +276,16 @@ enum SyncValues {
         value == value.rounded() && abs(value) < 1e15 ? String(Int64(value)) : String(value)
     }
 
-    /// A chapter's state on two devices put together, for a first sync: read anywhere is read.
-    static func mergeChapter(local: SyncJSON, remote: SyncJSON) -> SyncJSON {
+    /// A chapter's state here and on the server put together, keeping the furthest point: read
+    /// anywhere is read, and the further page is kept. The bookmark is `remote`'s when
+    /// `remoteBookmark`, else bookmarked on either is bookmarked (a first sync).
+    static func mergeChapter(local: SyncJSON, remote: SyncJSON, remoteBookmark: Bool = false) -> SyncJSON {
         chapter(
             mangaURL: remote["manga"]?.string ?? local["manga"]?.string ?? "",
             read: (local["read"]?.bool ?? false) || (remote["read"]?.bool ?? false),
-            bookmark: (local["bookmark"]?.bool ?? false) || (remote["bookmark"]?.bool ?? false),
+            bookmark: remoteBookmark
+                ? (remote["bookmark"]?.bool ?? false)
+                : (local["bookmark"]?.bool ?? false) || (remote["bookmark"]?.bool ?? false),
             page: max(local["page"]?.int ?? 0, remote["page"]?.int ?? 0)
         )
     }
@@ -436,9 +440,10 @@ final class DochoSyncClient {
 
 /// Runs a sync: works out what changed here by comparing every record with how it was when last
 /// synced, sends that, and applies what other devices changed. The server keeps the newest write of
-/// each record, except that reading progress sent without having seen another device's is put
-/// together with it there, keeping the furthest page. The first sync of a device merges too, so
-/// neither device's reading is lost.
+/// each record, except reading progress, where the furthest point is kept: progress sent is put
+/// together with the server's, and progress coming down with this device's, so an app that's behind
+/// (after an update, say) takes the server's rather than undoing it. The first sync of a device
+/// merges too, so neither device's reading is lost.
 @MainActor
 @Observable
 final class DochoSync {
@@ -469,6 +474,8 @@ final class DochoSync {
     @ObservationIgnored private var running: Task<Status, Never>?
     @ObservationIgnored private let log = Logger(subsystem: "io.github.grillza.docho", category: "docho-sync")
     private static let batch = 5_000
+    /// Reading progress, where the furthest point is kept.
+    private static let progress: Set<String> = [SyncValues.chapter, SyncValues.history]
 
     private struct State: Codable {
         var synced: [String: String] = [:]
@@ -651,7 +658,12 @@ final class DochoSync {
         for id in await applyAll(Array(state.pending.values), firstSync: false, added: &none) { state.pending[id] = nil }
         let after = try await snapshot()
         for record in theirs where state.pending[record.id] == nil {
-            state.synced[record.id] = after[record.id]?.value.canonical
+            if after[record.id] != nil, Self.progress.contains(record.kind), let value = record.value, !record.isDeleted {
+                // What the server has: where this device kept further progress, it differs and goes up next sync.
+                state.synced[record.id] = value.canonical
+            } else {
+                state.synced[record.id] = after[record.id]?.value.canonical
+            }
         }
 
         saveState(state)
@@ -737,12 +749,12 @@ final class DochoSync {
         case SyncValues.chapter:
             guard let value else { return true }
             guard let chapter = try await findChapter(record.key, mangaURL: value["manga"]?.string) else { return false }
-            let merged = firstSync
-                ? SyncValues.mergeChapter(
-                    local: SyncValues.chapter(mangaURL: "", read: chapter.read, bookmark: chapter.bookmark, page: Int64(chapter.lastPageRead)),
-                    remote: value
-                )
-                : value
+            // Never goes back: where this device is further, it keeps its own and sends it next sync.
+            let merged = SyncValues.mergeChapter(
+                local: SyncValues.chapter(mangaURL: "", read: chapter.read, bookmark: chapter.bookmark, page: Int64(chapter.lastPageRead)),
+                remote: value,
+                remoteBookmark: !firstSync
+            )
             let read = merged["read"]?.bool ?? false
             let bookmark = merged["bookmark"]?.bool ?? false
             let page = Int(merged["page"]?.int ?? 0)

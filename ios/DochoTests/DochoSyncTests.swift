@@ -37,4 +37,15 @@ final class DochoSyncTests: XCTestCase {
         XCTAssertEqual(SyncValues.parseKey("123|/a|b")?.1, "/a|b")
         XCTAssertNil(SyncValues.parseKey("nope"))
     }
+
+    func testProgressComingDownNeverTakesTheDeviceBack() {
+        let local = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: true, page: 120)
+        let remote = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 110)
+        XCTAssertEqual(
+            SyncValues.mergeChapter(local: local, remote: remote, remoteBookmark: true),
+            SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 120)
+        )
+        let behind = SyncValues.chapter(mangaURL: "/s", read: false, bookmark: false, page: 4)
+        XCTAssertEqual(SyncValues.mergeChapter(local: behind, remote: remote, remoteBookmark: true), remote)
+    }
 }
