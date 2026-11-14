@@ -20,7 +20,7 @@ class DochoSyncMergeTest {
     private fun merge(
         current: String,
         incoming: String,
-    ) = DochoSync.mergeUnseen("chapter", current, incoming)
+    ) = DochoSync.mergeProgress("chapter", current, incoming)
 
     @Test
     fun `a stale page doesn't undo a later one`() {
@@ -44,10 +44,29 @@ class DochoSyncMergeTest {
     }
 
     @Test
+    fun `an app that's behind after an update doesn't undo progress it had seen`() {
+        // The app had seen page 110 and sends its older page 4: the server keeps 110.
+        assertEquals(chapter(110), DochoSync.mergeProgress("chapter", chapter(110), chapter(4), deviceDecidesBookmark = true))
+        assertEquals(chapter(0, read = true), DochoSync.mergeProgress("chapter", chapter(0, read = true), chapter(0), deviceDecidesBookmark = true))
+    }
+
+    @Test
+    fun `a bookmark removed on a device that had seen it stays removed`() {
+        assertEquals(chapter(40), DochoSync.mergeProgress("chapter", chapter(40, bookmark = true), chapter(40), deviceDecidesBookmark = true))
+        assertEquals(chapter(40, bookmark = true), DochoSync.mergeProgress("chapter", chapter(40, bookmark = true), chapter(40)))
+    }
+
+    @Test
+    fun `nothing further on the server keeps its text`() {
+        val current = chapter(110)
+        assertEquals(current, DochoSync.mergeProgress("chapter", current, chapter(110)))
+    }
+
+    @Test
     fun `history keeps the latest read`() {
         val earlier = """{"manga":"/series/1","readAt":100}"""
         val later = """{"manga":"/series/1","readAt":200}"""
-        assertEquals(later, DochoSync.mergeUnseen("history", later, earlier))
-        assertEquals(later, DochoSync.mergeUnseen("history", earlier, later))
+        assertEquals(later, DochoSync.mergeProgress("history", later, earlier))
+        assertEquals(later, DochoSync.mergeProgress("history", earlier, later))
     }
 }

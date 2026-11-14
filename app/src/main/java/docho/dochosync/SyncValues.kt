@@ -105,13 +105,17 @@ object SyncValues {
     fun JsonObject.strings(name: String): List<String> =
         (get(name) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
 
-    /** A chapter's state on two devices put together, for a first sync: read anywhere is read. */
-    fun mergeChapter(local: JsonObject, remote: JsonObject): JsonObject {
+    /**
+     * A chapter's state here and on the server put together, keeping the furthest point: read
+     * anywhere is read, and the further page is kept. The bookmark is [remote]'s when
+     * [remoteBookmark], else bookmarked on either is bookmarked (a first sync).
+     */
+    fun mergeChapter(local: JsonObject, remote: JsonObject, remoteBookmark: Boolean = false): JsonObject {
         val read = local.bool("read") || remote.bool("read")
         return chapter(
             mangaUrl = remote.string("manga") ?: local.string("manga").orEmpty(),
             read = read,
-            bookmark = local.bool("bookmark") || remote.bool("bookmark"),
+            bookmark = if (remoteBookmark) remote.bool("bookmark") else local.bool("bookmark") || remote.bool("bookmark"),
             page = maxOf(local.long("page") ?: 0, remote.long("page") ?: 0),
         )
     }

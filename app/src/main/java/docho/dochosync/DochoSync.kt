@@ -51,8 +51,10 @@ import kotlin.time.Instant
  *
  * Each sync works out what changed here by comparing every record with how it was when last
  * synced, sends that, and applies what other devices changed. The server keeps the newest write
- * of each record, except that reading progress sent without having seen another device's is put
- * together with it there, keeping the furthest page. The very first sync of a device merges too,
+ * of each record, except reading progress, where the furthest point is kept: progress sent here is
+ * put together with the server's, and progress coming down is put together with this device's, so
+ * an app that's behind (after an update, say) takes the server's rather than undoing it. The very
+ * first sync of a device merges too,
  * so neither device's reading is lost: a chapter read on either is read, the library and
  * categories are joined.
  */
@@ -237,7 +239,12 @@ class DochoSync(
             val id = SyncValues.id(record.kind, record.key)
             if (id in pending) continue
             val here = after[id]
-            if (here == null) synced.remove(id) else synced[id] = SyncValues.canonical(here.second)
+            when {
+                here == null -> synced.remove(id)
+                // What the server has: where this device kept further progress, it differs and goes up next sync.
+                record.kind in PROGRESS && !record.isDeleted -> synced[id] = SyncValues.canonical(record.value)
+                else -> synced[id] = SyncValues.canonical(here.second)
+            }
         }
 
         state = State(synced, pending)
@@ -358,14 +365,12 @@ class DochoSync(
             SyncValues.CHAPTER -> {
                 if (value == null) return true
                 val chapter = findChapter(record.key, value.string("manga")) ?: return false
-                val merged = if (firstSync) {
-                    SyncValues.mergeChapter(
-                        SyncValues.chapter("", chapter.read, chapter.bookmark, chapter.lastPageRead.toLong()),
-                        value,
-                    )
-                } else {
-                    value
-                }
+                // Never goes back: where this device is further, it keeps its own and sends it next sync.
+                val merged = SyncValues.mergeChapter(
+                    SyncValues.chapter("", chapter.read, chapter.bookmark, chapter.lastPageRead.toLong()),
+                    value,
+                    remoteBookmark = !firstSync,
+                )
                 val read = merged.bool("read")
                 val page = (merged.long("page") ?: 0).toInt()
                 chapterRepository.update(
@@ -525,5 +530,8 @@ class DochoSync(
 
     private companion object {
         const val BATCH = 5_000
+
+        /** Reading progress, where the furthest point is kept. */
+        val PROGRESS = setOf(SyncValues.CHAPTER, SyncValues.HISTORY)
     }
 }

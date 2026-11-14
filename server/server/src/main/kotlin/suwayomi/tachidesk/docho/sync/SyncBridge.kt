@@ -69,7 +69,8 @@ import kotlin.time.Duration.Companion.seconds
  * - To the apps: every few seconds the server looks for chapters read in the WebUI and writes
  *   them as records from the device "docho-server". Edited series details go as "details" records.
  *
- * The newest change wins either way, as between devices.
+ * The newest change wins either way, as between devices, except that reading progress keeps the
+ * furthest point ([DochoSync.mergeProgress]).
  */
 object SyncBridge {
     const val DEVICE = "docho-server"
@@ -279,8 +280,8 @@ object SyncBridge {
 
     /**
      * Applies what the linked account's devices just sent to the server's own chapters and library.
-     * Runs inside [DochoSync.sync]'s transaction. Returns records to store back, where the server
-     * changed a chapter after the device did.
+     * Runs inside [DochoSync.sync]'s transaction. Returns records to store back, where the server's
+     * own reading of a chapter is further than what the device sent.
      */
     fun fromDevices(stored: List<DochoSync.Stored>): List<DochoSync.Change> {
         val corrections = mutableListOf<DochoSync.Change>()
@@ -300,11 +301,11 @@ object SyncBridge {
                         val chapter = findChapter(source, value.string("manga") ?: continue, url) ?: continue
                         val here = chapter.value()
                         if (here == change.value) continue
-                        val serverIsNewer = chapter.modifiedAt * 1000 > change.updatedAt && !DochoSync.isUntouched(here)
-                        if (serverIsNewer) {
-                            corrections += DochoSync.Change(CHAPTER, chapter.key, here, change.updatedAt + 1)
-                        } else {
-                            applyChapter(chapter, value)
+                        // The furthest point wins, as between devices; the bookmark is the device's.
+                        val merged = DochoSync.mergeProgress(CHAPTER, here, change.value!!, deviceDecidesBookmark = true)
+                        if (merged != here) obj(merged)?.let { applyChapter(chapter, it) }
+                        if (merged != change.value) {
+                            corrections += DochoSync.Change(CHAPTER, chapter.key, merged, change.updatedAt + 1)
                         }
                     }
                     HISTORY -> {
