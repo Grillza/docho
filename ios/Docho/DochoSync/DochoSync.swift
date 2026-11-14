@@ -351,8 +351,6 @@ struct SyncPage: Sendable {
     var seq: Int64
     var more: Bool
     var changes: [SyncRecord]
-    /// Further progress on the server that this device's later change went back from (Dōchō Server 0.32.9).
-    var behind: [SyncRecord] = []
 }
 
 /// Talks to the Dōchō Sync built into Dōchō Server, through the server's own authentication.
@@ -429,7 +427,7 @@ final class DochoSyncClient {
         }
         return SyncPage(
             seq: (response["seq"] as? NSNumber)?.int64Value ?? since, more: response["more"] as? Bool ?? false,
-            changes: records("changes"), behind: records("behind")
+            changes: records("changes")
         )
     }
 
@@ -503,10 +501,11 @@ final class DochoSync {
         var page: Int
     }
 
-    /// Progress that went back by a later change (going back a page, or marking unread) while
-    /// further progress was elsewhere: right if it was on purpose, but worth asking about.
+    /// Another device's later change went back (an earlier page, or unread) from further progress
+    /// this device had: maybe not where you're up to here, so it's worth asking. A change that went
+    /// back on this device was on purpose, so it isn't asked about.
     /// `kept` is what the chapter now has everywhere; `further` is what it went back from, on
-    /// `furtherDevice` (nil for this device) at `furtherAt`. `keptHere`: the change was made here.
+    /// `furtherDevice` (nil for this device) at `furtherAt`.
     struct Conflict: Identifiable, Equatable, Sendable {
         var chapterId: Int
         var seriesId: Int
@@ -516,7 +515,6 @@ final class DochoSync {
         var further: Progress
         var furtherDevice: String?
         var furtherAt: Int64?
-        var keptHere: Bool
         var id: Int { chapterId }
     }
 
@@ -726,10 +724,6 @@ final class DochoSync {
             }
             remote += page.changes
             since = page.seq
-            // What this device's later change went back from on the server
-            for record in page.behind {
-                if let conflict = try await conflictFromServer(record, sent: sending) { found.append(conflict) }
-            }
         } while page.more || !outgoing.isEmpty
         for change in changes where !unsent.contains(change.id) {
             if change.isDeleted { state.synced[change.id] = nil } else { state.synced[change.id] = change.value?.canonical }
@@ -880,7 +874,7 @@ final class DochoSync {
                 }
             }
             if !firstSync, SyncValues.isBehind(merged, local),
-               let conflict = try await conflict(chapter, kept: merged, further: local, furtherDevice: nil, furtherAt: localAt, keptHere: false) {
+               let conflict = try await conflict(chapter, kept: merged, further: local, furtherDevice: nil, furtherAt: localAt) {
                 found.append(conflict)
             }
             if read != chapter.read || page != chapter.lastPageRead {
@@ -997,7 +991,7 @@ final class DochoSync {
     }
 
     private func conflict(
-        _ chapter: ChapterRecord, kept: SyncJSON, further: SyncJSON, furtherDevice: String?, furtherAt: Int64?, keptHere: Bool
+        _ chapter: ChapterRecord, kept: SyncJSON, further: SyncJSON, furtherDevice: String?, furtherAt: Int64?
     ) async throws -> Conflict? {
         let title = try await database.writer.read { db in
             try String.fetchOne(db, sql: "SELECT name FROM series WHERE id = ?", arguments: [chapter.seriesId])
@@ -1005,18 +999,7 @@ final class DochoSync {
         func progress(_ value: SyncJSON) -> Progress { Progress(read: value["read"]?.bool ?? false, page: Int(value["page"]?.int ?? 0)) }
         return Conflict(
             chapterId: chapter.id, seriesId: chapter.seriesId, seriesTitle: title ?? "", chapterName: chapter.name,
-            kept: progress(kept), further: progress(further), furtherDevice: furtherDevice, furtherAt: furtherAt, keptHere: keptHere
-        )
-    }
-
-    /// A record the server says this device's later change went back from.
-    private func conflictFromServer(_ record: SyncRecord, sent: [SyncRecord]) async throws -> Conflict? {
-        guard record.kind == SyncValues.chapter, let further = record.value,
-              let kept = sent.first(where: { $0.kind == record.kind && $0.key == record.key })?.value,
-              let chapter = try await findChapter(record.key, mangaURL: further["manga"]?.string) else { return nil }
-        return try await conflict(
-            chapter, kept: kept, further: further, furtherDevice: record.device,
-            furtherAt: SyncValues.at(further) ?? record.updatedAt, keptHere: true
+            kept: progress(kept), further: progress(further), furtherDevice: furtherDevice, furtherAt: furtherAt
         )
     }
 

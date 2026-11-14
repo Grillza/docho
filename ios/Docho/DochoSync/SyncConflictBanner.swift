@@ -15,8 +15,8 @@ enum SyncBannerPlace: String, CaseIterable, Sendable {
 }
 
 /// "Is this where you're up to?" (Android's `SyncConflictBanner`): shown at the top of the screen when
-/// Dōchō Sync took a later change that went back (an earlier page, or unread) while further progress
-/// was elsewhere. Compare shows both and lets you keep either; Ignore keeps what's there. It hides
+/// another device's later change went back (an earlier page, or unread) from further progress this
+/// device had. Going back on this device is on purpose, so it isn't asked about. Compare shows both and lets you keep either; Ignore keeps what's there. It hides
 /// itself after the time set in Appearance, keeping what's there.
 struct SyncConflictBanner: View {
     /// The screen this banner is on: `.main` or `.reader`.
@@ -123,9 +123,7 @@ struct SyncConflictBanner: View {
     private func summary(_ conflict: DochoSync.Conflict) -> String {
         let kept = progressText(conflict.kept)
         let further = progressText(conflict.further)
-        return conflict.keptHere
-            ? String(localized: "\(conflict.seriesTitle), \(conflict.chapterName): you went to \(kept) here, but \(deviceText(conflict.furtherDevice)) had \(further).")
-            : String(localized: "\(conflict.seriesTitle), \(conflict.chapterName): another device went to \(kept), but this device had \(further).")
+        return String(localized: "\(conflict.seriesTitle), \(conflict.chapterName): another device went to \(kept), but this device had \(further).")
     }
 
     private func furtherText(_ conflict: DochoSync.Conflict) -> String {
