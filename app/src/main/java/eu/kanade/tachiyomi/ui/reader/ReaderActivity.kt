@@ -93,6 +93,7 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.app.di.AppGraph
+import mihon.app.di.appGraph
 import mihon.core.metro.metroGraph
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.stringResource
@@ -274,6 +275,16 @@ class ReaderActivity : BaseActivity() {
             ContentOverlay(state = state)
 
             AppBars(state = state)
+
+            // Dōchō Sync: "Is this where you're up to?", over the page
+            val graph = remember { appGraph }
+            docho.dochosync.SyncConflictBanner(
+                dochoSync = graph.dochoSync,
+                uiPreferences = graph.uiPreferences,
+                deviceId = remember { graph.dochoSyncPreferences.deviceId() },
+                place = docho.dochosync.SyncBannerPlace.READER,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
 
         val onDismissRequest = viewModel::closeDialog

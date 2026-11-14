@@ -1343,6 +1343,10 @@
     <string name="docho_sync_device_server">Dōchō Server</string>
     <string name="docho_sync_device_other">another device</string>
     <string name="pref_docho_sync_banner">Sync banners stay for</string>
+    <string name="pref_docho_sync_banner_place">Show sync banners</string>
+    <string name="docho_sync_banner_main">On the main screens</string>
+    <string name="docho_sync_banner_reader">In the reader</string>
+    <string name="docho_sync_banner_both">Both, wherever you see it first</string>
     <string name="pref_docho_sync_banner_until_closed">Until closed</string>
 
     <!-- Docho: Kavita -->
