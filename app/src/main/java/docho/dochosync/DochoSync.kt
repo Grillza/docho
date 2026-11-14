@@ -107,12 +107,12 @@ class DochoSync(
     data class Progress(val read: Boolean, val page: Int)
 
     /**
-     * Progress that went back by a later change (going back a page, or marking unread) while
-     * further progress was elsewhere: right if it was on purpose, but worth asking about.
+     * Another device's later change went back (an earlier page, or unread) from further progress
+     * this device had: maybe not where you're up to here, so it's worth asking. A change that went
+     * back on this device was on purpose, so it isn't asked about.
      *
      * [kept] is what the chapter now has everywhere; [further] is what it went back from, on
-     * [furtherDevice] (null for this device) at [furtherAt]. [keptHere] is whether the change
-     * that went back was made on this device.
+     * [furtherDevice] (null for this device) at [furtherAt].
      */
     data class Conflict(
         val chapterId: Long,
@@ -123,7 +123,6 @@ class DochoSync(
         val further: Progress,
         val furtherDevice: String?,
         val furtherAt: Long?,
-        val keptHere: Boolean,
     )
 
     private val mutableConflicts = MutableStateFlow<List<Conflict>>(emptyList())
@@ -274,10 +273,6 @@ class DochoSync(
             }
             remote += page.changes
             since = page.seq
-            // What this device's later change went back from on the server
-            for (record in page.behind) {
-                conflictFromServer(record, sending)?.let { found += it }
-            }
         } while (page.more || outgoing.isNotEmpty())
         for (change in changes) {
             if (SyncValues.id(change.kind, change.key) in unsent) continue
@@ -455,7 +450,7 @@ class DochoSync(
                 // When it was read where it was read, not now; so the record here matches the server's.
                 chapterRepository.setProgressAt(chapter.id, merged.at())
                 if (!firstSync && SyncValues.isBehind(merged, local)) {
-                    conflict(chapter, kept = merged, further = local, furtherDevice = null, furtherAt = localAt, keptHere = false)
+                    conflict(chapter, kept = merged, further = local, furtherDevice = null, furtherAt = localAt)
                         ?.let { found += it }
                 }
                 if (read != chapter.read || page != chapter.lastPageRead) {
@@ -596,7 +591,6 @@ class DochoSync(
         further: JsonObject,
         furtherDevice: String?,
         furtherAt: Long?,
-        keptHere: Boolean,
     ): Conflict? {
         val manga = mangaRepository.getMangaById(chapter.mangaId)
         fun JsonObject.progress() = Progress(bool("read"), (long("page") ?: 0).toInt())
@@ -609,23 +603,6 @@ class DochoSync(
             further = further.progress(),
             furtherDevice = furtherDevice,
             furtherAt = furtherAt,
-            keptHere = keptHere,
-        )
-    }
-
-    /** A record the server says this device's later change went back from. */
-    private suspend fun conflictFromServer(record: SyncRecord, sent: List<SyncRecord>): Conflict? {
-        if (record.kind != SyncValues.CHAPTER) return null
-        val further = record.value as? JsonObject ?: return null
-        val kept = sent.find { it.kind == record.kind && it.key == record.key }?.value as? JsonObject ?: return null
-        val chapter = findChapter(record.key, further.string("manga")) ?: return null
-        return conflict(
-            chapter,
-            kept = kept,
-            further = further,
-            furtherDevice = record.device,
-            furtherAt = further.at() ?: record.updatedAt,
-            keptHere = true,
         )
     }
 

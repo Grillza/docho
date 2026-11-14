@@ -158,6 +158,9 @@ data class SyncPage(
     val seq: Long,
     val more: Boolean = false,
     val changes: List<SyncRecord> = emptyList(),
-    /** Further progress on the server that this device's later change went back from (Dōchō Server 0.32.9). */
+    /**
+     * Further progress on the server that this device's later change went back from (Dōchō Server
+     * 0.32.9). Not asked about: going back here was on purpose. Kept so the response still reads.
+     */
     val behind: List<SyncRecord> = emptyList(),
 )
