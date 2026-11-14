@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.9",
+          "buildVersion": "66",
+          "date": "2026-11-14",
+          "localizedDescription": "Version 0.32.9. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.9.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nChanged\n\n• Dōchō Sync goes by when you read. As on Android: each chapter's progress now carries the time you actually read it. The later reading wins, so going back a page or marking a chapter unread on purpose syncs, while an app that's only behind, after an update say, takes the further progress instead of overwriting it. Progress read before this version keeps the furthest point.\n\nAdded\n\n• \"Is this where you're up to?\" When a later change goes back from further progress, a banner asks if that's right, with Compare (both, which device and when, and keep either) and Ignore. Choosing the further page moves an open reader there.\n• Settings → Appearance → Show sync banners (in the reader by default, on the main screens, or both, shown once wherever you see it first) and Sync banners stay for (5 seconds to until closed).\n\nFixed\n\n• Updating Dōchō on an iPad or iPhone could put its older reading progress over the newer progress from your other devices.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.9/docho-0.32.9.ipa",
+          "size": 88493106,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.8",
           "buildVersion": "65",
           "date": "2026-11-14",
