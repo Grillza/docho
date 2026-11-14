@@ -9,6 +9,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import ca.mpreg.imagedecoder.ImageDecoder
+import ca.mpreg.webgpuviewer.renderer.ImageFilterWgsl
 import ca.mpreg.webgpuviewer.ImageView
 import ca.mpreg.webgpuviewer.closeTo
 import ca.mpreg.webgpuviewer.renderer.GainmapInput
@@ -883,13 +884,29 @@ open class WebGpuViewer(
 
         config.tileFiltersChangedListener = {
             val shaders = config.tileFilters
+            val reduceMoire = config.reduceMoire
             tileFiltersJob?.cancel()
-            tileFiltersJob = scope.launch { pager.state.tileFilters = loadFilters(shaders) }
+            tileFiltersJob = scope.launch {
+                // First, so the user's filters see the page with its screentone already smoothed.
+                pager.state.tileFilters = listOfNotNull(if (reduceMoire) loadReduceMoire() else null) +
+                    loadFilters(shaders)
+            }
         }
     }
 
     private var imageFiltersJob: Job? = null
     private var tileFiltersJob: Job? = null
+
+    /** The built-in filter, fresh like the user's: assets/webgpu/reduce_moire.wgsl. Null if it fails to load. */
+    private suspend fun loadReduceMoire() = withContext(Dispatchers.IO) {
+        try {
+            val source = activity.assets.open("webgpu/reduce_moire.wgsl").use { it.readBytes().decodeToString() }
+            ImageFilterWgsl(source, "Reduce moiré")
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e) { "filter Reduce moiré" }
+            null
+        }
+    }
 
     /** Fresh instances: one belongs to one viewer and one chain. Skips any that fail to load. */
     private suspend fun loadFilters(shaders: List<WebGpuShader>) = withContext(Dispatchers.IO) {

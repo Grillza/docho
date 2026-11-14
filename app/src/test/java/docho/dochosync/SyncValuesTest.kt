@@ -59,4 +59,13 @@ class SyncValuesTest {
         SyncValues.parseKey("123|/a|b") shouldBe (123L to "/a|b")
         SyncValues.parseKey("nope") shouldBe null
     }
+
+    @Test
+    fun `progress coming down never takes the device back`() {
+        val local = SyncValues.chapter("/s", read = false, bookmark = true, page = 120)
+        val remote = SyncValues.chapter("/s", read = false, bookmark = false, page = 110)
+        SyncValues.mergeChapter(local, remote, remoteBookmark = true) shouldBe SyncValues.chapter("/s", false, false, 120)
+        val behind = SyncValues.chapter("/s", read = false, bookmark = false, page = 4)
+        SyncValues.mergeChapter(behind, remote, remoteBookmark = true) shouldBe remote
+    }
 }

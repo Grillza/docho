@@ -81,6 +81,9 @@ class WebGpuConfig(
     var tileFilters = emptyList<WebGpuShader>()
         private set
 
+    var reduceMoire = true
+        private set
+
     var tileFiltersChangedListener: (() -> Unit)? = null
 
     init {
@@ -187,6 +190,11 @@ class WebGpuConfig(
 
         readerPreferences.tileFilters.register(
             { tileFilters = it },
+            { tileFiltersChangedListener?.invoke() },
+        )
+
+        readerPreferences.reduceMoire.register(
+            { reduceMoire = it },
             { tileFiltersChangedListener?.invoke() },
         )
     }

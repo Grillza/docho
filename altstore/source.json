@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.8",
+          "buildVersion": "65",
+          "date": "2026-11-14",
+          "localizedDescription": "Version 0.32.8. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.8.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Reduce moiré. As on Android: fine screentone, like Kaiju No. 8's, could turn into wavy patterns or shimmering grids when a page was shrunk to fit the screen. Dōchō now smooths screentone into the even grey it stands for and keeps line art sharp. It only does this while a page is shrunk, so zooming in shows the page as it is. It's on by default, in paged and long strip modes. Turn it off in the reader's settings, under Reading mode → Reduce moiré, or in Settings → Reader.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.8/docho-0.32.8.ipa",
+          "size": 88444247,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.7",
           "buildVersion": "64",
           "date": "2026-11-06T21:45:48Z",
