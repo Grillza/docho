@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.10",
+          "buildVersion": "67",
+          "date": "2026-11-14",
+          "localizedDescription": "Version 0.32.10. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.10.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nChanged\n\n• \"Is this where you're up to?\" only asks the device that had read further. As on Android: going back a page or marking a chapter unread is on purpose, so the device you do it on no longer asks. Your other devices that had read further still show the banner.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.10/docho-0.32.10.ipa",
+          "size": 88489500,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.9",
           "buildVersion": "66",
           "date": "2026-11-14",
