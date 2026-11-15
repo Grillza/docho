@@ -127,7 +127,6 @@ object SettingsAdvancedScreen : SearchableSettings {
             getDataGroup(),
             getNetworkGroup(networkPreferences = networkPreferences),
             getLibraryGroup(libraryPreferences = libraryPreferences),
-            getReaderGroup(basePreferences = basePreferences),
             getExtensionsGroup(basePreferences = basePreferences),
         )
     }
@@ -332,22 +331,6 @@ object SettingsAdvancedScreen : SearchableSettings {
                     preference = libraryPreferences.enableChapterNameHash,
                     title = stringResource(MR.strings.pref_enable_chapter_name_hash),
                     subtitle = stringResource(MR.strings.pref_enable_chapter_name_hash_details),
-                ),
-            ),
-        )
-    }
-
-    @Composable
-    private fun getReaderGroup(
-        basePreferences: BasePreferences,
-    ): Preference.PreferenceGroup {
-        val context = LocalContext.current
-        return Preference.PreferenceGroup(
-            title = stringResource(MR.strings.pref_category_reader),
-            preferenceItems = listOf(
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = basePreferences.highQualityRenderer,
-                    title = stringResource(MR.strings.pref_high_quality_renderer),
                 ),
             ),
         )

@@ -5,6 +5,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import docho.sync.ProgressSyncPreferences
+import eu.kanade.tachiyomi.network.HttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +31,10 @@ import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
 import tachiyomi.domain.manga.interactor.GetFavorites
 import tachiyomi.domain.manga.model.Manga
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToLong
+import kotlin.time.Instant
 
 /**
  * Two-way, page-level reading progress sync with BookOrbit, for series read from the BookOrbit
@@ -42,6 +46,8 @@ import java.util.concurrent.ConcurrentHashMap
  * its own comic reader writes, so a page reached here opens there too. A series' books carry
  * their read status and percentage, so reconciling one only asks for the exact page of books
  * that are part read.
+ *
+ * Time spent in the reader goes to BookOrbit's Reading Log as reading sessions, queued the same way.
  */
 @Inject
 @SingleIn(AppScope::class)
@@ -59,6 +65,8 @@ class BookOrbitSync(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pendingMutex = Mutex()
+    private val sessionsMutex = Mutex()
+    private val sendingSessions = Mutex()
     private val debounceJobs = ConcurrentHashMap<Int, Job>()
 
     /** Page counts by file id, learned from the reader or asked for when a page has to be sent. */
@@ -92,6 +100,76 @@ class BookOrbitSync(
             val entry = enqueue(listOf(progress), markedByUser = false).single()
             if (deliver(entry, serverPercentage = null) == Delivery.Failed) scheduleRetry()
         }
+    }
+
+    /**
+     * Called by the reader when a stretch of reading ends: the reader was closed or sent to the background, or moved
+     * on to another chapter. Positions are 0-based page indexes, as the reader keeps them.
+     */
+    fun onReadingSession(
+        manga: Manga,
+        chapterUrl: String,
+        startedAt: Instant,
+        endedAt: Instant,
+        startPageIndex: Int,
+        startRead: Boolean,
+        endPageIndex: Int,
+        endRead: Boolean,
+        pageCount: Int,
+    ) {
+        if (!isEnabledFor(manga) || pageCount <= 0) return
+        val fileId = BookOrbitSource.fileIdOrNull(chapterUrl) ?: return
+        val session = readingSession(
+            sessionId = UUID.randomUUID().toString(),
+            startedAt = startedAt,
+            endedAt = endedAt,
+            startPercentage = percentage(startPageIndex, startRead, pageCount),
+            endPercentage = percentage(endPageIndex, endRead, pageCount),
+        ) ?: return
+        scope.launch {
+            sessionsMutex.withLock {
+                writeSessions((readSessions() + BookOrbitPendingSession(fileId, session)).takeLast(MAX_QUEUED_SESSIONS))
+            }
+            sendSessions()
+        }
+    }
+
+    /**
+     * Sends queued sessions, oldest first, and stops at the first that can't be sent since the server is likely
+     * unreachable. One the server turns down is dropped, as sending it again won't change the answer. Returns whether
+     * the queue is now empty.
+     */
+    private suspend fun sendSessions(): Boolean = sendingSessions.withLock {
+        for (entry in sessionsMutex.withLock { readSessions() }) {
+            try {
+                api.saveSession(entry.fileId, entry.session)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                if (e is HttpException && isRejected(e.code)) {
+                    logcat(LogPriority.WARN) {
+                        "BookOrbit: dropped reading session for file ${entry.fileId}: HTTP ${e.code}"
+                    }
+                } else {
+                    logcat(LogPriority.WARN, e) {
+                        "BookOrbit: could not send reading session for file ${entry.fileId}, queued"
+                    }
+                    scheduleRetry()
+                    return@withLock false
+                }
+            }
+            sessionsMutex.withLock { writeSessions(readSessions().filterNot { it == entry }) }
+        }
+        sessionsMutex.withLock { readSessions() }.isEmpty()
+    }
+
+    private fun readSessions(): List<BookOrbitPendingSession> {
+        val raw = preferences.pendingSessions.get()
+        if (raw.isBlank()) return emptyList()
+        return runCatching { json.decodeFromString<List<BookOrbitPendingSession>>(raw) }.getOrElse { emptyList() }
+    }
+
+    private fun writeSessions(sessions: List<BookOrbitPendingSession>) {
+        preferences.pendingSessions.set(if (sessions.isEmpty()) "" else json.encodeToString(sessions))
     }
 
     /** Pushes chapters that were marked read or unread from the chapter list, library or updates. */
@@ -230,14 +308,15 @@ class BookOrbitSync(
      */
     suspend fun syncQueued(): Boolean {
         if (!isEnabled()) return true
+        val sessionsSent = sendSessions()
         val queuedSeries = pendingMutex.withLock { readPending() }.values.map { it.seriesId }.toSet()
-        if (queuedSeries.isEmpty()) return true
+        if (queuedSeries.isEmpty()) return sessionsSent
         getFavorites.await()
             .filter { isEnabledFor(it) && BookOrbitSource.seriesId(it.url) in queuedSeries }
             .forEach { syncManga(it) }
         // Series that aren't in the library have nothing local to reconcile.
         flushPending()
-        return pendingMutex.withLock { readPending() }.isEmpty()
+        return pendingMutex.withLock { readPending() }.isEmpty() && sessionsSent
     }
 
     /** Delivers queued changes; stops at the first failure since the server is likely unreachable. */
@@ -324,12 +403,47 @@ class BookOrbitSync(
         private const val PAGE_DEBOUNCE_MILLIS = 1_500L
         private const val PARALLEL_REQUESTS = 4
 
+        /** BookOrbit doesn't record sessions shorter than this, so they aren't sent. */
+        const val MIN_SESSION_SECONDS = 10L
+
+        /** A long time offline keeps the latest sessions, not an ever-growing list. */
+        private const val MAX_QUEUED_SESSIONS = 500
+
         /** BookOrbit stores percentages with some rounding, so tiny differences aren't "further". */
         private const val PERCENT_EPSILON = 0.01
 
         /** A deliberate read/unread mark always goes through; a page only if it's further than the server's. */
         fun shouldSend(entry: BookOrbitPendingProgress, serverPercentage: Double): Boolean =
             entry.markedByUser || entry.percentage > serverPercentage + PERCENT_EPSILON
+
+        /** A 0-based page index as BookOrbit's percentage, the same way [BookOrbitPendingProgress] works it out. */
+        fun percentage(pageIndex: Int, read: Boolean, pageCount: Int): Double =
+            BookOrbitPendingProgress(0, 0, 0, pageIndex + 1, pageCount, read).percentage
+
+        /** The session to send, or `null` when it's too short for BookOrbit to keep. */
+        fun readingSession(
+            sessionId: String,
+            startedAt: Instant,
+            endedAt: Instant,
+            startPercentage: Double,
+            endPercentage: Double,
+        ): BookOrbitSessionDto? {
+            val seconds = (endedAt - startedAt).inWholeSeconds
+            if (seconds < MIN_SESSION_SECONDS) return null
+            return BookOrbitSessionDto(
+                sessionId = sessionId,
+                startedAt = startedAt.toString(),
+                endedAt = endedAt.toString(),
+                durationSeconds = seconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                progressDelta = roundPercentage(endPercentage - startPercentage),
+                endProgress = roundPercentage(endPercentage),
+            )
+        }
+
+        private fun roundPercentage(value: Double): Double = (value * 100).roundToLong() / 100.0
+
+        /** Answers that sending the same session again won't change: bad request, no access, gone. */
+        fun isRejected(code: Int): Boolean = code in 400..499 && code != 401 && code != 408 && code != 429
 
         /**
          * A page read after marking a chapter by hand keeps the mark's priority until it is
@@ -365,3 +479,10 @@ data class BookOrbitPendingProgress(
             else -> page.coerceAtMost(pages) * 100.0 / pages
         }
 }
+
+/** A reading session waiting to reach BookOrbit. */
+@Serializable
+data class BookOrbitPendingSession(
+    val fileId: Int,
+    val session: BookOrbitSessionDto,
+)

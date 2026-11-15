@@ -10,6 +10,7 @@ import docho.koreader.KoreaderSync
 import kotlinx.serialization.json.JsonObject
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.manga.model.Manga
+import kotlin.time.Instant
 
 /**
  * Sends a manga's reading progress to wherever it is synced: the server of the source it is read
@@ -44,6 +45,34 @@ class ProgressSync(
         koreaderSync.onPageChanged(manga, chapterUrl, chapterMemo, pageIndex, pageCount, chapterRead)
         bookOrbitSync.onPageChanged(manga, chapterUrl, pageIndex, pageCount, chapterRead)
         komgaSync.onPageChanged(manga, chapterUrl, pageIndex, pageCount, chapterRead)
+    }
+
+    /**
+     * A stretch of reading ended. Only BookOrbit keeps a log of reading sessions, and only when the app syncs with it
+     * directly, not through a KOReader server.
+     */
+    fun onReadingSession(
+        manga: Manga,
+        chapterUrl: String,
+        startedAt: Instant,
+        endedAt: Instant,
+        startPageIndex: Int,
+        startRead: Boolean,
+        endPageIndex: Int,
+        endRead: Boolean,
+        pageCount: Int,
+    ) {
+        bookOrbitSync.onReadingSession(
+            manga,
+            chapterUrl,
+            startedAt,
+            endedAt,
+            startPageIndex,
+            startRead,
+            endPageIndex,
+            endRead,
+            pageCount,
+        )
     }
 
     fun onReadStatusChanged(manga: Manga, chapters: List<Chapter>, read: Boolean) {

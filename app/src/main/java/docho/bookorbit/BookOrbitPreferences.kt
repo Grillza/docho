@@ -38,11 +38,19 @@ class BookOrbitPreferences(
         "",
     )
 
+    /** Reading sessions that could not reach the server yet, oldest first. */
+    val pendingSessions: Preference<String> = preferenceStore.getString(
+        Preference.appStateKey("bookorbit_pending_sessions"),
+        "",
+    )
+
     fun isConfigured(): Boolean =
         serverUrl.get().isNotBlank() && username.get().isNotBlank() && password.get().isNotBlank()
 
-    /** Erases this server's settings, sign-in and unsent progress; Delete in settings. */
+    /** Erases this server's settings, sign-in and unsent progress and sessions; Delete in settings. */
     fun reset() {
-        listOf(serverUrl, username, password, refreshToken, syncProgress, pendingProgress).forEach { it.delete() }
+        listOf(serverUrl, username, password, refreshToken, syncProgress, pendingProgress, pendingSessions).forEach {
+            it.delete()
+        }
     }
 }

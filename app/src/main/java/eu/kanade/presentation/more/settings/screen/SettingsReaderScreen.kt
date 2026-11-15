@@ -28,8 +28,13 @@ object SettingsReaderScreen : SearchableSettings {
     override fun getPreferences(): List<Preference> {
         val context = LocalContext.current
         val readerPref = remember { context.appGraph.readerPreferences }
+        val basePreferences = remember { context.appGraph.basePreferences }
 
         return listOf(
+            Preference.PreferenceItem.SwitchPreference(
+                preference = basePreferences.highQualityRenderer,
+                title = stringResource(MR.strings.pref_high_quality_renderer),
+            ),
             Preference.PreferenceItem.ListPreference(
                 preference = readerPref.defaultReadingMode,
                 entries = ReadingMode.entries.drop(1)
