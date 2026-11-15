@@ -21,6 +21,19 @@ protocol SyncEngine: Actor {
     @discardableResult func syncQueued() async -> Bool
     /// Sends pages still waiting out their pause, e.g. when the app goes to the background.
     func sendWaitingPages() async
+    /// A stretch of reading ended, for servers that keep a reading log. Pages are 0-based.
+    func readingSession(
+        _ series: SeriesRecord, chapter: ChapterRecord, startedAt: Date, endedAt: Date,
+        startPage: Int, startRead: Bool, endPage: Int, endRead: Bool, pageCount: Int
+    ) async
+}
+
+extension SyncEngine {
+    /// Only BookOrbit keeps a log of reading sessions.
+    func readingSession(
+        _ series: SeriesRecord, chapter: ChapterRecord, startedAt: Date, endedAt: Date,
+        startPage: Int, startRead: Bool, endPage: Int, endRead: Bool, pageCount: Int
+    ) async {}
 }
 
 /// Where reading progress is synced (Android's `ProgressSyncMode`).
@@ -103,5 +116,19 @@ final class ProgressSync: Sendable {
 
     func sendWaitingPages() async {
         for engine in engines { await engine.sendWaitingPages() }
+    }
+
+    /// A stretch of reading ended. Only BookOrbit keeps a log of reading sessions, and only when
+    /// the app syncs with it directly, not through a KOReader server.
+    func readingSession(
+        _ series: SeriesRecord, chapter: ChapterRecord, startedAt: Date, endedAt: Date,
+        startPage: Int, startRead: Bool, endPage: Int, endRead: Bool, pageCount: Int
+    ) async {
+        for engine in engines where engine.syncs(series) {
+            await engine.readingSession(
+                series, chapter: chapter, startedAt: startedAt, endedAt: endedAt,
+                startPage: startPage, startRead: startRead, endPage: endPage, endRead: endRead, pageCount: pageCount
+            )
+        }
     }
 }

@@ -303,3 +303,43 @@ final class BookOrbitTests: XCTestCase {
         XCTAssertEqual(BookOrbitSource.chapterName(title: nil, seriesIndex: nil), "Untitled")
     }
 }
+
+/// BookOrbit's Reading Log sessions, by the same rules as Android's `BookOrbitSyncRulesTest`.
+final class BookOrbitSessionTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 1_794_736_800) // 2026-11-15T10:00:00Z
+
+    private func session(seconds: TimeInterval, from: Double = 25, to: Double = 50) -> BookOrbitSession? {
+        BookOrbitSync.session(id: "id", startedAt: start, endedAt: start + seconds, startPercentage: from, endPercentage: to)
+    }
+
+    func testSessionsShorterThanBookOrbitKeepsAreNotSent() {
+        XCTAssertNil(session(seconds: 9))
+        XCTAssertEqual(session(seconds: 10)?.durationSeconds, 10)
+    }
+
+    func testASessionCarriesItsTimesLengthAndProgress() throws {
+        let sent = try XCTUnwrap(session(seconds: 125))
+        XCTAssertEqual(sent.startedAt, "2026-11-15T10:00:00Z")
+        XCTAssertEqual(sent.endedAt, "2026-11-15T10:02:05Z")
+        XCTAssertEqual(sent.durationSeconds, 125)
+        XCTAssertEqual(sent.endProgress, 50)
+        XCTAssertEqual(sent.progressDelta, 25)
+        XCTAssertEqual(sent.source, "ios")
+        XCTAssertEqual(sent.sessionType, "read")
+        XCTAssertEqual(session(seconds: 60, from: 50, to: 25)?.progressDelta, -25, "paging back is a negative change")
+    }
+
+    func testSessionPositionsUseTheReadersZeroBasedPageIndex() {
+        XCTAssertEqual(BookOrbitSync.percentage(page: 4, read: false, pageCount: 20), 25)
+        XCTAssertEqual(BookOrbitSync.percentage(page: 4, read: true, pageCount: 20), 100)
+        XCTAssertEqual(session(seconds: 60, from: 0, to: 100.0 / 3)?.endProgress, 33.33)
+    }
+
+    func testOnlyAnswersThatWontChangeAreDropped() {
+        XCTAssertTrue(BookOrbitSync.isRejected(400))
+        XCTAssertTrue(BookOrbitSync.isRejected(404))
+        XCTAssertFalse(BookOrbitSync.isRejected(401))
+        XCTAssertFalse(BookOrbitSync.isRejected(429))
+        XCTAssertFalse(BookOrbitSync.isRejected(500))
+    }
+}

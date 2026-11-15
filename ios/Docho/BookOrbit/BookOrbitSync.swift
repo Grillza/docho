@@ -5,10 +5,17 @@ import os
 /// rules as Kavita. Positions are BookOrbit's: a 1-based page number and a percentage from 0 to
 /// 100, as its own comic reader writes them. A series' books carry their read status and
 /// percentage, so reconciling only asks for the exact page of books that are part read.
+///
+/// Time spent in the reader goes to BookOrbit's Reading Log as reading sessions, queued until
+/// the server can be reached.
 actor BookOrbitSync: SyncEngine {
     static let engine = "bookorbit"
     /// BookOrbit stores percentages with some rounding, so tiny differences aren't "further".
     private static let percentEpsilon = 0.01
+    /// BookOrbit doesn't record sessions shorter than this, so they aren't sent.
+    static let minSessionSeconds = 10
+    /// A long time offline keeps the latest sessions, not an ever-growing list.
+    private static let maxQueuedSessions = 500
 
     nonisolated let retryRequests: AsyncStream<Void>
     private let retryContinuation: AsyncStream<Void>.Continuation
@@ -21,6 +28,7 @@ actor BookOrbitSync: SyncEngine {
     private var waiting: [Int: Pending] = [:]
     /// Page counts by file id, learned from the reader or asked for when a page has to be sent.
     private var pageCounts: [Int: Int] = [:]
+    private var sendingSessions = false
     private let log = Logger(subsystem: "io.github.grillza.docho", category: "bookorbit-sync")
 
     private var client: BookOrbitClient { source.client }
@@ -107,6 +115,86 @@ actor BookOrbitSync: SyncEngine {
         }
     }
 
+    // MARK: Reading sessions
+
+    /// A reading session waiting to reach BookOrbit.
+    struct PendingSession: Codable, Sendable, Equatable {
+        var fileId: Int
+        var session: BookOrbitSession
+    }
+
+    /// A stretch of reading ended: the reader closed or went to the background, or moved on to
+    /// another chapter. Positions are 0-based page indexes, as the reader keeps them.
+    func readingSession(
+        _ series: SeriesRecord, chapter: ChapterRecord, startedAt: Date, endedAt: Date,
+        startPage: Int, startRead: Bool, endPage: Int, endRead: Bool, pageCount: Int
+    ) async {
+        guard syncs(series), pageCount > 0, let fileId = BookOrbitSource.fileId(chapter.url),
+              let session = Self.session(
+                id: UUID().uuidString, startedAt: startedAt, endedAt: endedAt,
+                startPercentage: Self.percentage(page: startPage, read: startRead, pageCount: pageCount),
+                endPercentage: Self.percentage(page: endPage, read: endRead, pageCount: pageCount)
+              )
+        else { return }
+        writeSessions(Array((readSessions() + [PendingSession(fileId: fileId, session: session)]).suffix(Self.maxQueuedSessions)))
+        await sendSessions()
+    }
+
+    /// Sends queued sessions, oldest first, and stops at the first that can't be sent since the
+    /// server is likely unreachable. One the server turns down is dropped, as sending it again
+    /// won't change the answer. Returns whether the queue is now empty.
+    @discardableResult
+    private func sendSessions() async -> Bool {
+        guard !sendingSessions else { return readSessions().isEmpty }
+        sendingSessions = true
+        defer { sendingSessions = false }
+        // Sessions that arrive while sending are picked up too.
+        while let entry = readSessions().first {
+            do {
+                try await client.saveSession(fileId: entry.fileId, entry.session)
+            } catch HTTPError.status(let code) where Self.isRejected(code) {
+                log.warning("BookOrbit: dropped reading session for file \(entry.fileId): HTTP \(code)")
+            } catch {
+                log.warning("BookOrbit: could not send reading session for file \(entry.fileId), queued: \(error)")
+                requestRetry()
+                return false
+            }
+            writeSessions(readSessions().filter { $0 != entry })
+        }
+        return true
+    }
+
+    private func readSessions() -> [PendingSession] {
+        let raw = settings.pendingSessions
+        guard !raw.isEmpty, let data = raw.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([PendingSession].self, from: data)) ?? []
+    }
+
+    private func writeSessions(_ sessions: [PendingSession]) {
+        settings.pendingSessions = sessions.isEmpty ? "" : (try? JSONEncoder().encode(sessions)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+    }
+
+    /// A 0-based page index as BookOrbit's percentage, the same way `Pending` works it out.
+    static func percentage(page: Int, read: Bool, pageCount: Int) -> Double {
+        Pending(seriesId: 0, bookId: 0, fileId: 0, page: page + 1, pages: pageCount, read: read).percentage
+    }
+
+    /// The session to send, or nil when it's too short for BookOrbit to keep.
+    static func session(id: String, startedAt: Date, endedAt: Date, startPercentage: Double, endPercentage: Double) -> BookOrbitSession? {
+        let seconds = Int(endedAt.timeIntervalSince(startedAt).rounded(.down))
+        guard seconds >= minSessionSeconds else { return nil }
+        let format = Date.ISO8601FormatStyle(includingFractionalSeconds: false)
+        return BookOrbitSession(
+            sessionId: id, startedAt: startedAt.formatted(format), endedAt: endedAt.formatted(format), durationSeconds: seconds,
+            progressDelta: round(endPercentage - startPercentage), endProgress: round(endPercentage)
+        )
+    }
+
+    private static func round(_ value: Double) -> Double { (value * 100).rounded() / 100 }
+
+    /// Answers that sending the same session again won't change: bad request, no access, gone.
+    static func isRejected(_ code: Int) -> Bool { (400...499).contains(code) && ![401, 408, 429].contains(code) }
+
     // MARK: Pull
 
     func syncSeries(_ series: SeriesRecord, chapterIds: Set<Int>?) async {
@@ -185,14 +273,16 @@ actor BookOrbitSync: SyncEngine {
     @discardableResult
     func syncQueued() async -> Bool {
         guard isEnabled, !syncSettings.usesKoreader else { return true }
-        guard let queued = try? await database.syncQueue(engine: Self.engine), !queued.isEmpty else { return true }
+        let sessionsSent = await sendSessions()
+        guard let queued = try? await database.syncQueue(engine: Self.engine), !queued.isEmpty else { return sessionsSent }
         let seriesKeys = Set(queued.map(\.seriesKey))
         let stored = (try? await database.seriesRecords(source: BookOrbitSource.id)) ?? []
         for series in stored where BookOrbitSource.seriesId(series.url).map({ seriesKeys.contains(String($0)) }) == true {
             await syncSeries(series, chapterIds: nil)
         }
         await flush()
-        return (try? await database.syncQueue(engine: Self.engine).isEmpty) ?? false
+        let progressSent = (try? await database.syncQueue(engine: Self.engine).isEmpty) ?? false
+        return sessionsSent && progressSent
     }
 
     private func flush() async {

@@ -28,6 +28,10 @@ final class ReaderModel {
     @ObservationIgnored private var remoteProgress: [Int: DochoSync.RemoteProgress] = [:]
     /// The page is still the one it was opened or returned to: free to move to where another device got to.
     @ObservationIgnored private var pageUntouched = true
+    /// The stretch of reading under way, for servers that keep a reading log (BookOrbit): when it
+    /// began and where its chapter was then. It ends when the reader closes, goes to the
+    /// background or moves to another chapter.
+    @ObservationIgnored private var session: (chapter: ChapterRecord, startedAt: Date)?
 
     struct PageJump: Equatable {
         var page: Int
@@ -114,12 +118,35 @@ final class ReaderModel {
         }
         isReady = true
         await loadPages()
+        beginSession()
         try? await app.database.touchSeries(seriesId)
     }
 
     /// The reader is back on screen, maybe after reading on another device.
     func returnedToForeground() {
         pageUntouched = true
+        if isReady { beginSession() }
+    }
+
+    /// Starts timing a reading session, unless one is under way or reading is incognito.
+    func beginSession(at date: Date = Date()) {
+        guard session == nil, !app.preferences.incognitoMode else { return }
+        session = (chapter, date)
+    }
+
+    /// Ends the reading session under way and hands it to `ProgressSync`.
+    func endSession(at date: Date = Date()) {
+        guard let started = session else { return }
+        session = nil
+        guard started.chapter.id == chapter.id else { return }
+        let (series, chapter, pageCount) = (series, chapter, pageCount)
+        Task { [app] in
+            await app.sync.readingSession(
+                series, chapter: chapter, startedAt: started.startedAt, endedAt: date,
+                startPage: started.chapter.lastPageRead, startRead: started.chapter.read,
+                endPage: chapter.lastPageRead, endRead: chapter.read, pageCount: pageCount
+            )
+        }
     }
 
     private func remoteProgressArrived(_ progress: DochoSync.RemoteProgress) {
@@ -198,6 +225,7 @@ final class ReaderModel {
 
     /// Opens the previous or next chapter: the previous at its last page, the next at its start.
     func open(_ target: ChapterRecord, atEnd: Bool) async {
+        endSession()
         chapter = target
         pageFiles = app.downloads.store.pageFiles(seriesId: seriesId, chapterId: target.id)
         sourcePages = []
@@ -207,6 +235,7 @@ final class ReaderModel {
         jump = nil
         await loadPages()
         if atEnd { page = max(pageCount - 1, 0) }
+        beginSession()
     }
 
     /// Changes the mode for this series.

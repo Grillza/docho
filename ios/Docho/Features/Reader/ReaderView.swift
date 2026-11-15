@@ -29,12 +29,18 @@ struct ReaderView: View {
         .onAppear { UIApplication.shared.isIdleTimerDisabled = model.settings.keepScreenOn }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
+            model.endSession()
             // Dōchō Sync: where you stopped, right away.
             model.app.dochoSync.syncInBackground()
         }
         .onChange(of: model.page) { _, page in sliderPage = Double(page) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { model.returnedToForeground() }
+            switch phase {
+            case .active: model.returnedToForeground()
+            // Time in the background isn't reading.
+            case .background: model.endSession()
+            default: break
+            }
         }
         .onKeyPress(.escape) {
             dismiss()

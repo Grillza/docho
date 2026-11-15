@@ -39,8 +39,15 @@ final class BookOrbitSettings: Sendable {
 
     var isConfigured: Bool { !serverURL.isBlank && !username.isBlank && !password.isBlank }
 
+    /// Reading sessions that could not reach the server yet, oldest first, as JSON.
+    var pendingSessions: String {
+        get { store.string("pending_sessions") }
+        set { store.setString("pending_sessions", newValue) }
+    }
+
+    /// Erases this server's settings, sign-in and unsent sessions; Delete in settings.
     func reset() {
-        store.reset(plain: ["server_url", "username", "sync_progress"], secret: ["password", "refresh_token"])
+        store.reset(plain: ["server_url", "username", "sync_progress", "pending_sessions"], secret: ["password", "refresh_token"])
     }
 }
 
@@ -165,6 +172,11 @@ actor BookOrbitClient {
 
     func saveProgress(fileId: Int, _ progress: BookOrbitProgress) async throws {
         _ = try await send("/books/files/\(fileId)/progress", method: "POST", body: JSONEncoder().encode(progress))
+    }
+
+    /// Records a reading session; BookOrbit ignores one it already has, so a retry can't count twice.
+    func saveSession(fileId: Int, _ session: BookOrbitSession) async throws {
+        _ = try await send("/books/files/\(fileId)/sessions", method: "POST", body: JSONEncoder().encode(session))
     }
 
     /// Marks a book unread: its position is cleared and its status set back.
@@ -501,4 +513,18 @@ struct BookOrbitProgress: Codable, Sendable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey { case pageNumber, percentage }
+}
+
+/// A stretch of reading for BookOrbit's Reading Log. `durationSeconds` is time the reader was open
+/// and in front, and `endProgress` and `progressDelta` are percentages like the reading position's.
+struct BookOrbitSession: Codable, Sendable, Equatable {
+    var sessionId: String
+    var startedAt: String
+    var endedAt: String
+    var durationSeconds: Int
+    var progressDelta: Double?
+    var endProgress: Double?
+    var sessionType = "read"
+    /// One of the platforms BookOrbit accepts from its own apps; it shows where the reading happened.
+    var source = "ios"
 }
