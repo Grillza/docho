@@ -2,6 +2,20 @@ name: ⭐ Feature request
 description: Suggest a feature to improve Dōchō
 labels: [feature request]
 body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: Where would you like the feature? Choose more than one if it applies to each.
+      multiple: true
+      options:
+        - Android
+        - iOS (iPhone)
+        - iPadOS (iPad)
+        - Dōchō Server (web UI or sync)
+    validations:
+      required: true
+
   - type: textarea
     id: feature-description
     attributes:
