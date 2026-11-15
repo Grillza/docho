@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.32.11",
+          "buildVersion": "68",
+          "date": "2026-11-15T19:49:11Z",
+          "localizedDescription": "Version 0.32.11. iOS or iPadOS 18 or higher, on iPhone or iPad.\n\nDownload docho-0.32.11.ipa. It isn't signed, so install it with a sideloader such as AltStore, SideStore or Sideloadly. With a free Apple ID, sideloaded apps have to be refreshed every 7 days.\n\nAdded\n\n• Reading time in BookOrbit's Reading Log. As on Android: Dōchō already kept your page in sync with BookOrbit, and now the time you spend reading shows up in BookOrbit's Reading Log and reading statistics too, marked as read on iOS. A session starts when you open the reader and ends when you close it, switch apps or move on to another chapter. Time with the app in the background isn't counted, and nothing is sent while reading in incognito. Sessions shorter than 10 seconds aren't sent, since BookOrbit doesn't keep them. If BookOrbit can't be reached, sessions are saved and sent once it can.\n\n  Sessions are only sent when Dōchō syncs with BookOrbit directly: series read from the BookOrbit source, with Sync reading progress on under Settings → Sync → BookOrbit. They aren't sent when progress goes through a KOReader sync server.",
+          "downloadURL": "https://github.com/Grillza/docho/releases/download/v0.32.11/docho-0.32.11.ipa",
+          "size": 88508654,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "0.32.10",
           "buildVersion": "67",
           "date": "2026-11-14",
