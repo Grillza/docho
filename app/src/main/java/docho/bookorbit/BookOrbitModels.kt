@@ -131,3 +131,20 @@ data class BookOrbitProgressDto(
 data class BookOrbitStatusDto(
     val status: String,
 )
+
+/**
+ * A stretch of reading for BookOrbit's Reading Log. [durationSeconds] is time the reader was open
+ * and in front, and [endProgress] and [progressDelta] are percentages like the reading position's.
+ */
+@Serializable
+data class BookOrbitSessionDto(
+    val sessionId: String,
+    val startedAt: String,
+    val endedAt: String,
+    val durationSeconds: Int,
+    val progressDelta: Double? = null,
+    val endProgress: Double? = null,
+    val sessionType: String = "read",
+    /** One of the platforms BookOrbit accepts from its own apps; it shows where the reading happened. */
+    val source: String = "android",
+)

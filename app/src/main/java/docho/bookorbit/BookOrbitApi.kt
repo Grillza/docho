@@ -149,6 +149,12 @@ class BookOrbitApi(
         client.newCall(POST("${apiUrl()}/books/files/$fileId/progress", body = body)).awaitSuccess().close()
     }
 
+    /** Records a reading session; BookOrbit ignores one it already has, so a retry can't count twice. */
+    suspend fun saveSession(fileId: Int, session: BookOrbitSessionDto) {
+        val body = requestJson.encodeToString(session).toRequestBody(jsonMime)
+        client.newCall(POST("${apiUrl()}/books/files/$fileId/sessions", body = body)).awaitSuccess().close()
+    }
+
     /** Marks a book unread: its position is cleared and its status set back. */
     suspend fun markUnread(bookId: Int, fileId: Int) {
         val clear = Request.Builder().url("${apiUrl()}/books/files/$fileId/progress").delete().build()

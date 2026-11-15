@@ -200,6 +200,12 @@ class ReaderViewModel(
      */
     private var chapterReadStartTime: Instant? = null
 
+    /**
+     * Where each chapter was before its first page change of the current reading session, by chapter id, so the
+     * session's progress can be worked out when it ends. Written on the main thread, read when the session ends.
+     */
+    private val sessionStarts = java.util.concurrent.ConcurrentHashMap<Long, Pair<Int, Boolean>>()
+
     // Serializes the progress writes, which outlive the reader, so they are applied in order
     private val progressWrites = Mutex()
 
@@ -713,6 +719,10 @@ class ReaderViewModel(
         if (incognitoMode || page.status is Page.State.Error) return
 
         val read = readerChapter.chapter.read || readerChapter.pages?.lastIndex == pageIndex
+        sessionStarts.putIfAbsent(
+            readerChapter.chapter.id,
+            readerChapter.chapter.lastPageRead to readerChapter.chapter.read,
+        )
         // A page change in another chapter would replace that chapter's pending save
         if (pendingProgressChapter != readerChapter) saveChapterProgress()
         // Not behind what another device reached while this reader was open
@@ -819,10 +829,29 @@ class ReaderViewModel(
 
             val chapterId = readerChapter.chapter.id
             val endTime = Clock.System.now()
-            val sessionReadDuration = chapterReadStartTime?.let { (endTime - it).inWholeMilliseconds } ?: 0
+            val startTime = chapterReadStartTime
+            val sessionReadDuration = startTime?.let { (endTime - it).inWholeMilliseconds } ?: 0
             chapterReadStartTime = null
 
             upsertHistory.await(HistoryUpdate(chapterId, endTime, sessionReadDuration))
+
+            // Reading sessions for servers that keep a reading log; a chapter whose page didn't change kept its place
+            val chapter = readerChapter.chapter
+            val (startPage, startRead) = sessionStarts.remove(chapterId) ?: (chapter.lastPageRead to chapter.read)
+            val manga = manga
+            if (startTime != null && manga != null) {
+                progressSync.onReadingSession(
+                    manga = manga,
+                    chapterUrl = chapter.url,
+                    startedAt = startTime,
+                    endedAt = endTime,
+                    startPageIndex = startPage,
+                    startRead = startRead,
+                    endPageIndex = chapter.lastPageRead,
+                    endRead = chapter.read,
+                    pageCount = readerChapter.pages?.size ?: 0,
+                )
+            }
         }
     }
 
